@@ -175,7 +175,7 @@ DSoundEnumerate(
                 RtlZeroMemory(&WaveInCaps, sizeof(WAVEINCAPSW));
 
                 /* sanity check */
-                ASSERT(CurInfo->MappedId[1] != ULONG_MAX);
+                ASSERT(CurInfo->MappedId[0] != ULONG_MAX);
 
                 /* get wave in caps */
                 waveInGetDevCapsW((UINT_PTR)CurInfo->MappedId[0], &WaveInCaps, sizeof(WAVEINCAPSW));
