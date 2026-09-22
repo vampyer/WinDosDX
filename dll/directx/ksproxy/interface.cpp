@@ -336,6 +336,11 @@ CKsInterfaceHandler::KsProcessMediaSamples(
             *OutStreamSegment = (PKSSTREAM_SEGMENT)StreamSegment;
             hr = S_OK;
         }
+        else
+        {
+            // genuine synchronous failure
+            hr = MAKE_HRESULT(SEVERITY_ERROR, FACILITY_WIN32, GetLastError());
+        }
     }
     return hr;
 }
