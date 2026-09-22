@@ -30,13 +30,13 @@ DWORD CALLBACK HelDdSurfBlt(LPDDHAL_BLTDATA lpBltData)
     else if (lpBltData->dwFlags & DDBLT_ROP)
     {
         BitBlt( (HDC)lpBltData->lpDDDestSurface->lpSurfMore->lpDD_lcl->hDC,
-                lpBltData->rDest.top,
                 lpBltData->rDest.left,
-                lpBltData->rDest.right,
-                lpBltData->rDest.bottom,
+                lpBltData->rDest.top,
+                lpBltData->rDest.right - lpBltData->rDest.left,
+                lpBltData->rDest.bottom - lpBltData->rDest.top,
                 (HDC)lpBltData->lpDDSrcSurface->lpSurfMore->lpDD_lcl->hDC,
+                lpBltData->rSrc.left,
                 lpBltData->rSrc.top,
-                lpBltData->rSrc.right,
                 lpBltData->bltFX.dwROP);
                 lpBltData->ddRVal = DD_OK;
     }
@@ -158,6 +158,11 @@ DWORD CALLBACK HelDdSurfLock(LPDDHAL_LOCKDATA lpLockData)
         DeleteDC (hMemDC);
     }
 
+    if (hDC != NULL)
+    {
+        ReleaseDC((HWND)lpLockData->lpDDSurface->lpSurfMore->lpDD_lcl->hFocusWnd, hDC);
+    }
+
     return DDHAL_DRIVER_HANDLED;
 }
 
@@ -244,6 +249,11 @@ DWORD CALLBACK HelDdSurfUnlock(LPDDHAL_UNLOCKDATA lpUnLockData)
     if (lpUnLockData->lpDDSurface->lpSurfMore->lpDDRAWReserved2 != NULL)
     {
         HeapFree(GetProcessHeap(), 0, lpUnLockData->lpDDSurface->lpSurfMore->lpDDRAWReserved2 );
+    }
+
+    if (hDC != NULL)
+    {
+        ReleaseDC((HWND)lpUnLockData->lpDDSurface->lpSurfMore->lpDD_lcl->hFocusWnd, hDC);
     }
 
     return DDHAL_DRIVER_HANDLED;
