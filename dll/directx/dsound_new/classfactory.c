@@ -130,6 +130,9 @@ IClassFactory_fnConstructor(
     IClassFactoryImpl* lpclf;
 
     lpclf = CoTaskMemAlloc(sizeof(IClassFactoryImpl));
+    if (!lpclf)
+        return NULL;
+
     lpclf->ref = 1;
     lpclf->lpVtbl = &dclfvt;
     lpclf->lpfnCI = lpfnCI;
