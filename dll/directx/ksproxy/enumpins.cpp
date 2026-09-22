@@ -117,7 +117,7 @@ STDMETHODCALLTYPE
 CEnumPins::Skip(
     ULONG cPins)
 {
-    if (cPins + m_Index >= m_Pins.size())
+    if (cPins + m_Index > m_Pins.size())
     {
         return S_FALSE;
     }
