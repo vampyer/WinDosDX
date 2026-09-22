@@ -210,17 +210,17 @@ Main_DirectDraw_Release (LPDDRAWI_DIRECTDRAW_INT This)
             if (This->lpLcl->lpGbl != NULL)
             {
                 This->lpLcl->lpGbl->dwRefCnt--;
-            }
 
-            if ( This->lpLcl->lpGbl->dwRefCnt == 0)
-            {
-                // set resolution back to the one in registry
-                /*if(This->cooperative_level & DDSCL_EXCLUSIVE)
+                if ( This->lpLcl->lpGbl->dwRefCnt == 0)
                 {
-                    ChangeDisplaySettings(NULL, 0);
-                }*/
+                    // set resolution back to the one in registry
+                    /*if(This->cooperative_level & DDSCL_EXCLUSIVE)
+                    {
+                        ChangeDisplaySettings(NULL, 0);
+                    }*/
 
-                Cleanup(This);
+                    Cleanup(This);
+                }
             }
 
             /* FIXME cleanup being not call why ?? */
@@ -228,7 +228,7 @@ Main_DirectDraw_Release (LPDDRAWI_DIRECTDRAW_INT This)
         }
         else
         {
-            Counter = This->dwIntRefCnt;
+            Counter = 0;
         }
     }
     _SEH2_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
