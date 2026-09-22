@@ -305,7 +305,6 @@ IDirectSound8_fnInitialize(
 {
     GUID DeviceGuid;
     LPOLESTR pGuidStr;
-    HRESULT hr;
     LPCDirectSoundImpl This = (LPCDirectSoundImpl)CONTAINING_RECORD(iface, CDirectSoundImpl, lpVtbl);
 
     if (!RootInfo)
@@ -347,9 +346,7 @@ IDirectSound8_fnInitialize(
         return DSERR_INVALIDPARAM;
     }
 
-    hr = FindDeviceByGuid(&DeviceGuid, &This->Filter);
-
-    if (SUCCEEDED(hr))
+    if (FindDeviceByGuid(&DeviceGuid, &This->Filter))
     {
         This->bInitialized = TRUE;
         return DS_OK;
