@@ -81,8 +81,8 @@ CVPVBIConfig::QueryInterface(
 
     if (IsEqualGUID(refiid, IID_IVPVBIConfig))
     {
-        *Output = (IVPConfig*)(this);
-        reinterpret_cast<IVPConfig*>(*Output)->AddRef();
+        *Output = (IVPVBIConfig*)(this);
+        reinterpret_cast<IVPVBIConfig*>(*Output)->AddRef();
         return NOERROR;
     }
 
