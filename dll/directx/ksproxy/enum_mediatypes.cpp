@@ -114,11 +114,11 @@ CEnumMediaTypes::Next(
         else
         {
             CopyMemory(MediaType, &m_MediaTypes[m_Index + i], sizeof(AM_MEDIA_TYPE));
-        }
 
-        if (MediaType->pUnk)
-        {
-            MediaType->pUnk->AddRef();
+            if (MediaType->pUnk)
+            {
+                MediaType->pUnk->AddRef();
+            }
         }
 
         ppMediaTypes[i] = MediaType;
@@ -142,7 +142,7 @@ STDMETHODCALLTYPE
 CEnumMediaTypes::Skip(
     ULONG cMediaTypes)
 {
-    if (cMediaTypes + m_Index >= m_MediaTypeCount)
+    if (cMediaTypes + m_Index > m_MediaTypeCount)
     {
         return S_FALSE;
     }
