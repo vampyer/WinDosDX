@@ -2040,6 +2040,8 @@ COutputPin::CreatePin(
             _swprintf(Buffer, L"COutputPin::CreatePinHandle failed with %lx\n", hr);
             OutputDebugStringW(Buffer);
 #endif
+            CoTaskMemFree(MediumList);
+            CoTaskMemFree(InterfaceList);
             return hr;
         }
 

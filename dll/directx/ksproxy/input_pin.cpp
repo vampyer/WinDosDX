@@ -1458,7 +1458,7 @@ CInputPin::CreatePin(
         if (FAILED(hr))
         {
             m_InterfaceHandler->Release();
-            m_InterfaceHandler = InterfaceHandler;
+            m_InterfaceHandler = NULL;
         }
     }
     else
