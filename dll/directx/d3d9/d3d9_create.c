@@ -141,6 +141,7 @@ BOOL CreateD3D9DeviceData(IN LPDIRECT3D9_DISPLAYADAPTER pDisplayAdapter, IN LPD3
     if (FALSE == GetDeviceData(pDeviceData))
     {
         DPRINT1("Could not get device data for display adapter: %s", pDisplayAdapter->szDeviceName);
+        DeleteDC(hDC);
         return FALSE;
     }
 
@@ -167,6 +168,7 @@ static BOOL GetDirect3D9AdapterInfo(IN OUT LPDIRECT3D9_DISPLAYADAPTER pDisplayAd
     if (FALSE == CreateD3D9DeviceData(&pDisplayAdapters[AdapterIndex], pDeviceData))
     {
         DPRINT1("Could not create device data for adapter: %d", AdapterIndex);
+        HeapFree(GetProcessHeap(), 0, pDeviceData);
         return FALSE;
     }
 
@@ -261,6 +263,7 @@ HRESULT CreateD3D9(OUT LPDIRECT3D9 *ppDirect3D9, UINT SDKVersion)
     if (FALSE == GetDisplayDeviceInfo(pDirect3D9))
     {
         DPRINT1("Could not create Direct3D9 object");
+        DeleteCriticalSection(&pDirect3D9->d3d9_cs);
         AlignedFree(pDirect3D9);
         return DDERR_GENERIC;
     }
