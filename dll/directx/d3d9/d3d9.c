@@ -59,8 +59,8 @@ IDirect3D9* WINAPI Direct3DCreate9(UINT SDKVersion)
     HINSTANCE hDebugDll;
     DWORD LoadDebugDll;
     DWORD LoadDebugDllSize;
-    LPDIRECT3D9 D3D9Obj = 0;
-    LPDIRECT3DCREATE9 DebugDirect3DCreate9 = 0;
+    LPDIRECT3D9 D3D9Obj = NULL;
+    LPDIRECT3DCREATE9 DebugDirect3DCreate9 = NULL;
     CHAR DebugMessageBuffer[DEBUG_MESSAGE_BUFFER_SIZE];
     UINT NoDebugSDKVersion = SDKVersion & ~DX_D3D9_DEBUG;
 
@@ -71,7 +71,7 @@ IDirect3D9* WINAPI Direct3DCreate9(UINT SDKVersion)
         {
             hDebugDll = LoadLibraryA("d3d9d.dll");
 
-            if (0 != hDebugDll)
+            if (NULL != hDebugDll)
             {
                 DebugDirect3DCreate9 = (LPDIRECT3DCREATE9)GetProcAddress(hDebugDll, "Direct3DCreate9");
 

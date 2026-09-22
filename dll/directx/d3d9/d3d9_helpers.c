@@ -81,7 +81,7 @@ HRESULT SafeCopyString(OUT LPSTR Dst, IN DWORD DstSize, IN LPCSTR Src)
 
 HRESULT SafeAppendString(IN OUT LPSTR Dst, IN DWORD DstSize, IN LPCSTR Src)
 {
-	size_t CurrentDstLength;
+    size_t CurrentDstLength;
 
     if (Dst == NULL || DstSize == 0)
         return DDERR_INVALIDPARAMS;
@@ -98,7 +98,7 @@ HRESULT AlignedAlloc(IN OUT LPVOID *ppObject, IN SIZE_T dwSize)
     CHAR *AlignedPtr;
     ULONG_PTR *AlignedOffsetPtr;
 
-    if (ppObject == 0)
+    if (ppObject == NULL)
         return DDERR_INVALIDPARAMS;
 
     if (dwSize == 0)
@@ -111,7 +111,7 @@ HRESULT AlignedAlloc(IN OUT LPVOID *ppObject, IN SIZE_T dwSize)
 
     AlignedPtr = (CHAR *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwSize);
 
-    if (AlignedPtr == 0)
+    if (AlignedPtr == NULL)
         return DDERR_OUTOFMEMORY;
 
     AddressOffset = MEM_ALIGNMENT - ((ULONG_PTR)AlignedPtr & AlignedMask);
@@ -131,7 +131,7 @@ VOID AlignedFree(IN OUT LPVOID pObject)
     CHAR *NonAlignedPtr = pObject;
     ULONG_PTR *AlignedPtr = pObject;
 
-    if (pObject == 0)
+    if (pObject == NULL)
         return;
 
     NonAlignedPtr -= *(AlignedPtr - 1);
