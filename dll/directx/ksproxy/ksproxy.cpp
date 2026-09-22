@@ -286,7 +286,7 @@ KsGetMediaType(
     while(i != Position)
     {
         // goto next format;
-        DataFormat = (PKSDATAFORMAT)(ULONG_PTR)(DataFormat + DataFormat->FormatSize);
+        DataFormat = (PKSDATAFORMAT)((ULONG_PTR)DataFormat + DataFormat->FormatSize);
         i++;
     }
 
