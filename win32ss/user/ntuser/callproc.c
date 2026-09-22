@@ -14,7 +14,9 @@ DBG_DEFAULT_CHANNEL(UserClass);
 WNDPROC
 GetCallProcHandle(IN PCALLPROCDATA CallProc)
 {
-    /* FIXME: Check for 64 bit architectures... */
+    /* User handles are always <= 32 bits (see USER_HANDLE_ENTRY), so this
+     * stays within the low 32 bits on 64-bit builds too; IsCallProcHandle()
+     * in class.h relies on that. */
     return (WNDPROC)((ULONG_PTR)UserHMGetHandle(CallProc) | 0xFFFF0000);
 }
 
