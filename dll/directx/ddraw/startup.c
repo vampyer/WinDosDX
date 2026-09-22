@@ -349,7 +349,11 @@ StartDirectDraw(LPDIRECTDRAW iface, LPGUID lpGuid, BOOL reenable)
     ddgbl.rectDesktop.right = ddgbl.vmiData.dwDisplayWidth;
     ddgbl.rectDesktop.bottom = ddgbl.vmiData.dwDisplayHeight;
 
-    ddgbl.dwMonitorFrequency = GetDeviceCaps(GetWindowDC(NULL),VREFRESH);
+    {
+        HDC hDesktopDC = GetWindowDC(NULL);
+        ddgbl.dwMonitorFrequency = GetDeviceCaps(hDesktopDC, VREFRESH);
+        ReleaseDC(NULL, hDesktopDC);
+    }
     ddgbl.lpModeInfo->dwWidth      = ddgbl.vmiData.dwDisplayWidth;
     ddgbl.lpModeInfo->dwHeight     = ddgbl.vmiData.dwDisplayHeight;
     ddgbl.lpModeInfo->dwBPP        = ddgbl.vmiData.ddpfDisplay.dwRGBBitCount;
