@@ -135,17 +135,25 @@ Main_DirectDraw_GetDeviceIdentifier7(LPDDRAWI_DIRECTDRAW_INT This,
                     pDDDI->liDriverVersion.HighPart = 0;
                     pDDDI->liDriverVersion.LowPart = 0;
 
+                    pDDDI->dwRevision = 0;
                     pdest = strstr(DisplayDeviceA.DeviceID,"REV_");
-                    pDDDI->dwRevision =  strtol ( &pdest[4], &pcCnvEnd, 16);
+                    if (pdest != NULL)
+                        pDDDI->dwRevision =  strtol ( &pdest[4], &pcCnvEnd, 16);
 
+                    pDDDI->dwSubSysId = 0;
                     pdest = strstr(DisplayDeviceA.DeviceID,"SUBSYS_");
-                    pDDDI->dwSubSysId =  strtol ( &pdest[7], &pcCnvEnd, 16);
+                    if (pdest != NULL)
+                        pDDDI->dwSubSysId =  strtol ( &pdest[7], &pcCnvEnd, 16);
 
+                    pDDDI->dwDeviceId = 0;
                     pdest = strstr(DisplayDeviceA.DeviceID,"DEV_");
-                    pDDDI->dwDeviceId = strtol ( &pdest[4], &pcCnvEnd, 16);
+                    if (pdest != NULL)
+                        pDDDI->dwDeviceId = strtol ( &pdest[4], &pcCnvEnd, 16);
 
+                    pDDDI->dwVendorId = 0;
                     pdest = strstr(DisplayDeviceA.DeviceID,"VEN_");
-                    pDDDI->dwVendorId =strtol ( &pdest[4], &pcCnvEnd, 16);
+                    if (pdest != NULL)
+                        pDDDI->dwVendorId =strtol ( &pdest[4], &pcCnvEnd, 16);
 
                     /* Count out the guidDeviceIdentifier */
                     memcpy(&pDDDI->guidDeviceIdentifier, &CLSID_DirectDraw,sizeof(GUID));
