@@ -113,6 +113,7 @@ HRESULT CreateD3D9HalDevice(LPDIRECT3D9_INT pDirect3D9, UINT Adapter,
     if (FAILED(Ret))
     {
         AlignedFree((LPVOID)*ppReturnedDeviceInterface);
+        *ppReturnedDeviceInterface = NULL;
         return Ret;
     }
 
