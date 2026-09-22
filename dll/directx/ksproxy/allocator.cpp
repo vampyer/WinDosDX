@@ -376,11 +376,11 @@ CKsAllocator::GetBuffer(
     {
         // no sample acquired
         //HACKKKKKKK
+        if (m_UsedList.empty())
+            return VFW_E_TIMEOUT;
+
         Sample = m_UsedList.back();
         m_UsedList.pop_back();
-
-        if (!Sample)
-            return VFW_E_TIMEOUT;
     }
 
     // store result
@@ -577,9 +577,7 @@ VOID
 STDMETHODCALLTYPE
 CKsAllocator::FreeMediaSamples()
 {
-    ULONG Index;
-
-    for(Index = 0; Index < m_FreeList.size(); Index++)
+    while (!m_FreeList.empty())
     {
         IMediaSample * Sample = m_FreeList.top();
         m_FreeList.pop();
