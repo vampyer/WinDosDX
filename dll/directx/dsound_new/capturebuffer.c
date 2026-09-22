@@ -793,7 +793,7 @@ NewDirectSoundCaptureBuffer(
 
         /* allocate buffer for mixing */
         This->MixBuffer = HeapAlloc(GetProcessHeap(), 0, MixBufferSize);
-        if (!This->Buffer)
+        if (!This->MixBuffer)
         {
             /* not enough memory */
             CloseHandle(This->hPin);
