@@ -51,9 +51,11 @@ ULONG WINAPI Main_DDrawSurface_AddRef(LPDDRAWI_DDRAWSURFACE_INT This)
         {
             This->lpLcl->lpGbl->dwRefCnt++;
         }
-    }
-    return This->dwIntRefCnt;
 
+        return This->dwIntRefCnt;
+    }
+
+    return 0;
 }
 
 HRESULT WINAPI
