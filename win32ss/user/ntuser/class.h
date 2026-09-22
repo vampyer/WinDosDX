@@ -17,7 +17,9 @@ IsCallProcHandle(IN WNDPROC lpWndProc)
     /* GetCallProcHandle() only ORs a (<= 32-bit) user handle into the low
      * 32 bits, so anything with bits set above that can't be one of ours.
      * On 64-bit builds a real code pointer could otherwise coincidentally
-     * match the low-word pattern below and be misidentified. */
+     * match the low-word pattern below and be misidentified. Keep this in
+     * sync with the user-mode copy in
+     * win32ss/user/user32/include/user_x.h. */
 #ifdef _WIN64
     if (Value & ~(ULONG_PTR)0xFFFFFFFF) return FALSE;
 #endif

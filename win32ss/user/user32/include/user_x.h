@@ -55,8 +55,19 @@ GetThreadDesktopInfo(VOID)
 static __inline BOOL
 IsCallProcHandle(IN WNDPROC lpWndProc)
 {
-    /* FIXME - check for 64 bit architectures... */
-    return ((ULONG_PTR)lpWndProc & 0xFFFF0000) == 0xFFFF0000;
+    ULONG_PTR Value = (ULONG_PTR)lpWndProc;
+
+    /* Kernel-mode GetCallProcHandle() (win32ss/user/ntuser/callproc.c) only
+     * ORs a (<= 32-bit) user handle into the low 32 bits, so anything with
+     * bits set above that can't be one of ours. On 64-bit builds a real
+     * code pointer could otherwise coincidentally match the low-word
+     * pattern below and be misidentified. Keep this in sync with the
+     * kernel-mode copy in win32ss/user/ntuser/class.h. */
+#ifdef _WIN64
+    if (Value & ~(ULONG_PTR)0xFFFFFFFF) return FALSE;
+#endif
+
+    return (Value & 0xFFFF0000) == 0xFFFF0000;
 }
 
 #define STATIC_UISTATE_GWL_OFFSET (sizeof(HFONT)+sizeof(HICON))// see UISTATE_GWL_OFFSET in static.c
