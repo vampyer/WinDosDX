@@ -139,14 +139,14 @@ CKsAllocator::SetProperties(
 {
     SYSTEM_INFO SystemInfo;
 
+    if (!pRequest || !pActual)
+        return E_POINTER;
+
     EnterCriticalSection(&m_CriticalSection);
 
 #ifdef KSPROXY_TRACE
     OutputDebugStringW(L"CKsAllocator::SetProperties\n");
 #endif
-
-    if (!pRequest || !pActual)
-        return E_POINTER;
 
     // zero output properties
     ZeroMemory(pActual, sizeof(ALLOCATOR_PROPERTIES));
