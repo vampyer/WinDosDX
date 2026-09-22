@@ -203,7 +203,7 @@ StartDirectDraw(LPDIRECTDRAW iface, LPGUID lpGuid, BOOL reenable)
 
     if (reenable == FALSE)
     {
-        if ((!IsBadReadPtr(This->lpLink,sizeof(LPDIRECTDRAW))) && (This->lpLink == NULL))
+        if (This->lpLink == NULL)
         {
             RtlZeroMemory(&ddgbl, sizeof(DDRAWI_DIRECTDRAW_GBL));
             This->lpLcl->lpGbl->dwRefCnt++;
