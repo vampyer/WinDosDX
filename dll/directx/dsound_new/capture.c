@@ -178,6 +178,11 @@ CDirectSoundCapture_fnInitialize(
     LPOLESTR pGuidStr;
     LPCDirectSoundCaptureImpl This = (LPCDirectSoundCaptureImpl)CONTAINING_RECORD(iface, CDirectSoundCaptureImpl, lpVtbl);
 
+    if (!RootInfo)
+    {
+        EnumAudioDeviceInterfaces(&RootInfo);
+    }
+
     /* sanity check */
     ASSERT(RootInfo);
 
