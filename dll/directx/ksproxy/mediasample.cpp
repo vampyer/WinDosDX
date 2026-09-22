@@ -312,8 +312,8 @@ CMediaSample::GetMediaTime(LONGLONG *pTimeStart, LONGLONG *pTimeEnd)
     if (!m_bMediaTimeValid)
         return VFW_E_MEDIA_TIME_NOT_SET;
 
-    m_MediaStart = *pTimeStart;
-    m_MediaStop = *pTimeEnd;
+    *pTimeStart = m_MediaStart;
+    *pTimeEnd = m_MediaStop;
 
     return NOERROR;
 }
