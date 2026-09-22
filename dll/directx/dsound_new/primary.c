@@ -790,7 +790,7 @@ NewPrimarySoundBuffer(
     This->hPin = NULL;
 
     /* FIXME: determine default format for audio device */
-    This->Format.cbSize = sizeof(WAVEFORMATEX);
+    This->Format.cbSize = 0;
     This->Format.nChannels = 2;
     This->Format.nSamplesPerSec = 44100;
     This->Format.wBitsPerSample = 16;
