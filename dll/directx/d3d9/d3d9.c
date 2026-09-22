@@ -75,7 +75,10 @@ IDirect3D9* WINAPI Direct3DCreate9(UINT SDKVersion)
             {
                 DebugDirect3DCreate9 = (LPDIRECT3DCREATE9)GetProcAddress(hDebugDll, "Direct3DCreate9");
 
-                return DebugDirect3DCreate9(SDKVersion);
+                if (DebugDirect3DCreate9 != NULL)
+                    return DebugDirect3DCreate9(SDKVersion);
+
+                FreeLibrary(hDebugDll);
             }
         }
     }

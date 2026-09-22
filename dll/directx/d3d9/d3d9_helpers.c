@@ -40,7 +40,7 @@ BOOL ReadRegistryValue(IN DWORD ValueType, IN LPCSTR ValueName, OUT LPBYTE DataB
 
 HRESULT SafeFormatString(OUT LPSTR Buffer, IN DWORD BufferSize, IN LPCSTR FormatString, ... )
 {
-    DWORD BytesWritten;
+    int BytesWritten;
     va_list vargs;
 
     if (BufferSize == 0)
@@ -50,7 +50,7 @@ HRESULT SafeFormatString(OUT LPSTR Buffer, IN DWORD BufferSize, IN LPCSTR Format
     BytesWritten = _vsnprintf(Buffer, BufferSize-1, FormatString, vargs);
     va_end(vargs);
 
-    if (BytesWritten < BufferSize)
+    if (BytesWritten < 0)
         return DDERR_GENERIC;
 
     Buffer[BufferSize-1] = '\0';
@@ -65,17 +65,16 @@ HRESULT SafeCopyString(OUT LPSTR Dst, IN DWORD DstSize, IN LPCSTR Src)
     if (Dst == NULL || DstSize == 0 || Src == NULL)
         return DDERR_INVALIDPARAMS;
 
-    while (*Src != '\0' && DstSize > 0)
+    while (*Src != '\0' && DstSize > 1)
     {
         *Dst++ = *Src++;
         --DstSize;
     }
 
-    if (DstSize == 0)
-    {
-        --Dst;
+    if (*Src != '\0')
         hr = DDERR_GENERIC;
-    }
+
+    *Dst = '\0';
 
     return hr;
 }
