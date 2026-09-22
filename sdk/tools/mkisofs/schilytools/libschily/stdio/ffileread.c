@@ -18,12 +18,12 @@
 
 EXPORT ssize_t
 ffileread(f, buf, len)
-	register FILE	*f;
+	FILE	*f;
 	void	*buf;
 	size_t	len;
 {
-	register int		fd;
-	register ssize_t	ret;
+	int		fd;
+	ssize_t	ret;
 		int		oerrno = geterrno();
 
 	down2(f, _IOREAD, _IORW);

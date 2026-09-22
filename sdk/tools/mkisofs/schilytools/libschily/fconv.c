@@ -207,15 +207,15 @@ static	int	_ferr __PR((char *, double));
 
 EXPORT int
 ftoes(s, val, fieldwidth, ndigits)
-	register	char 	*s;
+	char 	*s;
 			MDOUBLE	val;
-	register	int	fieldwidth;
-	register	int	ndigits;
+	int	fieldwidth;
+	int	ndigits;
 {
-	register	char	*b;
-	register	char	*rs;
-	register	int	len;
-	register	int	rdecpt;
+	char	*b;
+	char	*rs;
+	int	len;
+	int	rdecpt;
 			int 	decpt;
 			int	sign;
 
@@ -288,15 +288,15 @@ ftoes(s, val, fieldwidth, ndigits)
 
 EXPORT int
 ftofs(s, val, fieldwidth, ndigits)
-	register	char 	*s;
+	char 	*s;
 			MDOUBLE	val;
-	register	int	fieldwidth;
-	register	int	ndigits;
+	int	fieldwidth;
+	int	ndigits;
 {
-	register	char	*b;
-	register	char	*rs;
-	register	int	len;
-	register	int	rdecpt;
+	char	*b;
+	char	*rs;
+	int	len;
+	int	rdecpt;
 			int 	decpt;
 			int	sign;
 

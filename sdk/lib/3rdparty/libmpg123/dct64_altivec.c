@@ -29,7 +29,7 @@ void dct64_altivec(real *out0,real *out1,real *samples)
   ALIGNED(16) real bufs[32];
 
 	{
-		register real *b1,*costab;
+		real *b1,*costab;
 
 		vector unsigned char vinvert,vperm1,vperm2,vperm3,vperm4;
 		vector float v1,v2,v3,v4,v5,v6,v7,v8;
@@ -249,8 +249,8 @@ void dct64_altivec(real *out0,real *out1,real *samples)
 	}
 
  {
-  register real *b1;
-  register int i;
+  real *b1;
+  int i;
 
   for(b1=bufs,i=8;i;i--,b1+=4)
     b1[2] += b1[3];

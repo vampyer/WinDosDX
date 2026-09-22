@@ -51,7 +51,7 @@ LOCAL	char	*fmtab[] = {
 
 EXPORT FILE *
 _fcons(fd, f, flag)
-	register FILE	*fd;
+	FILE	*fd;
 		int	f;
 		int	flag;
 {

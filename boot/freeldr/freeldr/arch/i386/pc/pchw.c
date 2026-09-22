@@ -53,7 +53,7 @@ static
 VOID
 __StallExecutionProcessor(ULONG Loops)
 {
-    register volatile unsigned int i;
+    volatile unsigned int i;
     for (i = 0; i < Loops; i++);
 }
 

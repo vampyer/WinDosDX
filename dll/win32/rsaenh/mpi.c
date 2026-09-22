@@ -153,7 +153,7 @@ static int mp_div_2(const mp_int * a, mp_int * b)
   oldused = b->used;
   b->used = a->used;
   {
-    register mp_digit r, rr, *tmpa, *tmpb;
+    mp_digit r, rr, *tmpa, *tmpb;
 
     /* source alias */
     tmpa = a->dp + b->used - 1;
@@ -460,8 +460,8 @@ fast_mp_montgomery_reduce (mp_int * x, const mp_int * n, mp_digit rho)
    * an array of double precision words W[...]
    */
   {
-    register mp_word *_W;
-    register mp_digit *tmpx;
+    mp_word *_W;
+    mp_digit *tmpx;
 
     /* alias for the W[] array */
     _W   = W;
@@ -490,7 +490,7 @@ fast_mp_montgomery_reduce (mp_int * x, const mp_int * n, mp_digit rho)
      * by casting the value down to a mp_digit.  Note this requires
      * that W[ix-1] have  the carry cleared (see after the inner loop)
      */
-    register mp_digit mu;
+    mp_digit mu;
     mu = (mp_digit) (((W[ix] & MP_MASK) * rho) & MP_MASK);
 
     /* a = a + mu * m * b**i
@@ -508,9 +508,9 @@ fast_mp_montgomery_reduce (mp_int * x, const mp_int * n, mp_digit rho)
      * first m->used words of W[] have the carries fixed
      */
     {
-      register int iy;
-      register mp_digit *tmpn;
-      register mp_word *_W;
+      int iy;
+      mp_digit *tmpn;
+      mp_word *_W;
 
       /* alias for the digits of the modulus */
       tmpn = n->dp;
@@ -533,8 +533,8 @@ fast_mp_montgomery_reduce (mp_int * x, const mp_int * n, mp_digit rho)
    * significant digits we zeroed].
    */
   {
-    register mp_digit *tmpx;
-    register mp_word *_W, *_W1;
+    mp_digit *tmpx;
+    mp_word *_W, *_W1;
 
     /* nox fix rest of carries */
 
@@ -605,7 +605,7 @@ fast_s_mp_mul_digs (const mp_int * a, const mp_int * b, mp_int * c, int digs)
 {
   int     olduse, res, pa, ix, iz;
   mp_digit W[MP_WARRAY];
-  register mp_word  _W;
+  mp_word  _W;
 
   /* grow the destination as required */
   if (c->alloc < digs) {
@@ -654,7 +654,7 @@ fast_s_mp_mul_digs (const mp_int * a, const mp_int * b, mp_int * c, int digs)
   c->used = digs;
 
   {
-    register mp_digit *tmpc;
+    mp_digit *tmpc;
     tmpc = c->dp;
     for (ix = 0; ix < digs; ix++) {
       /* now extract the previous digit [below the carry] */
@@ -731,7 +731,7 @@ fast_s_mp_mul_high_digs (const mp_int * a, const mp_int * b, mp_int * c, int dig
   c->used = pa;
 
   {
-    register mp_digit *tmpc;
+    mp_digit *tmpc;
 
     tmpc = c->dp + digs;
     for (ix = digs; ix <= pa; ix++) {
@@ -1171,7 +1171,7 @@ mp_copy (const mp_int * a, mp_int * b)
 
   /* zero b and copy the parameters over */
   {
-    register mp_digit *tmpa, *tmpb;
+    mp_digit *tmpa, *tmpb;
 
     /* pointer aliases */
 
@@ -1272,7 +1272,7 @@ static void mp_rshd (mp_int * a, int b)
   }
 
   {
-    register mp_digit *bottom, *top;
+    mp_digit *bottom, *top;
 
     /* shift the digits down */
 
@@ -1349,7 +1349,7 @@ static int mp_div_2d (const mp_int * a, int b, mp_int * c, mp_int * d)
   /* shift any bit count < DIGIT_BIT */
   D = (mp_digit) (b % DIGIT_BIT);
   if (D != 0) {
-    register mp_digit *tmpc, mask, shift;
+    mp_digit *tmpc, mask, shift;
 
     /* mask */
     mask = (((mp_digit)1) << D) - 1;
@@ -1400,7 +1400,7 @@ static int mp_lshd (mp_int * a, int b)
   }
 
   {
-    register mp_digit *top, *bottom;
+    mp_digit *top, *bottom;
 
     /* increment the used by the shift amount then copy upwards */
     a->used += b;
@@ -1457,8 +1457,8 @@ static int mp_mul_2d (const mp_int * a, int b, mp_int * c)
   /* shift any bit count < DIGIT_BIT */
   d = (mp_digit) (b % DIGIT_BIT);
   if (d != 0) {
-    register mp_digit *tmpc, shift, mask, r, rr;
-    register int x;
+    mp_digit *tmpc, shift, mask, r, rr;
+    int x;
 
     /* bitmask for carries */
     mask = (((mp_digit)1) << d) - 1;
@@ -2624,8 +2624,8 @@ int mp_karatsuba_mul (const mp_int * a, const mp_int * b, mp_int * c)
   y1.used = b->used - B;
 
   {
-    register int x;
-    register mp_digit *tmpa, *tmpb, *tmpx, *tmpy;
+    int x;
+    mp_digit *tmpa, *tmpb, *tmpx, *tmpy;
 
     /* we copy the digits directly instead of using higher level functions
      * since we also need to shift the digits
@@ -2740,8 +2740,8 @@ int mp_karatsuba_sqr (const mp_int * a, mp_int * b)
     goto X0X0;
 
   {
-    register int x;
-    register mp_digit *dst, *src;
+    int x;
+    mp_digit *dst, *src;
 
     src = a->dp;
 
@@ -2891,7 +2891,7 @@ static int mp_mul_2(const mp_int * a, mp_int * b)
   b->used = a->used;
 
   {
-    register mp_digit r, rr, *tmpa, *tmpb;
+    mp_digit r, rr, *tmpa, *tmpb;
 
     /* alias for source */
     tmpa = a->dp;
@@ -3016,9 +3016,9 @@ mp_montgomery_reduce (mp_int * x, const mp_int * n, mp_digit rho)
 
     /* a = a + mu * m * b**i */
     {
-      register int iy;
-      register mp_digit *tmpn, *tmpx, u;
-      register mp_word r;
+      int iy;
+      mp_digit *tmpn, *tmpx, u;
+      mp_word r;
 
       /* alias for digits of the modulus */
       tmpn = n->dp;
@@ -3952,8 +3952,8 @@ s_mp_add (mp_int * a, mp_int * b, mp_int * c)
   c->used = max + 1;
 
   {
-    register mp_digit u, *tmpa, *tmpb, *tmpc;
-    register int i;
+    mp_digit u, *tmpa, *tmpb, *tmpc;
+    int i;
 
     /* alias for digit pointers */
 
@@ -4427,8 +4427,8 @@ s_mp_sub (const mp_int * a, const mp_int * b, mp_int * c)
   c->used = max;
 
   {
-    register mp_digit u, *tmpa, *tmpb, *tmpc;
-    register int i;
+    mp_digit u, *tmpa, *tmpb, *tmpc;
+    int i;
 
     /* alias for digit pointers */
     tmpa = a->dp;

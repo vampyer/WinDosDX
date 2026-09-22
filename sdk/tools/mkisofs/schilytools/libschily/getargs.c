@@ -393,8 +393,8 @@ getvfiles(pac, pav, props, vfmt)
 /* LOCAL int */
 EXPORT int
 _getargs(pac, pav, vfmt, flags, props, args)
-	register int		*pac;
-	register char	*const	**pav;
+	int		*pac;
+	char	*const	**pav;
 		void		*vfmt;
 		int		flags;
 		struct ga_props	*props;
@@ -431,12 +431,12 @@ _getargs(pac, pav, vfmt, flags, props, args)
  */
 LOCAL int
 dofile(pac, pav, pargp, props)
-	register int		*pac;
-	register char *const	**pav;
+	int		*pac;
+	char *const	**pav;
 		const char	**pargp;
 		struct ga_props	*props;
 {
-	register const char	*argp = *pargp;
+	const char	*argp = *pargp;
 
 
 	if (argp[0] == '-') {
@@ -502,12 +502,12 @@ LOCAL int
 doflag(pac, pav, argp, vfmt, flags, oargs)
 		int		*pac;
 		char	*const	**pav;
-	register const char	*argp;
+	const char	*argp;
 		void		*vfmt;
 		int		flags;
 		va_list		oargs;
 {
-	register const char	*fmt = (const char *)vfmt;
+	const char	*fmt = (const char *)vfmt;
 	struct ga_flags		*flagp = vfmt;
 	const char	*fmtp;
 	long	val;
@@ -1033,24 +1033,24 @@ typedef struct {
 
 LOCAL int
 dosflags(argp, vfmt, pac, pav, flags, oargs)
-	register const char	*argp;
+	const char	*argp;
 		void		*vfmt;
 		int		*pac;
 		char	*const	**pav;
 		int		flags;
 		va_list		oargs;
 {
-	register const char	*fmt = (const char *)vfmt;
+	const char	*fmt = (const char *)vfmt;
 	struct ga_flags		*flagp = vfmt;
 #define	MAXSF	64
 		sflags	sf[MAXSF];
 		char	fl[256];
 		va_list args;
-	register sflags	*rsf	= sf;
-	register int	nsf	= 0;
-	register const char *p	= argp;
-	register int	i;
-	register void	*curarg = (void *)0;
+	sflags	*rsf	= sf;
+	int	nsf	= 0;
+	const char *p	= argp;
+	int	i;
+	void	*curarg = (void *)0;
 	getpargfun	curfun = 0;
 		char	type;
 
@@ -1319,9 +1319,9 @@ checkfmt(fmt)
  */
 LOCAL int
 checkeql(str)
-	register const char *str;
+	const char *str;
 {
-	register unsigned char c;
+	unsigned char c;
 
 	for (c = (unsigned char)*str;
 			isalnum(c) || c == '_' || c == '-' || c == '+';

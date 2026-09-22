@@ -765,9 +765,9 @@ DIB_32BPP_AlphaBlend(SURFOBJ* Dest, SURFOBJ* Source, RECTL* DestRect,
                      XLATEOBJ* ColorTranslation, BLENDOBJ* BlendObj)
 {
   INT Rows, Cols, SrcX, SrcY;
-  register PULONG Dst;
+  PULONG Dst;
   BLENDFUNCTION BlendFunc;
-  register NICEPIXEL32 DstPixel, SrcPixel;
+  NICEPIXEL32 DstPixel, SrcPixel;
   UCHAR Alpha, SrcBpp;
 
   DPRINT("DIB_32BPP_AlphaBlend: SourceRect: (%d,%d)-(%d,%d), DestRect: (%d,%d)-(%d,%d)\n",

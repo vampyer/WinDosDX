@@ -138,7 +138,7 @@ set_maze_sizes (width, height)
 static void
 initialize_maze()         /* draw the surrounding wall and start/end squares */
 {
-  register int i, j, wall;
+  int i, j, wall;
 
   /* initialize all squares */
   for ( i=0; i<maze_size_x; i++) {
@@ -234,7 +234,7 @@ static void enter_square(int, HDC, HBRUSH);
 static void
 create_maze()             /* create a maze layout given the intiialized maze */
 {
-  register int i, newdoor = 0;
+  int i, newdoor = 0;
   HDC hDC;
 
   hDC = GetDC(hWnd);
@@ -286,7 +286,7 @@ static int
 choose_door(HDC hDC)                                    /* pick a new path */
 {
   int candidates[3];
-  register int num_candidates;
+  int num_candidates;
 
   num_candidates = 0;
 
@@ -378,7 +378,7 @@ int bw;
 
 static void
 draw_solid_square(i, j, dir, hDC, hBrush)          /* draw a solid square in a square */
-     register int i, j, dir;
+     int i, j, dir;
      HDC hDC;
 	 HBRUSH hBrush;
 {
@@ -416,7 +416,7 @@ draw_solid_square(i, j, dir, hDC, hBrush)          /* draw a solid square in a s
 static void
 draw_maze_border(HWND hWnd, HDC hDC)	/* draw the maze outline */
 {
-  register int i, j;
+  int i, j;
   HBRUSH hBrush;
 
 

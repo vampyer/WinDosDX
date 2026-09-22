@@ -474,7 +474,7 @@ static int III_get_side_info(mpg123_handle *fr, struct III_sideinfo *si,int ster
 	for (gr=0; gr<tab[0]; gr++)
 	for (ch=0; ch<stereo; ch++)
 	{
-		register struct gr_info_s *gr_info = &(si->ch[ch].gr[gr]);
+		struct gr_info_s *gr_info = &(si->ch[ch].gr[gr]);
 		unsigned int qss;
 		gr_info->part2_3_length = getbits(fr, 12);
 		gr_info->big_values = getbits(fr, 9);
@@ -860,8 +860,8 @@ static int III_dequantize_sample(mpg123_handle *fr, real xr[SBLIMIT][SSLIMIT],in
 		/* decoding with short or mixed mode BandIndex table */
 		int i,max[4];
 		int step=0,lwin=3,cb=0;
-		register real v = 0.0;
-		register int *m,mc;
+		real v = 0.0;
+		int *m,mc;
 
 		if(gr_info->mixed_block_flag)
 		{
@@ -885,7 +885,7 @@ static int III_dequantize_sample(mpg123_handle *fr, real xr[SBLIMIT][SSLIMIT],in
 			const struct newhuff *h = ht+gr_info->table_select[i];
 			for(;lp;lp--,mc--)
 			{
-				register MASK_STYPE x,y;
+				MASK_STYPE x,y;
 				if( (!mc) )
 				{
 					mc    = *m++;
@@ -993,7 +993,7 @@ static int III_dequantize_sample(mpg123_handle *fr, real xr[SBLIMIT][SSLIMIT],in
 		{
 			const struct newhuff* h;
 			const short* val;
-			register short a;
+			short a;
 
 			h = htc+gr_info->count1table_select;
 			val = h->table;
@@ -1102,7 +1102,7 @@ static int III_dequantize_sample(mpg123_handle *fr, real xr[SBLIMIT][SSLIMIT],in
 		int i,max = -1;
 		int cb = 0;
 		int *m = map[sfreq][2];
-		register real v = 0.0;
+		real v = 0.0;
 		int mc = 0;
 
 		/* long hash table values */
@@ -1212,7 +1212,7 @@ static int III_dequantize_sample(mpg123_handle *fr, real xr[SBLIMIT][SSLIMIT],in
 		{
 			const struct newhuff *h = htc+gr_info->count1table_select;
 			const short *val = h->table;
-			register short a;
+			short a;
 
 			REFRESH_MASK;
 			while((a=*val++)<0)
@@ -1506,7 +1506,7 @@ static void III_antialias(real xr[SBLIMIT][SSLIMIT],struct gr_info_s *gr_info)
 
 			for(ss=7;ss>=0;ss--)
 			{ /* upper and lower butterfly inputs */
-				register real bu = *--xr2,bd = *xr1;
+				real bu = *--xr2,bd = *xr1;
 				*xr2   = REAL_MUL(bu, *cs) - REAL_MUL(bd, *ca);
 				*xr1++ = REAL_MUL(bd, *cs++) + REAL_MUL(bu, *ca++);
 			}
@@ -1558,7 +1558,7 @@ void dct36(real *inbuf,real *o1,real *o2,real *wintab,real *tsbuf)
 #endif
 
 	{
-		register real *in = inbuf;
+		real *in = inbuf;
 
 		in[17]+=in[16]; in[16]+=in[15]; in[15]+=in[14];
 		in[14]+=in[13]; in[13]+=in[12]; in[12]+=in[11];
@@ -1726,10 +1726,10 @@ void dct36(real *inbuf,real *o1,real *o2,real *wintab,real *tsbuf)
 		ts[SBLIMIT*(9+(v))] = out1[9+(v)] + REAL_MUL(tmpval, w[9+(v)]); }
 
 		{
-			register real *out2 = o2;
-			register real *w = wintab;
-			register real *out1 = o1;
-			register real *ts = tsbuf;
+			real *out2 = o2;
+			real *w = wintab;
+			real *out1 = o1;
+			real *ts = tsbuf;
 
 			MACRO(0);
 			MACRO(1);
@@ -1764,11 +1764,11 @@ void dct36(real *inbuf,real *o1,real *o2,real *wintab,real *tsbuf)
 	sum1 = REAL_MUL((tmp2b - tmp1b), tfcos36[(v)]); \
 	MACRO0(v); }
 
-			register const real *c = COS9;
-			register real *out2 = o2;
-			register real *w = wintab;
-			register real *out1 = o1;
-			register real *ts = tsbuf;
+			const real *c = COS9;
+			real *out2 = o2;
+			real *w = wintab;
+			real *out1 = o1;
+			real *ts = tsbuf;
 
 			real ta33,ta66,tb33,tb66;
 
@@ -1835,7 +1835,7 @@ void dct36(real *inbuf,real *o1,real *o2,real *wintab,real *tsbuf)
 
 
 /* new DCT12 */
-static void dct12(real *in,real *rawout1,real *rawout2,register real *wi,register real *ts)
+static void dct12(real *in,real *rawout1,real *rawout2,real *wi,real *ts)
 {
 #define DCT12_PART1 \
 	in5 = in[5*3];  \
@@ -1869,7 +1869,7 @@ static void dct12(real *in,real *rawout1,real *rawout2,register real *wi,registe
 
 	{
 		real in0,in1,in2,in3,in4,in5;
-		register real *out1 = rawout1;
+		real *out1 = rawout1;
 		ts[SBLIMIT*0] = out1[0]; ts[SBLIMIT*1] = out1[1]; ts[SBLIMIT*2] = out1[2];
 		ts[SBLIMIT*3] = out1[3]; ts[SBLIMIT*4] = out1[4]; ts[SBLIMIT*5] = out1[5];
 
@@ -1905,7 +1905,7 @@ static void dct12(real *in,real *rawout1,real *rawout2,register real *wi,registe
 
 	{
 		real in0,in1,in2,in3,in4,in5;
-		register real *out2 = rawout2;
+		real *out2 = rawout2;
 
 		DCT12_PART1
 
@@ -1939,7 +1939,7 @@ static void dct12(real *in,real *rawout1,real *rawout2,register real *wi,registe
 
 	{
 		real in0,in1,in2,in3,in4,in5;
-		register real *out2 = rawout2;
+		real *out2 = rawout2;
 		out2[12]=out2[13]=out2[14]=out2[15]=out2[16]=out2[17]=0.0;
 
 		DCT12_PART1
@@ -2264,16 +2264,16 @@ int do_layer3(mpg123_handle *fr)
 			{
 				case SINGLE_MIX:
 				{
-					register int i;
-					register real *in0 = (real *) hybridIn[0],*in1 = (real *) hybridIn[1];
+					int i;
+					real *in0 = (real *) hybridIn[0],*in1 = (real *) hybridIn[1];
 					for(i=0;i<SSLIMIT*(int)gr_info->maxb;i++,in0++)
 					*in0 = (*in0 + *in1++); /* *0.5 done by pow-scale */
 				}
 				break;
 				case SINGLE_RIGHT:
 				{
-					register int i;
-					register real *in0 = (real *) hybridIn[0],*in1 = (real *) hybridIn[1];
+					int i;
+					real *in0 = (real *) hybridIn[0],*in1 = (real *) hybridIn[1];
 					for(i=0;i<SSLIMIT*(int)gr_info->maxb;i++)
 					*in0++ = *in1++;
 				}

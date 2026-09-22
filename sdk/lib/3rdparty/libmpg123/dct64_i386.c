@@ -19,7 +19,7 @@
 static void dct64_1(real *out0,real *out1,real *b1,real *b2,real *samples)
 {
  {
-  register real *costab = pnts[0];
+  real *costab = pnts[0];
 
   b1[0x00] = samples[0x00] + samples[0x1F];
   b1[0x01] = samples[0x01] + samples[0x1E];
@@ -65,7 +65,7 @@ static void dct64_1(real *out0,real *out1,real *b1,real *b2,real *samples)
 
 
  {
-  register real *costab = pnts[1];
+  real *costab = pnts[1];
 
   b2[0x00] = b1[0x00] + b1[0x0F];
   b2[0x01] = b1[0x01] + b1[0x0E];
@@ -111,7 +111,7 @@ static void dct64_1(real *out0,real *out1,real *b1,real *b2,real *samples)
  }
 
  {
-  register real *costab = pnts[2];
+  real *costab = pnts[2];
 
   b1[0x00] = b2[0x00] + b2[0x07];
   b1[0x07] = REAL_MUL(b2[0x00] - b2[0x07], costab[0]);
@@ -151,8 +151,8 @@ static void dct64_1(real *out0,real *out1,real *b1,real *b2,real *samples)
  }
 
  {
-  register real const cos0 = pnts[3][0];
-  register real const cos1 = pnts[3][1];
+  real const cos0 = pnts[3][0];
+  real const cos1 = pnts[3][1];
 
   b2[0x00] = b1[0x00] + b1[0x03];
   b2[0x03] = REAL_MUL(b1[0x00] - b1[0x03], cos0);
@@ -196,7 +196,7 @@ static void dct64_1(real *out0,real *out1,real *b1,real *b2,real *samples)
  }
 
  {
-  register real const cos0 = pnts[4][0];
+  real const cos0 = pnts[4][0];
 
   b1[0x00] = b2[0x00] + b2[0x01];
   b1[0x01] = REAL_MUL(b2[0x00] - b2[0x01], cos0);

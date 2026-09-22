@@ -39,9 +39,9 @@ fillbytes(tov, cnt, val)
 	char	val;
 #endif
 {
-	register char	*to = (char *)tov;
-	register ssize_t n;
-	register long	lval;
+	 char	*to = (char *)tov;
+	 ssize_t n;
+	 long	lval;
 
 	/*
 	 * If we change cnt to be unsigned, check for == instead of <=
@@ -60,7 +60,7 @@ fillbytes(tov, cnt, val)
 	n++;
 
 	if (n >= (ssize_t)(8 * sizeof (long))) {
-		register ssize_t rem = n % (8 * sizeof (long));
+		 ssize_t rem = n % (8 * sizeof (long));
 
 		lval |= (lval<<8);
 		lval |= (lval<<16);
@@ -70,7 +70,7 @@ fillbytes(tov, cnt, val)
 
 		n /= (8 * sizeof (long));
 		{
-			register long *tol = (long *)to;
+			 long *tol = (long *)to;
 
 			do {
 				DO8 (*tol++ = lval);

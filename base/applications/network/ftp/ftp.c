@@ -95,7 +95,7 @@ void psabort(int sig);
 
 char *hookup(const char *host, int port)
 {
-	register struct hostent *hp = 0;
+	struct hostent *hp = 0;
 	int len;
 	SOCKET s;
 	static char hostnamebuf[80];
@@ -314,9 +314,9 @@ int
 getreply(expecteof)
 	int expecteof;
 {
-	register int c, n;
-	register int dig;
-	register char *cp;
+	int c, n;
+	int dig;
+	char *cp;
 	int originalcode = 0, continuation = 0;
 	void (*oldintr)(int);
 	int pflag = 0;
@@ -448,7 +448,7 @@ void sendrequest(const char *cmd, const char *local, const char *remote, int pri
 	sig_t (*oldintr)(), (*oldintp)();
 	char buf[BUFSIZ], *bufp;
 	long bytes = 0, hashbytes = HASHBYTES;
-	register int c, d;
+	int c, d;
 	struct stat st;
 	struct timeval start, stop;
 	const char *mode;
@@ -729,7 +729,7 @@ void recvrequest(const char *cmd, const char *local, const char *remote, const c
 	long bytes = 0, hashbytes = HASHBYTES;
 //	struct
 		fd_set mask;
-	register int c;
+	int c;
 	struct timeval start, stop;
 //	struct stat st;
 
@@ -765,7 +765,7 @@ null();//			(void) signal(SIGINT, oldintr);
 null();//	oldintr = signal(SIGINT, abortrecv);
 	if (strcmp(local, "-") && *local != '|') {
 #ifndef _WIN32
-	register int d;
+	int d;
 // This whole thing is a problem... access Won't work on non-existent files
 		if (access(local, 2) < 0) {
 			char *dir = rindex(local, '/');
@@ -941,7 +941,7 @@ null();//		oldintp = signal(SIGPIPE, SIG_IGN);
 
 	case TYPE_A:
 		if (restart_point) {
-			register int i, n, c;
+			int i, n, c;
 
 			if (fseek(fout, 0L, L_SET) < 0)
 				goto done;
@@ -1124,7 +1124,7 @@ null();//	(void) signal(SIGINT,oldintr);
 int
 initconn()
 {
-	register char *p, *a;
+	char *p, *a;
 	int result, len, tmpno = 0;
 	int on = 1;
 	int a0, a1, a2, a3, p0, p1;

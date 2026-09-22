@@ -65,8 +65,8 @@ static __inline int do_hash (name, len, size)
 	int len;
 	int size;
 {
-	register int accum = 0;
-	register unsigned char *s = name;
+	int accum = 0;
+	unsigned char *s = name;
 	int i = len;
 	while (i--) {
 		/* Add the character in... */

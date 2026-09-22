@@ -228,7 +228,7 @@ xflsbuf(c, ap)
 #define	FORMAT_FUNC_PARM
 
 #define	FORMAT_FUNC_PROTO_DECL	void (*fun)(char, void *),
-#define	FORMAT_FUNC_KR_DECL	register void (*fun)();
+#define	FORMAT_FUNC_KR_DECL	void (*fun)();
 #define	FORMAT_FUNC_KR_ARGS	fun,
 
 #define	ofun(c, fp)		(*fun)(c, fp)
@@ -250,8 +250,8 @@ FORMAT_FUNC_NAME(FORMAT_FUNC_PROTO_DECL
 EXPORT int
 FORMAT_FUNC_NAME(FORMAT_FUNC_KR_ARGS farg, fmt, oargs)
 	FORMAT_FUNC_KR_DECL
-	register void	*farg;
-	register char	*fmt;
+	void	*farg;
+	char	*fmt;
 	va_list		oargs;
 #endif
 {
@@ -261,11 +261,11 @@ FORMAT_FUNC_NAME(FORMAT_FUNC_KR_ARGS farg, fmt, oargs)
 	char buf[8192];
 #endif
 	const char *sfmt;
-	register int unsflag;
-	register long val;
-	register char type;
-	register char mode;
-	register char c;
+	int unsflag;
+	long val;
+	char type;
+	char mode;
+	char c;
 	int count;
 	int num;
 	int i;
@@ -1042,11 +1042,11 @@ LOCAL	unsigned char	udtab[] = "0123456789ABCDEF";
 
 LOCAL void
 prnum(val, base, fa)
-	register Ulong val;
-	register unsigned base;
+	Ulong val;
+	unsigned base;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[modlbys(val, base)];
@@ -1058,10 +1058,10 @@ prnum(val, base, fa)
 
 LOCAL void
 prdnum(val, fa)
-	register Ulong val;
+	Ulong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[modlbys(val, (unsigned)10)];
@@ -1076,10 +1076,10 @@ prdnum(val, fa)
  */
 LOCAL void
 pronum(val, fa)
-	register Ulong val;
+	Ulong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[val & 7];
@@ -1091,10 +1091,10 @@ pronum(val, fa)
 
 LOCAL void
 prxnum(val, fa)
-	register Ulong val;
+	Ulong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[val & 15];
@@ -1106,10 +1106,10 @@ prxnum(val, fa)
 
 LOCAL void
 prXnum(val, fa)
-	register Ulong val;
+	Ulong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = udtab[val & 15];
@@ -1122,11 +1122,11 @@ prXnum(val, fa)
 #ifdef	USE_LONGLONG
 LOCAL void
 prlnum(val, base, fa)
-	register Ullong val;
-	register unsigned base;
+	Ullong val;
+	unsigned base;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[modlbys(val, base)];
@@ -1138,10 +1138,10 @@ prlnum(val, base, fa)
 
 LOCAL void
 prldnum(val, fa)
-	register Ullong val;
+	Ullong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[val % (unsigned)10];
@@ -1153,10 +1153,10 @@ prldnum(val, fa)
 
 LOCAL void
 prlonum(val, fa)
-	register Ullong val;
+	Ullong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[val & 7];
@@ -1168,10 +1168,10 @@ prlonum(val, fa)
 
 LOCAL void
 prlxnum(val, fa)
-	register Ullong val;
+	Ullong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = dtab[val & 15];
@@ -1183,10 +1183,10 @@ prlxnum(val, fa)
 
 LOCAL void
 prlXnum(val, fa)
-	register Ullong val;
+	Ullong val;
 	f_args *fa;
 {
-	register char *p = fa->bufp;
+	char *p = fa->bufp;
 
 	do {
 		*--p = udtab[val & 15];
@@ -1203,17 +1203,17 @@ prlXnum(val, fa)
  */
 LOCAL int
 prbuf(s, fa)
-	register const char *s;
+	const char *s;
 	f_args *fa;
 {
-	register int diff;
-	register int rfillc;
-	register void *arg				= fa->farg;
+	int diff;
+	int rfillc;
+	void *arg				= fa->farg;
 #ifdef	FORMAT_FUNC_PARM
-	register void (*fun) __PR((char, void *))	= fa->outf;
+	void (*fun) __PR((char, void *))	= fa->outf;
 #endif
-	register int count;
-	register int lzero = 0;
+	int count;
+	int lzero = 0;
 
 	count = strlen(s);
 
@@ -1272,13 +1272,13 @@ prc(c, fa)
 	f_args *fa;
 #endif
 {
-	register int diff;
-	register int rfillc;
-	register void *arg				= fa->farg;
+	int diff;
+	int rfillc;
+	void *arg				= fa->farg;
 #ifdef	FORMAT_FUNC_PARM
-	register void (*fun) __PR((char, void *))	= fa->outf;
+	void (*fun) __PR((char, void *))	= fa->outf;
 #endif
-	register int count;
+	int count;
 
 	count = 1;
 	diff = fa->fldwidth - 1;
@@ -1306,11 +1306,11 @@ prc(c, fa)
  */
 LOCAL int
 prstring(s, fa)
-	register const char	*s;
+	const char	*s;
 	f_args *fa;
 {
-	register char	*bp;
-	register int	signific;
+	char	*bp;
+	int	signific;
 
 	if (s == NULL)
 		return (prbuf("(NULL POINTER)", fa));

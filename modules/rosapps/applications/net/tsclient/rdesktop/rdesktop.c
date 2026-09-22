@@ -1359,7 +1359,7 @@ l_to_a(long N, int base)
 
 	char *head = ret, buf[LTOA_BUFSIZE], *tail = buf + sizeof(buf);
 
-	register int divrem;
+	int divrem;
 
 	if (base < 36 || 2 > base)
 		base = 10;

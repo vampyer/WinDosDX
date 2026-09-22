@@ -190,7 +190,7 @@ int width, height;
 
 static void initialize_maze()         /* draw the surrounding wall and start/end squares */
 {
-    register int i, j, wall;
+    int i, j, wall;
 
     /* initialize all squares */
     for (i = 0; i < maze_size_x; i++) {
@@ -279,7 +279,7 @@ static void initialize_maze()         /* draw the surrounding wall and start/end
 
 static void create_maze(HWND hWnd)             /* create a maze layout given the initialized maze */
 {
-    register int i, newdoor = 0;
+    int i, newdoor = 0;
 
     do {
         move_list[sqnum].x = cur_sq_x;
@@ -324,7 +324,7 @@ static void create_maze(HWND hWnd)             /* create a maze layout given the
 static int choose_door(HDC hDC)                                    /* pick a new path */
 {
     int candidates[3];
-    register int num_candidates;
+    int num_candidates;
 
     num_candidates = 0;
 
@@ -411,7 +411,7 @@ static long backup()                                                  /* back up
 }
 
 static void draw_solid_square(i, j, dir, hDC, hBrush)          /* draw a solid square in a square */
-register int i, j, dir;
+int i, j, dir;
 HDC hDC;
 HBRUSH hBrush;
 {
@@ -448,7 +448,7 @@ HBRUSH hBrush;
 
 static void draw_maze_border(HWND hWnd)    /* draw the maze outline */
 {
-    register int i, j;
+    int i, j;
     HBRUSH hBrush;
 
     SelectObject(hDC, hPenWall);
@@ -480,7 +480,7 @@ static void draw_maze_border(HWND hWnd)    /* draw the maze outline */
 }
 
 static void draw_wall(i, j, dir, hDC)                                   /* draw a single wall */
-register int i, j, dir;
+int i, j, dir;
 HDC hDC;
 {
     SelectObject(hDC, hPenWall);

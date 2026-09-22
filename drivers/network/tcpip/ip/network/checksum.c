@@ -38,7 +38,7 @@ ULONG ChecksumCompute(
  *     Checksum of buffer
  */
 {
-  register ULONG Sum = Seed;
+  ULONG Sum = Seed;
 
   while (Count > 1)
     {

@@ -53,7 +53,7 @@
 #ifdef __cplusplus
 #	define _SEH_INIT_CONST static const
 #else
-#	define _SEH_INIT_CONST register const
+#	define _SEH_INIT_CONST const
 #endif
 
 typedef struct __SEHFrame
@@ -250,8 +250,8 @@ static _SEHPortableTryLevel_t * const _SEHPortableTryLevel = 0;
 	 \
 		{ \
 			_SEH_INIT_CONST int _SEHScopeKind = 0; \
-			register int _SEHState = 0; \
-			register int _SEHHandle = 0; \
+			int _SEHState = 0; \
+			int _SEHHandle = 0; \
 			_SEHFrame_t _SEHFrame; \
 			_SEHTryLevel_t _SEHTryLevel; \
 			_SEHPortableFrame_t * const _SEHPortableFrame = \

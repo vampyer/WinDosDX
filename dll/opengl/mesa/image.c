@@ -104,7 +104,7 @@
  */
 void gl_flip_bytes( GLubyte *p, GLuint n )
 {
-   register GLuint i, a, b;
+   GLuint i, a, b;
 
    for (i=0;i<n;i++) {
       b = (GLuint) p[i];
@@ -126,7 +126,7 @@ void gl_flip_bytes( GLubyte *p, GLuint n )
  */
 void gl_swap2( GLushort *p, GLuint n )
 {
-   register GLuint i;
+   GLuint i;
 
    for (i=0;i<n;i++) {
       p[i] = (p[i] >> 8) | ((p[i] << 8) & 0xff00);
@@ -140,7 +140,7 @@ void gl_swap2( GLushort *p, GLuint n )
  */
 void gl_swap4( GLuint *p, GLuint n )
 {
-   register GLuint i, a, b;
+   GLuint i, a, b;
 
    for (i=0;i<n;i++) {
       b = p[i];

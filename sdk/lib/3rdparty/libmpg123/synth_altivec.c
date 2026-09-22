@@ -292,7 +292,7 @@ int synth_1to1_altivec(real *bandPtr,int channel,mpg123_handle *fr, int final)
 
 
 	{
-		register int j;
+		int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		ALIGNED(16) int clip_tmp[4];
@@ -424,7 +424,7 @@ int synth_1to1_stereo_altivec(real *bandPtr_l, real *bandPtr_r, mpg123_handle *f
 
 
 	{
-		register int j;
+		int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		ALIGNED(16) int clip_tmp[4];
@@ -573,7 +573,7 @@ int synth_1to1_real_altivec(real *bandPtr,int channel,mpg123_handle *fr, int fin
 
 
 	{
-		register int j;
+		int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		vector float v1,v2,v3,v4,v5,v6,v7,v8,v9;
@@ -690,7 +690,7 @@ int synth_1to1_fltst_altivec(real *bandPtr_l, real *bandPtr_r, mpg123_handle *fr
 
 
 	{
-		register int j;
+		int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		vector float v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13;
@@ -802,7 +802,7 @@ int synth_1to1_s32_altivec(real *bandPtr,int channel,mpg123_handle *fr, int fina
 
 
 	{
-		register int j;
+		int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		ALIGNED(16) int clip_tmp[4];
@@ -945,7 +945,7 @@ int synth_1to1_s32_stereo_altivec(real *bandPtr_l, real *bandPtr_r, mpg123_handl
 
 
 	{
-		register int j;
+		int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		ALIGNED(16) int clip_tmp[4];

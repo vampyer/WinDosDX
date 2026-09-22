@@ -89,8 +89,8 @@ LOCAL(int)
 read_byte (tga_source_ptr sinfo)
 /* Read next byte from Targa file */
 {
-  register FILE *infile = sinfo->pub.input_file;
-  register int c;
+  FILE *infile = sinfo->pub.input_file;
+  int c;
 
   if ((c = getc(infile)) == EOF)
     ERREXIT(sinfo->cinfo, JERR_INPUT_EOF);
@@ -124,7 +124,7 @@ METHODDEF(void)
 read_non_rle_pixel (tga_source_ptr sinfo)
 /* Read one Targa pixel from the input file; no RLE expansion */
 {
-  register int i;
+  int i;
 
   for (i = 0; i < sinfo->pixel_size; i++) {
     sinfo->tga_pixel[i] = (U_CHAR) read_byte(sinfo);
@@ -135,7 +135,7 @@ METHODDEF(void)
 read_rle_pixel (tga_source_ptr sinfo)
 /* Read one Targa pixel from the input file, expanding RLE data as needed */
 {
-  register int i;
+  int i;
 
   /* Duplicate previously read pixel? */
   if (sinfo->dup_pixel_count > 0) {
@@ -172,8 +172,8 @@ get_8bit_gray_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 8-bit grayscale pixels */
 {
   tga_source_ptr source = (tga_source_ptr) sinfo;
-  register JSAMPROW ptr;
-  register JDIMENSION col;
+  JSAMPROW ptr;
+  JDIMENSION col;
 
   ptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {
@@ -188,10 +188,10 @@ get_8bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 8-bit colormap indexes */
 {
   tga_source_ptr source = (tga_source_ptr) sinfo;
-  register JSAMPROW ptr;
-  register JSAMPARRAY colormap;
-  register JDIMENSION col;
-  register int t;
+  JSAMPROW ptr;
+  JSAMPARRAY colormap;
+  JDIMENSION col;
+  int t;
   int cmaplen;
 
   ptr = source->pub.buffer[0];
@@ -214,9 +214,9 @@ get_16bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 16-bit pixels */
 {
   tga_source_ptr source = (tga_source_ptr) sinfo;
-  register int t;
-  register JSAMPROW ptr;
-  register JDIMENSION col;
+  int t;
+  JSAMPROW ptr;
+  JDIMENSION col;
 
   ptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {
@@ -242,8 +242,8 @@ get_24bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 24-bit pixels */
 {
   tga_source_ptr source = (tga_source_ptr) sinfo;
-  register JSAMPROW ptr;
-  register JDIMENSION col;
+  JSAMPROW ptr;
+  JDIMENSION col;
 
   ptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {

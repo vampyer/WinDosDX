@@ -292,7 +292,7 @@ void lostpeer(void)
 /*char *
 tail(char *filename)
 {
-	register char *s;
+	char *s;
 
 	while (*filename) {
 		s = rindex(filename, '/');
@@ -310,7 +310,7 @@ tail(char *filename)
  */
 void cmdscanner(int top)
 {
-	register struct cmd *c;
+	struct cmd *c;
 
 	if (!top)
 		(void) putchar('\n');
@@ -412,8 +412,8 @@ static const char *
 slurpstring(void)
 {
 	int got_one = 0;
-	register char *sb = stringbase;
-	register char *ap = argbase;
+	char *sb = stringbase;
+	char *ap = argbase;
 	char *tmp = argbase;		/* will return this if token found */
 
 	if (*sb == '!' || *sb == '$') {	/* recognize ! as a token for shell */
@@ -538,7 +538,7 @@ void help(int argc, const char *argv[])
 	struct cmd *c;
 
 	if (argc == 1) {
-		register int i, j, w, k;
+		int i, j, w, k;
 		int columns, width = 0, lines;
 		extern int NCMDS;
 

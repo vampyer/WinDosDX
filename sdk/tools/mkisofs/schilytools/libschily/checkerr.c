@@ -193,11 +193,11 @@ errflags(eflag, doexit)
 	char	*eflag;
 	BOOL	doexit;
 {
-	register char		*p = eflag;
+	char		*p = eflag;
 		char		*ef = _endword(eflag);
-	register struct eflags	*ep;
-	register int		slen;
-	register UInt32_t	nflags = 0;
+	struct eflags	*ep;
+	int		slen;
+	UInt32_t	nflags = 0;
 
 	do {
 		for (ep = eflags; ep->fname; ep++) {

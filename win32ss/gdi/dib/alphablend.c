@@ -36,8 +36,8 @@ DIB_XXBPP_AlphaBlend(SURFOBJ* Dest, SURFOBJ* Source, RECTL* DestRect,
 {
   INT DstX, DstY, SrcX, SrcY;
   BLENDFUNCTION BlendFunc;
-  register NICEPIXEL32 DstPixel32;
-  register NICEPIXEL32 SrcPixel32;
+  NICEPIXEL32 DstPixel32;
+  NICEPIXEL32 SrcPixel32;
   UCHAR Alpha, SrcBpp = BitsPerFormat(Source->iBitmapFormat);
   EXLATEOBJ* pexlo;
   EXLATEOBJ exloSrcRGB, exloDstRGB, exloRGBSrc;

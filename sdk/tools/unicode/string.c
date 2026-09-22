@@ -74,11 +74,11 @@ WCHAR *strstrW( const WCHAR *str, const WCHAR *sub )
 long int strtolW( const WCHAR *nptr, WCHAR **endptr, int base )
 {
   int negative;
-  register unsigned long int cutoff;
-  register unsigned int cutlim;
-  register unsigned long int i;
-  register const WCHAR *s;
-  register WCHAR c;
+  unsigned long int cutoff;
+  unsigned int cutlim;
+  unsigned long int i;
+  const WCHAR *s;
+  WCHAR c;
   const WCHAR *save, *end;
   int overflow;
 
@@ -195,11 +195,11 @@ noconv:
 unsigned long int strtoulW( const WCHAR *nptr, WCHAR **endptr, int base )
 {
   int negative;
-  register unsigned long int cutoff;
-  register unsigned int cutlim;
-  register unsigned long int i;
-  register const WCHAR *s;
-  register WCHAR c;
+  unsigned long int cutoff;
+  unsigned int cutlim;
+  unsigned long int i;
+  const WCHAR *s;
+  WCHAR c;
   const WCHAR *save, *end;
   int overflow;
 

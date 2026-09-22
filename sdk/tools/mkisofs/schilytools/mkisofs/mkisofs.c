@@ -3953,8 +3953,8 @@ e_strdup(s)
  */
 LOCAL void
 ovstrcpy(p2, p1)
-	register char	*p2;
-	register char	*p1;
+	char	*p2;
+	char	*p1;
 {
 	while ((*p2++ = *p1++) != '\0')
 		;

@@ -184,13 +184,13 @@ searchfileinpath(name, mode, file_mode, path)
 
 LOCAL char *
 searchonefile(name, mode, plain_file, xn, nbuf, np, ep)
-	register char	*name;		/* Find <execname>/../name in PATH	*/
+	char	*name;		/* Find <execname>/../name in PATH	*/
 		int	mode;		/* Mode for access() e.g. X_OK		*/
 		BOOL	plain_file;	/* Whether to check only plain files	*/
 		char	*xn;		/* The basename of the executable	*/
-	register char	*nbuf;		/* Name buffer base			*/
-	register char	*np;		/* Where to append name to path		*/
-	register char	*ep;		/* Point to last valid char in nbuf	*/
+	char	*nbuf;		/* Name buffer base			*/
+	char	*np;		/* Where to append name to path		*/
+	char	*ep;		/* Point to last valid char in nbuf	*/
 {
 	struct stat	sb;
 

@@ -787,7 +787,7 @@ display_mbr(const uint8_t *mbr, size_t len)
 
 uint32_t chksum_crc32 (unsigned char *block, unsigned int length)
 {
-	register unsigned long crc;
+	unsigned long crc;
 	unsigned long i;
 
 	crc = 0xFFFFFFFF;

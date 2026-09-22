@@ -1984,7 +1984,7 @@ void gl_EvalCoord1f(GLcontext* ctx, GLfloat u)
   GLubyte *colorptr;
   GLfloat texcoord[4];
   GLuint index;
-  register GLfloat uu;
+  GLfloat uu;
 
   /** Vertex **/
   if (ctx->Eval.Map1Vertex4) 
@@ -2090,7 +2090,7 @@ void gl_EvalCoord2f( GLcontext* ctx, GLfloat u, GLfloat v )
    GLubyte *colorptr;
    GLfloat texcoord[4];
    GLuint index;
-   register GLfloat uu, vv;
+   GLfloat uu, vv;
 
 #define CROSS_PROD(n, u, v) \
   (n)[0] = (u)[1]*(v)[2] - (u)[2]*(v)[1]; \

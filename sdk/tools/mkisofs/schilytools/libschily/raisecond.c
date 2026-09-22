@@ -101,7 +101,7 @@ raisecond(signame, arg2)
 	const char	*signame;
 	long		arg2;
 {
-	register void	*vp = NULL;
+	 void	*vp = NULL;
 
 #ifdef	HAVE_SCANSTACK
 	/*
@@ -143,7 +143,7 @@ raisecond(signame, arg2)
  */
 LOCAL BOOL
 framehandle(sp, handlename, signame, arg2)
-	register SIGBLK *sp;
+	SIGBLK *sp;
 	const char	*handlename;
 	const char	*signame;
 	long		arg2;

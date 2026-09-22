@@ -103,7 +103,7 @@ int SYNTH_NAME(real *bandPtr,int channel, mpg123_handle *fr, int final)
 	}
 
 	{
-		register int j;
+		 int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		for (j=16;j;j--,window+=0x10)

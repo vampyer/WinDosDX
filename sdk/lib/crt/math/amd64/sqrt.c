@@ -5,12 +5,12 @@ double
 sqrt (
     double x)
 {
-    register union
+    union
     {
         __m128d x128d;
         __m128i x128i;
     } u ;
-    register union
+    union
     {
         unsigned long long ullx;
         double dbl;

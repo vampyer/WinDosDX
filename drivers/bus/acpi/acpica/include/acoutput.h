@@ -409,7 +409,7 @@
 
 #define ACPI_TRACE_EXIT(Function, Type, Param) \
     ACPI_DO_WHILE0 ({ \
-        register Type _Param = (Type) (Param); \
+        Type _Param = (Type) (Param); \
         Function (ACPI_DEBUG_PARAMETERS, _Param); \
         return (_Param); \
     })

@@ -512,7 +512,7 @@ CallNotificationDll(
          * that use a CDECL calling convention instead of the correct STDCALL */
         BOOLEAN Success;
     #if defined(__GNUC__)
-        register ULONG_PTR StackPtr;
+        ULONG_PTR StackPtr;
         __asm__ __volatile__
         (
             "movl %%esp, %[StackPtr]\n\t"   // Save current ESP

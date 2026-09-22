@@ -32,9 +32,9 @@ movebytes(fromv, tov, cnt)
 	void		*tov;
 	ssize_t		cnt;
 {
-	register const char	*from	= fromv;
-	register char		*to	= tov;
-	register ssize_t	n;
+	 const char	*from	= fromv;
+	 char		*to	= tov;
+	 ssize_t	n;
 
 	/*
 	 * If we change cnt to be unsigned, check for == instead of <=
@@ -49,9 +49,9 @@ movebytes(fromv, tov, cnt)
 		 */
 		if (n >= (ssize_t)(8 * sizeof (long))) {
 			if (l2aligned(from, to)) {
-				register const long *froml = (const long *)from;
-				register long *tol = (long *)to;
-				register ssize_t rem = n % (8 * sizeof (long));
+				 const long *froml = (const long *)from;
+				 long *tol = (long *)to;
+				 ssize_t rem = n % (8 * sizeof (long));
 
 				n /= (8 * sizeof (long));
 				do {
@@ -92,9 +92,9 @@ movebytes(fromv, tov, cnt)
 		ep = to;
 		if (n >= (ssize_t)(8 * sizeof (long))) {
 			if (l2aligned(from, to)) {
-				register const long *froml = (const long *)from;
-				register long *tol = (long *)to;
-				register ssize_t rem = n % (8 * sizeof (long));
+				 const long *froml = (const long *)from;
+				 long *tol = (long *)to;
+				 ssize_t rem = n % (8 * sizeof (long));
 
 				n /= (8 * sizeof (long));
 				do {

@@ -380,8 +380,8 @@ xsltSwapTopPattern(xmlPatternPtr comp) {
     int j = comp->nbStep - 1;
 
     if (j > 0) {
-	register const xmlChar *tmp;
-	register xmlPatOp op;
+	const xmlChar *tmp;
+	xmlPatOp op;
 	i = j - 1;
 	tmp = comp->steps[i].value;
 	comp->steps[i].value = comp->steps[j].value;
@@ -434,8 +434,8 @@ xmlReversePattern(xmlPatternPtr comp) {
     i = 0;
     j = comp->nbStep - 1;
     while (j > i) {
-	register const xmlChar *tmp;
-	register xmlPatOp op;
+	const xmlChar *tmp;
+	xmlPatOp op;
 	tmp = comp->steps[i].value;
 	comp->steps[i].value = comp->steps[j].value;
 	comp->steps[j].value = tmp;

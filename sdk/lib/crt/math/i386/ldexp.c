@@ -12,7 +12,7 @@
 double ldexp (double value, int exp)
 {
 #ifdef __GNUC__
-    register double result;
+    double result;
 #endif
 
     /* Check for value correctness

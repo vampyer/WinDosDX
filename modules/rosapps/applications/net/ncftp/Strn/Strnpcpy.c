@@ -11,11 +11,11 @@
 char *
 Strnpcpy(char *const dst, const char *const src, size_t n)
 {
-	register char *d;
-	register const char *s;
-	register char c;
+	char *d;
+	const char *s;
+	char c;
 	char *ret;
-	register size_t i;
+	size_t i;
 
 	d = dst;
 	if (n != 0) {

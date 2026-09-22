@@ -23,9 +23,9 @@
 
 double _logb (double __x)
 {
-  register double __val;
+  double __val;
 #ifdef __GNUC__
-  register double __junk;
+  double __junk;
   __asm __volatile__
     ("fxtract\n\t"
      : "=t" (__junk), "=u" (__val) : "0" (__x));

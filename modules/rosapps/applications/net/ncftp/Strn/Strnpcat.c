@@ -15,10 +15,10 @@
 char *
 Strnpcat(char *const dst, const char *const src, size_t n)
 {
-	register size_t i;
-	register char *d;
-	register const char *s;
-	register char c;
+	size_t i;
+	char *d;
+	const char *s;
+	char c;
 	char *ret;
 
 	if (n != 0 && ((i = strlen(dst)) < (n - 1))) {

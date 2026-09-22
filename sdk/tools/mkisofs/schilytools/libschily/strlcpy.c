@@ -29,9 +29,9 @@ static	UConst char sccsid[] =
 
 EXPORT size_t
 strlcpy(s1, s2, len)
-	register char		*s1;
-	register const char	*s2;
-	register size_t		len;
+	char		*s1;
+	const char	*s2;
+	size_t		len;
 {
 	const char		 *os2	= s2;
 

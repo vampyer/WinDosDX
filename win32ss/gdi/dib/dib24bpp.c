@@ -727,9 +727,9 @@ DIB_24BPP_AlphaBlend(SURFOBJ* Dest, SURFOBJ* Source, RECTL* DestRect,
                      XLATEOBJ* ColorTranslation, BLENDOBJ* BlendObj)
 {
    INT Rows, Cols, SrcX, SrcY;
-   register PUCHAR Dst;
+   PUCHAR Dst;
    BLENDFUNCTION BlendFunc;
-   register NICEPIXEL32 DstPixel, SrcPixel;
+   NICEPIXEL32 DstPixel, SrcPixel;
    UCHAR Alpha;
    //UCHAR SrcBpp;
 

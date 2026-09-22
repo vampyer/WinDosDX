@@ -373,7 +373,7 @@ XFORMOBJ_bXformFixPoints(
     FLOATOBJ fo1, fo2;
     FLONG flAccel;
     LONG lM11, lM12, lM21, lM22, lTemp;
-    register LONGLONG llx, lly;
+    LONGLONG llx, lly;
 
     pmx = XFORMOBJ_pmx(pxo);
     flAccel = pmx->flAccel;

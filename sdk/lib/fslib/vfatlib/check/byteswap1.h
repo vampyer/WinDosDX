@@ -33,7 +33,7 @@
 # if __GNUC__ >= 2
 #  define __bswap_16(x) \
      (__extension__							      \
-      ({ register unsigned short int __v, __x = (x);			      \
+      ({ unsigned short int __v, __x = (x);			      \
 	 if (__builtin_constant_p (__x))				      \
 	   __v = __bswap_constant_16 (__x);				      \
 	 else								      \
@@ -46,7 +46,7 @@
 /* This is better than nothing.  */
 #  define __bswap_16(x) \
      (__extension__							      \
-      ({ register unsigned short int __x = (x); __bswap_constant_16 (__x); }))
+      ({ unsigned short int __x = (x); __bswap_constant_16 (__x); }))
 # endif
 #else
 static __inline unsigned short int
@@ -69,7 +69,7 @@ __bswap_16 (unsigned short int __bsx)
       && !defined __pentium4__
 #   define __bswap_32(x)						      \
      (__extension__							      \
-      ({ register unsigned int __v, __x = (x);				      \
+      ({ unsigned int __v, __x = (x);				      \
 	 if (__builtin_constant_p (__x))				      \
 	   __v = __bswap_constant_32 (__x);				      \
 	 else								      \
@@ -83,7 +83,7 @@ __bswap_16 (unsigned short int __bsx)
 #  else
 #   define __bswap_32(x) \
      (__extension__							      \
-      ({ register unsigned int __v, __x = (x);				      \
+      ({ unsigned int __v, __x = (x);				      \
 	 if (__builtin_constant_p (__x))				      \
 	   __v = __bswap_constant_32 (__x);				      \
 	 else								      \
@@ -93,7 +93,7 @@ __bswap_16 (unsigned short int __bsx)
 # else
 #  define __bswap_32(x) \
      (__extension__							      \
-      ({ register unsigned int __x = (x); __bswap_constant_32 (__x); }))
+      ({ unsigned int __x = (x); __bswap_constant_32 (__x); }))
 # endif
 #else
 static __inline unsigned int

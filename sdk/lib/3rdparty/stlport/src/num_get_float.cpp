@@ -695,8 +695,8 @@ static double _Stl_string_to_double(const char *s) {
   }
 
   if (c == 'e' - '0' || c == 'E' - '0') {
-    register unsigned negate_exp = 0;
-    register int e = 0;
+    unsigned negate_exp = 0;
+    int e = 0;
     c = *s++;
     if (c == '+' || c == ' ') {
       c = *s++;
@@ -801,7 +801,7 @@ D _Stl_string_to_doubleT(const char *s)
 
   if (c == 'e'-'0' || c == 'E'-'0') {
     bool negate_exp = false;
-    register int e = 0;
+    int e = 0;
     c = *s++;
     if (c == '+' || c == ' ') {
       c = *s++;

@@ -310,7 +310,7 @@ static void invert_matrix( const GLfloat *m, GLfloat *out )
 #define m43 MAT(m,3,2)
 #define m44 MAT(m,3,3)
 
-   register GLfloat det;
+   GLfloat det;
    GLfloat tmp[16]; /* Allow out == in. */
 
    if( m41 != 0. || m42 != 0. || m43 != 0. || m44 != 1. ) {
@@ -334,7 +334,7 @@ static void invert_matrix( const GLfloat *m, GLfloat *out )
    }
    else {
       GLfloat d12, d13, d23, d24, d34, d41;
-      register GLfloat im11, im12, im13, im14;
+      GLfloat im11, im12, im13, im14;
 
       det= 1. / det;
 

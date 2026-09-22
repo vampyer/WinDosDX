@@ -74,8 +74,8 @@ put_pixel_rows (j_decompress_ptr cinfo, djpeg_dest_ptr dinfo,
 /* This version is for writing 24-bit pixels */
 {
   bmp_dest_ptr dest = (bmp_dest_ptr) dinfo;
-  register JSAMPROW inptr, outptr;
-  register JDIMENSION col;
+  JSAMPROW inptr, outptr;
+  JDIMENSION col;
   int pad;
 
   /* Access next row in virtual array */
@@ -106,8 +106,8 @@ put_gray_rows (j_decompress_ptr cinfo, djpeg_dest_ptr dinfo,
 /* This version is for grayscale OR quantized color output */
 {
   bmp_dest_ptr dest = (bmp_dest_ptr) dinfo;
-  register JSAMPROW inptr, outptr;
-  register JDIMENSION col;
+  JSAMPROW inptr, outptr;
+  JDIMENSION col;
   int pad;
 
   /* Access next row in virtual array */
@@ -339,10 +339,10 @@ METHODDEF(void)
 finish_output_bmp (j_decompress_ptr cinfo, djpeg_dest_ptr dinfo)
 {
   bmp_dest_ptr dest = (bmp_dest_ptr) dinfo;
-  register FILE * outfile = dest->pub.output_file;
-  register JSAMPROW data_ptr;
+  FILE * outfile = dest->pub.output_file;
+  JSAMPROW data_ptr;
   JDIMENSION row;
-  register JDIMENSION col;
+  JDIMENSION col;
   cd_progress_ptr progress = (cd_progress_ptr) cinfo->progress;
 
   /* Write the header and colormap */

@@ -15,9 +15,9 @@ typedef struct sockaddr_nb {
 } SOCKADDR_NB, *PSOCKADDR_NB, *LPSOCKADDR_NB;
 #define SET_NETBIOS_SOCKADDR(_snb,_type,_name,_port) \
 { \
-	register int _i; \
-	register char *_n = (_name); \
-	register PSOCKADDR_NB _s = (_snb); \
+	 int _i; \
+	 char *_n = (_name); \
+	 PSOCKADDR_NB _s = (_snb); \
 	_s->snb_family = AF_NETBIOS; \
 	_s->snb_type = (_type); \
 	for (_i=0; _n[_i] != '\0' && _i<NETBIOS_NAME_LENGTH-1; _i++) { \

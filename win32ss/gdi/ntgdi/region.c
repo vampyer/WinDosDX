@@ -2940,9 +2940,9 @@ FASTCALL
 REGION_computeWAET(
     EDGE_TABLE_ENTRY *AET)
 {
-    register EDGE_TABLE_ENTRY *pWETE;
-    register INT inside = 1;
-    register INT isInside = 0;
+    EDGE_TABLE_ENTRY *pWETE;
+    INT inside = 1;
+    INT isInside = 0;
 
     AET->nextWETE = (EDGE_TABLE_ENTRY *)NULL;
     pWETE = AET;

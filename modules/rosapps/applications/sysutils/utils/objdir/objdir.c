@@ -33,7 +33,7 @@ RawUszAsz (
 	PCHAR	szA
 	)
 {
-	register PCHAR a = szA;
+	 PCHAR a = szA;
 
 	while (*szU) {*szA++ = (CHAR) (0x00ff & * szU++);}
 	*szA = '\0';
@@ -49,7 +49,7 @@ RawAszUsz (
 	PWCHAR	szW
 	)
 {
-	register PWCHAR w = szW;
+	PWCHAR w = szW;
 
 	while (*szA) {*szW++ = (WCHAR) *szA++;}
 	*szW = L'\0';

@@ -24,8 +24,8 @@ void dct64(real *out0,real *out1,real *samples)
   real bufs[64];
 
  {
-  register int i,j;
-  register real *b1,*b2,*bs,*costab;
+  int i,j;
+  real *b1,*b2,*bs,*costab;
 
   b1 = samples;
   bs = bufs;
@@ -108,8 +108,8 @@ void dct64(real *out0,real *out1,real *samples)
 
 
  {
-  register real *b1;
-  register int i;
+  real *b1;
+  int i;
 
   for(b1=bufs,i=8;i;i--,b1+=4)
     b1[2] += b1[3];

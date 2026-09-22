@@ -245,9 +245,9 @@ xawrite(buffer, size, count, file, submode, islast)
 	int	submode;
 	BOOL	islast;
 {
-	register char	*p = buffer;
-	register int	amt = size * count;
-	register int	n;
+	char	*p = buffer;
+	int	amt = size * count;
+	int	n;
 	struct xa_subhdr subhdr[2];
 
 	if (osecsize == 2048)

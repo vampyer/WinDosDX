@@ -455,8 +455,8 @@ sunlabel_write(outfile)
 	FILE	*outfile;
 {
 		char	buffer[SECTOR_SIZE];
-	register char	*p;
-	register short	count = (512/2) - 1;
+	char	*p;
+	short	count = (512/2) - 1;
 		int	f;
 
 	memset(buffer, 0, sizeof (buffer));

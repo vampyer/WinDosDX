@@ -156,8 +156,8 @@ printasc(txt, p, len)
 LOCAL void
 prbytes(txt, p, len)
 		char	*txt;
-	register Uchar	*p;
-	register int	len;
+	Uchar	*p;
+	int	len;
 {
 	error("%s", txt);
 	while (--len >= 0)

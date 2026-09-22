@@ -275,7 +275,7 @@ static const xmlChar casemap[256] = {
 
 int
 xmlStrcasecmp(const xmlChar *str1, const xmlChar *str2) {
-    register int tmp;
+    int tmp;
 
     if (str1 == str2) return(0);
     if (str1 == NULL) return(-1);
@@ -300,7 +300,7 @@ xmlStrcasecmp(const xmlChar *str1, const xmlChar *str2) {
 
 int
 xmlStrncasecmp(const xmlChar *str1, const xmlChar *str2, int len) {
-    register int tmp;
+    int tmp;
 
     if (len <= 0) return(0);
     if (str1 == str2) return(0);

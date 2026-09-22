@@ -31,9 +31,9 @@ zerobytes(tov, cnt)
 	void	*tov;
 	ssize_t	cnt;
 {
-	register char	*to = (char *)tov;
-	register ssize_t n;
-	register long	lval = 0L;
+	 char	*to = (char *)tov;
+	 ssize_t n;
+	 long	lval = 0L;
 
 	/*
 	 * If we change cnt to be unsigned, check for == instead of <=
@@ -57,11 +57,11 @@ zerobytes(tov, cnt)
 	n++;
 
 	if (n >= (ssize_t)(8 * sizeof (long))) {
-		register ssize_t rem = n % (8 * sizeof (long));
+		ssize_t rem = n % (8 * sizeof (long));
 
 		n /= (8 * sizeof (long));
 		{
-			register long *tol = (long *)to;
+			long *tol = (long *)to;
 
 			do {
 				DO8 (*tol++ = lval);

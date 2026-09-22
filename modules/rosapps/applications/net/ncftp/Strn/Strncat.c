@@ -12,9 +12,9 @@
 char *
 Strncat(char *const dst, const char *const src, const size_t n)
 {
-	register size_t i;
-	register char *d;
-	register const char *s;
+	size_t i;
+	char *d;
+	const char *s;
 
 	if (n != 0 && ((i = strlen(dst)) < (n - 1))) {
 		d = dst + i;

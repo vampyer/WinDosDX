@@ -3685,8 +3685,8 @@ complex:
 
 static const xmlChar *
 xmlParseNameAndCompare(xmlParserCtxtPtr ctxt, xmlChar const *other) {
-    register const xmlChar *cmp = other;
-    register const xmlChar *in;
+    const xmlChar *cmp = other;
+    const xmlChar *in;
     const xmlChar *ret;
 
     GROW;

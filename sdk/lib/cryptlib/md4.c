@@ -58,7 +58,7 @@ VOID NTAPI MD4Init( MD4_CTX *ctx )
  */
 VOID NTAPI MD4Update( MD4_CTX *ctx, const unsigned char *buf, unsigned int len )
 {
-    register unsigned int t;
+    unsigned int t;
 
     /* Update bitcount */
     t = ctx->i[0];
@@ -181,7 +181,7 @@ VOID NTAPI MD4Final( MD4_CTX *ctx )
  */
 static void MD4Transform( unsigned int buf[4], const unsigned int in[16] )
 {
-    register unsigned int a, b, c, d;
+    unsigned int a, b, c, d;
 
     a = buf[0];
     b = buf[1];

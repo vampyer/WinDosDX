@@ -103,9 +103,9 @@ typedef	unsigned char	Uchar;
  *	put adds a new state to the active list
  */
 #define	 put(ret, state, sp, n)	{		\
-	register int *lstate	= state;	\
-	register int *lsp	= sp;		\
-	register int ln		= n;		\
+	 int *lstate	= state;	\
+	 int *lsp	= sp;		\
+	 int ln		= n;		\
 						\
 	while (lstate < lsp) {			\
 		if (*lstate++ == ln) {		\
@@ -166,8 +166,8 @@ typedef	unsigned char	Uchar;
 #define	CHK_POSIX_CLASS
 #endif
 #define	in_class(found, pat, c)	{			\
-	register const PCHAR	*lpat	= pat;		\
-	register int		lc	= c;		\
+	const PCHAR	*lpat	= pat;		\
+	int		lc	= c;		\
 	int	lo_bound;				\
 	int	hi_bound;				\
 	BOOL	ok			= FALSE;	\
@@ -236,11 +236,11 @@ patmatch(pat, aux, str, soff, slen, alt, state)
 	int		alt;
 	int		state[];
 {
-	register int	*sp;
-	register int	*n;
-	register int	*i;
-	register int	p;
-	register int	q, s, k;
+	int	*sp;
+	int	*n;
+	int	*i;
+	int	p;
+	int	q, s, k;
 #ifdef	__MB_CHAR
 	wchar_t		c;
 	int		mlen = 1;

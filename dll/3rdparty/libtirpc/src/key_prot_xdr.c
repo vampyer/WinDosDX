@@ -43,7 +43,7 @@
  */
 
 bool_t
-xdr_keystatus(register XDR *xdrs, keystatus *objp)
+xdr_keystatus( XDR *xdrs, keystatus *objp)
 {
 
 	if (!xdr_enum(xdrs, (enum_t *)objp))
@@ -52,7 +52,7 @@ xdr_keystatus(register XDR *xdrs, keystatus *objp)
 }
 
 bool_t
-xdr_keybuf(register XDR *xdrs, keybuf objp)
+xdr_keybuf( XDR *xdrs, keybuf objp)
 {
 
 	if (!xdr_opaque(xdrs, objp, HEXKEYBYTES))
@@ -61,7 +61,7 @@ xdr_keybuf(register XDR *xdrs, keybuf objp)
 }
 
 bool_t
-xdr_netnamestr(register XDR *xdrs, netnamestr *objp)
+xdr_netnamestr( XDR *xdrs, netnamestr *objp)
 {
 
 	if (!xdr_string(xdrs, objp, MAXNETNAMELEN))
@@ -70,7 +70,7 @@ xdr_netnamestr(register XDR *xdrs, netnamestr *objp)
 }
 
 bool_t
-xdr_cryptkeyarg(register XDR *xdrs, cryptkeyarg *objp)
+xdr_cryptkeyarg( XDR *xdrs, cryptkeyarg *objp)
 {
 
 	if (!xdr_netnamestr(xdrs, &objp->remotename))
@@ -81,7 +81,7 @@ xdr_cryptkeyarg(register XDR *xdrs, cryptkeyarg *objp)
 }
 
 bool_t
-xdr_cryptkeyarg2(register XDR *xdrs, cryptkeyarg2 *objp)
+xdr_cryptkeyarg2( XDR *xdrs, cryptkeyarg2 *objp)
 {
 
 	if (!xdr_netnamestr(xdrs, &objp->remotename))
@@ -94,7 +94,7 @@ xdr_cryptkeyarg2(register XDR *xdrs, cryptkeyarg2 *objp)
 }
 
 bool_t
-xdr_cryptkeyres(register XDR *xdrs, cryptkeyres *objp)
+xdr_cryptkeyres( XDR *xdrs, cryptkeyres *objp)
 {
 
 	if (!xdr_keystatus(xdrs, &objp->status))
@@ -111,7 +111,7 @@ xdr_cryptkeyres(register XDR *xdrs, cryptkeyres *objp)
 }
 
 bool_t
-xdr_unixcred(register XDR *xdrs, unixcred *objp)
+xdr_unixcred( XDR *xdrs, unixcred *objp)
 {
 
 	if (!xdr_u_int(xdrs, &objp->uid))
@@ -125,7 +125,7 @@ xdr_unixcred(register XDR *xdrs, unixcred *objp)
 }
 
 bool_t
-xdr_getcredres(register XDR *xdrs, getcredres *objp)
+xdr_getcredres( XDR *xdrs, getcredres *objp)
 {
 
 	if (!xdr_keystatus(xdrs, &objp->status))
@@ -142,7 +142,7 @@ xdr_getcredres(register XDR *xdrs, getcredres *objp)
 }
 
 bool_t
-xdr_key_netstarg(register XDR *xdrs, key_netstarg *objp)
+xdr_key_netstarg( XDR *xdrs, key_netstarg *objp)
 {
 
 	if (!xdr_keybuf(xdrs, objp->st_priv_key))
@@ -155,7 +155,7 @@ xdr_key_netstarg(register XDR *xdrs, key_netstarg *objp)
 }
 
 bool_t
-xdr_key_netstres(register XDR *xdrs, key_netstres *objp)
+xdr_key_netstres( XDR *xdrs, key_netstres *objp)
 {
 
 	if (!xdr_keystatus(xdrs, &objp->status))

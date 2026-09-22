@@ -35,7 +35,7 @@ vfatNameHash(
 {
     PWCHAR last;
     PWCHAR curr;
-    register WCHAR c;
+    WCHAR c;
 
     // LFN could start from "."
     //ASSERT(NameU->Buffer[0] != L'.');

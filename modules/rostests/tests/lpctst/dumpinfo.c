@@ -52,7 +52,7 @@ DumpBuffer(
 	ULONG	size
 	)
 {
-	register ULONG i = 0;
+	ULONG i = 0;
 
 	printf("%s [%d] = ",Name,size);
 	for (	i = 0;

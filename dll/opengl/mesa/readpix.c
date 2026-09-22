@@ -563,8 +563,8 @@ static void scale_and_bias_rgba( GLcontext *ctx,
 				 GLfloat red[], GLfloat green[],
 				 GLfloat blue[], GLfloat alpha[] )
 {
-   register GLint i;
-   register GLfloat r, g, b, a;
+   GLint i;
+   GLfloat r, g, b, a;
 
    for (i=0;i<n;i++) {
       r = red[i]   * ctx->Pixel.RedScale   + ctx->Pixel.RedBias;

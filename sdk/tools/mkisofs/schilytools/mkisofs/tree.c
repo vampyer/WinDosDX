@@ -263,7 +263,7 @@ sort_n_finish(this_dir)
 	int		d1;
 	int		d2;
 	int		d3;
-	register int	new_reclen;
+	int	new_reclen;
 	char		*c;
 	int		status = 0;
 	int		tablesize = 0;

@@ -145,7 +145,7 @@ sort_matches(fn, val)
 	char	*fn;
 	int	val;
 {
-	register sort_match	*s_mat;
+	sort_match	*s_mat;
 		int		flags = FNM_PATHNAME;
 
 	if (isort)
@@ -162,7 +162,7 @@ sort_matches(fn, val)
 EXPORT void
 del_sort()
 {
-	register sort_match * s_mat, *s_mat1;
+	sort_match * s_mat, *s_mat1;
 
 	s_mat = s_mats;
 	while (s_mat) {
@@ -363,7 +363,7 @@ gen_matches(fn, n)
 	char	*fn;
 	int	n;
 {
-	register match * mat;
+	match * mat;
 		int		flags = FNM_PATHNAME;
 
 
@@ -395,8 +395,8 @@ EXPORT void
 gen_del_match(n)
 	int	n;
 {
-	register match	*mat;
-	register match 	*mat1;
+	match	*mat;
+	match 	*mat1;
 
 	if (n >= MAX_MAT)
 		return;

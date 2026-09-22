@@ -70,9 +70,9 @@ getline(buf, len)
  */
 EXPORT int
 js_fgetline(f, buf, len)
-	register	FILE	*f;
+	FILE	*f;
 			char	*buf;
-	register	int	len;
+	int	len;
 {
 	char	*bp = fgets(buf, len, f);
 
@@ -92,16 +92,16 @@ js_fgetline(f, buf, len)
 #else
 EXPORT int
 js_fgetline(f, buf, len)
-	register	FILE	*f;
+	FILE	*f;
 			char	*buf;
-	register	int	len;
+	int	len;
 {
-	register char	*bp	= buf;
+	char	*bp	= buf;
 #if	defined(HAVE_USG_STDIO) || defined(FAST_GETC_PUTC)
-	register char	*p;
+	char	*p;
 #else
-	register int	nl	= '\n';
-	register int	c	= '\0';
+	int	nl	= '\n';
+	int	c	= '\0';
 #endif
 
 	down2(f, _IOREAD, _IORW);

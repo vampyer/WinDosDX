@@ -39,7 +39,7 @@ THOSE_ZIP_CONSTS;
  */
 static void fdi_Ziphuft_free(HFDI hfdi, struct Ziphuft *t)
 {
-  register struct Ziphuft *p, *q;
+  struct Ziphuft *p, *q;
 
   /* Go through linked list, freeing from the allocated (t[-1]) address. */
   p = t;
@@ -62,14 +62,14 @@ struct Ziphuft **t, cab_LONG *m, fdi_decomp_state *decomp_state)
   cab_ULONG f;                   	/* i repeats in table every f entries */
   cab_LONG g;                    	/* maximum code length */
   cab_LONG h;                    	/* table level */
-  register cab_ULONG i;          	/* counter, current code */
-  register cab_ULONG j;          	/* counter */
-  register cab_LONG k;           	/* number of bits in current code */
+  cab_ULONG i;          	/* counter, current code */
+  cab_ULONG j;          	/* counter */
+  cab_LONG k;           	/* number of bits in current code */
   cab_LONG *l;                  	/* stack of bits per table */
-  register cab_ULONG *p;         	/* pointer into ZIP(c)[],ZIP(b)[],ZIP(v)[] */
-  register struct Ziphuft *q;           /* points to current table */
+  cab_ULONG *p;         	/* pointer into ZIP(c)[],ZIP(b)[],ZIP(v)[] */
+  struct Ziphuft *q;           /* points to current table */
   struct Ziphuft r;                     /* table entry for structure assignment */
-  register cab_LONG w;                  /* bits before this table == (l * h) */
+  cab_LONG w;                  /* bits before this table == (l * h) */
   cab_ULONG *xp;                 	/* pointer into x */
   cab_LONG y;                           /* number of dummy codes added */
   cab_ULONG z;                   	/* number of entries in current table */
@@ -238,13 +238,13 @@ struct Ziphuft **t, cab_LONG *m, fdi_decomp_state *decomp_state)
 static cab_LONG fdi_Zipinflate_codes(const struct Ziphuft *tl, const struct Ziphuft *td,
   cab_LONG bl, cab_LONG bd, fdi_decomp_state *decomp_state)
 {
-  register cab_ULONG e;     /* table entry flag/number of extra bits */
+  cab_ULONG e;     /* table entry flag/number of extra bits */
   cab_ULONG n, d;           /* length and index for copy */
   cab_ULONG w;              /* current window position */
   const struct Ziphuft *t;  /* pointer to table entry */
   cab_ULONG ml, md;         /* masks for bl and bd bits */
-  register cab_ULONG b;     /* bit buffer */
-  register cab_ULONG k;     /* number of bits in bit buffer */
+  cab_ULONG b;     /* bit buffer */
+  cab_ULONG k;     /* number of bits in bit buffer */
 
   /* make local copies of globals */
   b = ZIP(bb);                       /* initialize bit buffer */
@@ -326,8 +326,8 @@ static cab_LONG fdi_Zipinflate_stored(fdi_decomp_state *decomp_state)
 {
   cab_ULONG n;           /* number of bytes in block */
   cab_ULONG w;           /* current window position */
-  register cab_ULONG b;  /* bit buffer */
-  register cab_ULONG k;  /* number of bits in bit buffer */
+  cab_ULONG b;  /* bit buffer */
+  cab_ULONG k;  /* number of bits in bit buffer */
 
   /* make local copies of globals */
   b = ZIP(bb);                       /* initialize bit buffer */
@@ -425,8 +425,8 @@ static cab_LONG fdi_Zipinflate_dynamic(fdi_decomp_state *decomp_state)
   cab_ULONG nb;          	/* number of bit length codes */
   cab_ULONG nl;          	/* number of literal/length codes */
   cab_ULONG nd;          	/* number of distance codes */
-  register cab_ULONG b;         /* bit buffer */
-  register cab_ULONG k;	        /* number of bits in bit buffer */
+  cab_ULONG b;         /* bit buffer */
+  cab_ULONG k;	        /* number of bits in bit buffer */
 
   /* make local bit buffer */
   b = ZIP(bb);
@@ -545,8 +545,8 @@ static cab_LONG fdi_Zipinflate_dynamic(fdi_decomp_state *decomp_state)
 static cab_LONG fdi_Zipinflate_block(cab_LONG *e, fdi_decomp_state *decomp_state) /* e == last block flag */
 { /* decompress an inflated block */
   cab_ULONG t;           	/* block type */
-  register cab_ULONG b;     /* bit buffer */
-  register cab_ULONG k;     /* number of bits in bit buffer */
+  cab_ULONG b;     /* bit buffer */
+  cab_ULONG k;     /* number of bits in bit buffer */
 
   /* make local bit buffer */
   b = ZIP(bb);

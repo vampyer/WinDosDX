@@ -27,7 +27,7 @@ int checkRecv(SOCKET s)
 
 void blkfree(char **av0)
 {
-    register char **av = av0;
+    char **av = av0;
 
     while (*av)
         free(*av++);

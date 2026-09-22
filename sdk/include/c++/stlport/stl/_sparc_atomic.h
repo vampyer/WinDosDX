@@ -31,20 +31,20 @@
 
 
 #  define _STLP_ATOMIC_EXCHANGE(__pvalue1, __value2) \
- ({  register volatile __stl_atomic_t *_L_pvalue1 = __pvalue1; \
-     register __stl_atomic_t _L_value1, _L_value2 =  __value2 ; \
+ ({  volatile __stl_atomic_t *_L_pvalue1 = __pvalue1; \
+     __stl_atomic_t _L_value1, _L_value2 =  __value2 ; \
      do { _L_value1 = *_L_pvalue1; _STLP_EXCH_ASM; } while ( _L_value1 != _L_value2 ) ; \
      _L_value1; })
 
 #  define _STLP_ATOMIC_INCREMENT(__pvalue1) \
- ({  register volatile __stl_atomic_t *_L_pvalue1 = __pvalue1; \
-    register __stl_atomic_t _L_value1, _L_value2; \
+ ({  volatile __stl_atomic_t *_L_pvalue1 = __pvalue1; \
+    __stl_atomic_t _L_value1, _L_value2; \
     do { _L_value1 = *_L_pvalue1;  _L_value2 = _L_value1+1; _STLP_EXCH_ASM; } while ( _L_value1 != _L_value2 ) ; \
     (_L_value2 + 1); })
 
 #  define _STLP_ATOMIC_DECREMENT(__pvalue1) \
- ({  register volatile __stl_atomic_t *_L_pvalue1 = __pvalue1; \
-    register __stl_atomic_t _L_value1, _L_value2; \
+ ({  volatile __stl_atomic_t *_L_pvalue1 = __pvalue1; \
+    __stl_atomic_t _L_value1, _L_value2; \
     do { _L_value1 = *_L_pvalue1;  _L_value2 = _L_value1-1; _STLP_EXCH_ASM; } while ( _L_value1 != _L_value2 ) ; \
     (_L_value2 - 1); })
 

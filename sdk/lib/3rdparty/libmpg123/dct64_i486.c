@@ -330,7 +330,7 @@ void dct64_i486(int *a,int *b,real *samples)
   }
 #else
   int *p = bufs;
-  register double const scale = ((65536.0 * 32) + 1) * 65536.0;
+  double const scale = ((65536.0 * 32) + 1) * 65536.0;
 
   for(i=0;i<32;i++) {
     *((double *) (p++)) = scale + *samples++; /* beware on bufs overrun: 8B store from x87 */

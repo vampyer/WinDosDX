@@ -24,8 +24,8 @@ streql(a, b)
 	const char	*a;
 	const char	*b;
 {
-	register const char	*s1 = a;
-	register const char	*s2 = b;
+	 const char	*s1 = a;
+	 const char	*s2 = b;
 
 	if (s1 == NULL || s2 ==  NULL)
 		return (FALSE);

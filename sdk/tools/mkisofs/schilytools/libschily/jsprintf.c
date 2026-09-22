@@ -109,7 +109,7 @@ EXPORT	int	js_printf	__PR((const char *, ...));
 
 LOCAL void
 _bflush(bp)
-	register BUF	bp;
+	 BUF	bp;
 {
 	bp->count += bp->ptr - bp->buf;
 	if (filewrite(bp->f, bp->buf, bp->ptr - bp->buf) < 0)
@@ -128,7 +128,7 @@ _bput(c, l)
 		void	*l;
 #endif
 {
-	register BUF	bp = (BUF)l;
+	 BUF	bp = (BUF)l;
 
 	*bp->ptr++ = c;
 	if (--bp->cnt <= 0)

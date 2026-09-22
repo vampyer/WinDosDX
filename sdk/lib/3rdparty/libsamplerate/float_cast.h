@@ -190,7 +190,7 @@
 	#define	lrintf	float2int
 
 	inline int
-	float2int (register float in)
+	float2int (float in)
 	{	long res [2] ;
 
 		asm
@@ -201,7 +201,7 @@
 	} /* float2int */
 
 	inline int
-	double2int (register double in)
+	double2int (double in)
 	{	long res [2] ;
 
 		asm
@@ -226,7 +226,7 @@
 	#define lrintf	float2int
 
 	inline static long
-	float2int (register float in)
+	float2int (float in)
 	{	int res [2] ;
 
 		__asm__ __volatile__
@@ -241,7 +241,7 @@
 	} /* lrintf */
 
 	inline static long
-	double2int (register double in)
+	double2int (double in)
 	{	int res [2] ;
 
 		__asm__ __volatile__

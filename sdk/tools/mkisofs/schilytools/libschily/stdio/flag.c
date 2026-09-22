@@ -41,9 +41,9 @@ LOCAL int
 _more_flags(fp)
 	FILE	*fp;
 {
-	register int	f = fileno(fp);
-	register int	n = _fl_max;
-	register _io_fl	*np;
+	int	f = fileno(fp);
+	int	n = _fl_max;
+	_io_fl	*np;
 
 	while (n <= f)
 		n += _fl_inc;
@@ -68,10 +68,10 @@ _more_flags(fp)
 
 EXPORT int
 _io_get_my_flag(fp)
-	register FILE	*fp;
+	FILE	*fp;
 {
-	register int	f = fileno(fp);
-	register _io_fl	*fl;
+	int	f = fileno(fp);
+	_io_fl	*fl;
 
 	if (f >= _fl_max)
 		return (_more_flags(fp));
@@ -95,9 +95,9 @@ _io_set_my_flag(fp, flag)
 	FILE	*fp;
 	int	flag;
 {
-	register int	f = fileno(fp);
-	register _io_fl	*fl;
-	register _io_fl	*fl2;
+	int	f = fileno(fp);
+	_io_fl	*fl;
+	_io_fl	*fl2;
 
 	if (f >= _fl_max)
 		(void) _more_flags(fp);

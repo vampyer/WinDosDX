@@ -54,7 +54,7 @@
 
 char *
 astoll(s, l)
-	register const char *s;
+	const char *s;
 	Llong *l;
 {
 	return (astollb(s, l, 0));
@@ -62,16 +62,16 @@ astoll(s, l)
 
 char *
 astollb(s, l, base)
-	register const char *s;
+	const char *s;
 	Llong *l;
-	register int base;
+	int base;
 {
 	int neg = 0;
-	register ULlong ret = (ULlong)0;
+	ULlong ret = (ULlong)0;
 		ULlong maxmult;
 		ULlong maxval;
-	register int digit;
-	register char c;
+	int digit;
+	char c;
 
 	if (base > BASE_MAX || base == 1 || base < 0) {
 		seterrno(EINVAL);

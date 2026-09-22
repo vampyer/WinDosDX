@@ -2070,7 +2070,7 @@ static long calibration = -1;
     (defined(HAVE_CLOCK_GETTIME) || defined(HAVE_GETTIMEOFDAY))
 static long
 xsltCalibrateTimestamps(void) {
-    register int i;
+    int i;
 
     for (i = 0;i < 999;i++)
 	xsltTimestamp();

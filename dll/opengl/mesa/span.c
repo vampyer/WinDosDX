@@ -96,7 +96,7 @@
 static void stipple_polygon_span( GLcontext *ctx,
                                   GLuint n, GLint x, GLint y, GLubyte mask[] )
 {
-   register GLuint i, m, stipple, highbit=0x80000000;
+   GLuint i, m, stipple, highbit=0x80000000;
 
    stipple = ctx->PolygonStipple[y % 32];
    m = highbit >> (GLuint) (x % 32);
@@ -852,7 +852,7 @@ void gl_read_color_span( GLcontext *ctx,
 			 GLubyte red[], GLubyte green[],
 			 GLubyte blue[], GLubyte alpha[] )
 {
-   register GLuint i;
+   GLuint i;
 
    if (y<0 || y>=ctx->Buffer->Height || x>=ctx->Buffer->Width) {
       /* completely above, below, or right */
@@ -897,7 +897,7 @@ void gl_read_color_span( GLcontext *ctx,
 void gl_read_index_span( GLcontext *ctx,
                          GLuint n, GLint x, GLint y, GLuint indx[] )
 {
-   register GLuint i;
+   GLuint i;
 
    if (y<0 || y>=ctx->Buffer->Height || x>=ctx->Buffer->Width) {
       /* completely above, below, or right */

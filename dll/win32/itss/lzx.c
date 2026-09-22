@@ -340,9 +340,9 @@ int LZXreset(struct LZXstate *pState)
  */
 
 static int make_decode_table(ULONG nsyms, ULONG nbits, UBYTE *length, UWORD *table) {
-    register UWORD sym;
-    register ULONG leaf;
-    register UBYTE bit_num = 1;
+    UWORD sym;
+    ULONG leaf;
+    UBYTE bit_num = 1;
     ULONG fill;
     ULONG pos         = 0; /* the current position in the decode table */
     ULONG table_mask  = 1 << nbits;
@@ -419,8 +419,8 @@ static int lzx_read_lens(struct LZXstate *pState, UBYTE *lens, ULONG first, ULON
     ULONG i,j, x,y;
     int z;
 
-    register ULONG bitbuf = lb->bb;
-    register int bitsleft = lb->bl;
+    ULONG bitbuf = lb->bb;
+    int bitsleft = lb->bl;
     UBYTE *inpos = lb->ip;
     UWORD *hufftbl;
 
@@ -470,8 +470,8 @@ int LZXdecompress(struct LZXstate *pState, unsigned char *inpos, unsigned char *
     ULONG R1 = pState->R1;
     ULONG R2 = pState->R2;
 
-    register ULONG bitbuf;
-    register int bitsleft;
+    ULONG bitbuf;
+    int bitsleft;
     ULONG match_offset, i,j,k; /* ijk used in READ_HUFFSYM macro */
     struct lzx_bits lb; /* used in READ_LENGTHS macro */
 

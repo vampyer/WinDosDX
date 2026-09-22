@@ -10,9 +10,9 @@
 char *
 Strncpy(char *const dst, const char *const src, const size_t n)
 {
-	register char *d;
-	register const char *s;
-	register size_t i;
+	char *d;
+	const char *s;
+	size_t i;
 
 	d = dst;
 	*d = 0;

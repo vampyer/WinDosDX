@@ -132,7 +132,7 @@ VOID vgaPreCalc()
 void
 get_masks(int x, int w)
 {
-    register int tmp;
+    int tmp;
 
     leftMask = rightMask = 0;
     byteCounter = w;

@@ -41,7 +41,7 @@ _cput(c, l)
 	void	*l;
 #endif
 {
-	register BUF	bp = (BUF)l;
+	 BUF	bp = (BUF)l;
 
 	if (--bp->count > 0) {
 		*bp->ptr++ = c;

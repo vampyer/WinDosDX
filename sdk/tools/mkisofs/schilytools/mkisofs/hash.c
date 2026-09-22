@@ -459,12 +459,12 @@ add_file_hash(de)
 
 EXPORT struct directory_entry *
 find_file_hash(name)
-	register char			*name;
+	char			*name;
 {
-	register char			*p1;
-	register char			*p2;
-	register struct name_hash	*nh;
-	register int			sum = 0;
+	char			*p1;
+	char			*p2;
+	struct name_hash	*nh;
+	int			sum = 0;
 
 	if (debug > 1)
 		error("find_hash('%s')\n", name);

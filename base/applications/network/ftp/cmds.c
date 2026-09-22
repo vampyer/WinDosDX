@@ -95,7 +95,7 @@ void setpeer(int argc, const char *argv[])
 			verbose = -1;
 		allbinary = 0;
 		if (command("SYST") == COMPLETE && overbose) {
-			register char *cp, c;
+			char *cp, c;
 			cp = index(reply_string+4, ' ');
 			if (cp == NULL)
 				cp = index(reply_string+4, '\r');
@@ -146,7 +146,7 @@ struct	types {
  */
 void settype(int argc, const char *argv[])
 {
-	register struct types *p;
+	struct types *p;
 	int comret;
 
 	if (argc > 2) {
@@ -343,7 +343,7 @@ usage:
  */
 void mput(int argc, const char *argv[])
 {
-	register int i;
+	int i;
 	int ointer;
 	extern jmp_buf jabort;
 	const char *tp;
@@ -418,7 +418,7 @@ void mput(int argc, const char *argv[])
 		return;
 	}
 	for (i = 1; i < argc; i++) {
-		register char **cpp, **gargs;
+		char **cpp, **gargs;
 
 		if (!doglob) {
 			if (mflag && confirm(argv[0], argv[i])) {
@@ -1733,7 +1733,7 @@ proxabort()
 
 void doproxy(int argc, const char *argv[])
 {
-	register struct cmd *c;
+	struct cmd *c;
 	struct cmd *getcmd();
 //	extern struct cmd cmdtab[];
 	extern jmp_buf abortprox;
@@ -1840,7 +1840,7 @@ dotrans(const char *name)
 	static char new[MAXPATHLEN];
 	const char *cp1;
     char *cp2 = new;
-	register int i, ostop, found;
+	int i, ostop, found;
 
 	for (ostop = 0; ostop < 16 && *(ntout + ostop); ostop++);
 	for (cp1 = name; *cp1; cp1++) {

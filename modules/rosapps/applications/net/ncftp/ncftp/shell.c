@@ -115,7 +115,7 @@ CommandExactSearchCmp(const char *const key, const CommandPtr b)
 static int
 CommandSubSearchCmp(const char *const key, const CommandPtr a)
 {
-	register const char *kcp, *cp;
+	const char *kcp, *cp;
 	int d;
 
 	for (cp = (*a).name, kcp = key; ; ) {

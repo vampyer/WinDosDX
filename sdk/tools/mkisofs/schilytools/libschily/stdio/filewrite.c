@@ -22,11 +22,11 @@ static	char	_writeerr[]	= "file_write_err";
 
 EXPORT ssize_t
 filewrite(f, vbuf, len)
-	register FILE	*f;
+	FILE	*f;
 	void	*vbuf;
 	size_t	len;
 {
-	register int	n;
+	int	n;
 	ssize_t	cnt;
 	char	*buf = vbuf;
 
@@ -69,7 +69,7 @@ filewrite(f, vbuf, len)
 
 EXPORT ssize_t
 filewrite(f, vbuf, len)
-	register FILE	*f;
+	FILE	*f;
 	void	*vbuf;
 	size_t	len;
 {

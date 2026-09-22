@@ -286,7 +286,7 @@ GLuint gl_viewclip_line( GLcontext* ctx, GLuint *i, GLuint *j )
    GLfloat (*coord)[4] = VB->Clip;
 
    GLfloat t, dx, dy, dz, dw;
-   register GLuint ii, jj;
+   GLuint ii, jj;
 
    ii = *i;
    jj = *j;
@@ -806,7 +806,7 @@ GLuint gl_userclip_line( GLcontext* ctx, GLuint *i, GLuint *j )
 
    for (p=0;p<MAX_CLIP_PLANES;p++) {
       if (ctx->Transform.ClipEnabled[p]) {
-	 register GLfloat a, b, c, d;
+	 GLfloat a, b, c, d;
 	 a = ctx->Transform.ClipEquation[p][0];
 	 b = ctx->Transform.ClipEquation[p][1];
 	 c = ctx->Transform.ClipEquation[p][2];
@@ -917,10 +917,10 @@ GLuint gl_userclip_polygon( GLcontext* ctx, GLuint n, GLuint vlist[] )
 
    for (p=0;p<MAX_CLIP_PLANES;p++) {
       if (ctx->Transform.ClipEnabled[p]) {
-	 register float a = ctx->Transform.ClipEquation[p][0];
-	 register float b = ctx->Transform.ClipEquation[p][1];
-	 register float c = ctx->Transform.ClipEquation[p][2];
-	 register float d = ctx->Transform.ClipEquation[p][3];
+	 float a = ctx->Transform.ClipEquation[p][0];
+	 float b = ctx->Transform.ClipEquation[p][1];
+	 float c = ctx->Transform.ClipEquation[p][2];
+	 float d = ctx->Transform.ClipEquation[p][3];
 
 	 if (incount<3)  return 0;
 

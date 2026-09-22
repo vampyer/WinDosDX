@@ -975,9 +975,9 @@ typedef	int word;		/* "word" used for optimal copy speed */
 void *
 memmove(void *dst0, void *src0, size_t length)
 {
-	register char *dst = (char *) dst0;
-	register const char *src = (char *) src0;
-	register size_t t;
+	char *dst = (char *) dst0;
+	const char *src = (char *) src0;
+	size_t t;
 
 	if (length == 0 || dst == src)		/* nothing to do */
 		return dst;

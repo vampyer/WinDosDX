@@ -490,8 +490,8 @@ void gl_depth_test_pixels_generic( GLcontext* ctx,
                                    GLuint n, const GLint x[], const GLint y[],
                                    const GLdepth z[], GLubyte mask[] )
 {
-   register GLdepth *zptr;
-   register GLuint i;
+   GLdepth *zptr;
+   GLuint i;
 
    /* switch cases ordered from most frequent to less frequent */
    switch (ctx->Depth.Func) {

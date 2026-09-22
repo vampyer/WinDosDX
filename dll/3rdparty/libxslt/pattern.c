@@ -368,10 +368,10 @@ xsltSwapTopCompMatch(xsltCompMatchPtr comp) {
     int j = comp->nbStep - 1;
 
     if (j > 0) {
-	register xmlChar *tmp;
-	register xsltOp op;
-	register xmlXPathCompExprPtr expr;
-	register int t;
+	xmlChar *tmp;
+	xsltOp op;
+	xmlXPathCompExprPtr expr;
+	int t;
 	i = j - 1;
 	tmp = comp->steps[i].value;
 	comp->steps[i].value = comp->steps[j].value;
@@ -413,10 +413,10 @@ xsltReverseCompMatch(xsltParserContextPtr ctxt, xsltCompMatchPtr comp) {
     int j = comp->nbStep - 1;
 
     while (j > i) {
-	register xmlChar *tmp;
-	register xsltOp op;
-	register xmlXPathCompExprPtr expr;
-	register int t;
+	xmlChar *tmp;
+	xsltOp op;
+	xmlXPathCompExprPtr expr;
+	int t;
 
 	tmp = comp->steps[i].value;
 	comp->steps[i].value = comp->steps[j].value;

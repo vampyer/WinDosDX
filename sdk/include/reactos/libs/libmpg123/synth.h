@@ -79,7 +79,7 @@ int SYNTH_NAME(real *bandPtr, int channel, mpg123_handle *fr, int final)
 	}
 
 	{
-		register int j;
+		 int j;
 		real *window = fr->decwin + 16 - bo1;
 
 		for(j=(BLOCK/4); j; j--, b0+=0x400/BLOCK-BACKPEDAL, window+=0x800/BLOCK-BACKPEDAL, samples+=step)
