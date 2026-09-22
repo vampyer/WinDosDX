@@ -84,7 +84,8 @@ static void GetDriverVersion(LPDISPLAY_DEVICEA pDisplayDevice, D3DADAPTER_IDENTI
         {
             LPFN_DISABLEWOW64FSREDIRECTION fnDisableWow64FsRedirection;
             fnDisableWow64FsRedirection = (LPFN_DISABLEWOW64FSREDIRECTION)GetProcAddress(hModule, "Wow64DisableWow64FsRedirection");
-            fnDisableWow64FsRedirection(&OldWow64RedirectValue);
+            if (fnDisableWow64FsRedirection)
+                fnDisableWow64FsRedirection(&OldWow64RedirectValue);
         }
     }
 
@@ -110,7 +111,8 @@ static void GetDriverVersion(LPDISPLAY_DEVICEA pDisplayDevice, D3DADAPTER_IDENTI
     {
         LPFN_REVERTWOW64FSREDIRECTION fnRevertWow64FsRedirection;
         fnRevertWow64FsRedirection = (LPFN_REVERTWOW64FSREDIRECTION)GetProcAddress(hModule, "Wow64RevertWow64FsRedirection");
-        fnRevertWow64FsRedirection(&OldWow64RedirectValue);
+        if (fnRevertWow64FsRedirection)
+            fnRevertWow64FsRedirection(&OldWow64RedirectValue);
     }
 }
 
