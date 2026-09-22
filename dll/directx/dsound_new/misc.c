@@ -405,7 +405,7 @@ GetFilterNodeProperty(
     }
 
     /* retrieve data ranges */
-    Status = SyncOverlappedDeviceIoControl(hFilter, IOCTL_KS_PROPERTY, (LPVOID)&Property, sizeof(KSP_PIN), (LPVOID)MultipleItem, BytesReturned, &BytesReturned);
+    Status = SyncOverlappedDeviceIoControl(hFilter, IOCTL_KS_PROPERTY, (LPVOID)&Property, sizeof(KSPROPERTY), (LPVOID)MultipleItem, BytesReturned, &BytesReturned);
 
 
     if (Status != ERROR_SUCCESS)
