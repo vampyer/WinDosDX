@@ -529,14 +529,15 @@ endif()
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
     function(concatenate_files _output _file1)
         file(TO_NATIVE_PATH "${_output}" _real_output)
-        file(TO_NATIVE_PATH "${_file1}" _file_list)
+        file(TO_NATIVE_PATH "${_file1}" _real_file1)
+        set(_file_list "\"${_real_file1}\"")
         foreach(_file ${ARGN})
             file(TO_NATIVE_PATH "${_file}" _real_file)
-            set(_file_list "${_file_list} + ${_real_file}")
+            set(_file_list "${_file_list} + \"${_real_file}\"")
         endforeach()
         add_custom_command(
             OUTPUT ${_output}
-            COMMAND cmd.exe /C "copy /Y /B ${_file_list} ${_real_output} > nul"
+            COMMAND cmd.exe /C "copy /Y /B ${_file_list} \"${_real_output}\" > nul"
             DEPENDS ${_file1} ${ARGN})
     endfunction()
 else()
