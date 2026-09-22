@@ -248,6 +248,18 @@ BOOL GetDeviceData(LPD3D9_DEVICEDATA pDeviceData)
     pD3dDisplayModeList = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, max(NumExtendedFormats, 1) * sizeof(D3DDISPLAYMODE));
     pD3dQueryList = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, max(NumQueries, 1) * sizeof(D3DQUERYTYPE));
 
+    if (NULL == puD3dTextureFormats || NULL == pD3dZStencilFormatList ||
+        NULL == pD3dDisplayModeList || NULL == pD3dQueryList)
+    {
+        DPRINT1("Out of memory");
+        if (puD3dTextureFormats) HeapFree(GetProcessHeap(), 0, puD3dTextureFormats);
+        if (pD3dZStencilFormatList) HeapFree(GetProcessHeap(), 0, pD3dZStencilFormatList);
+        if (pD3dDisplayModeList) HeapFree(GetProcessHeap(), 0, pD3dDisplayModeList);
+        if (pD3dQueryList) HeapFree(GetProcessHeap(), 0, pD3dQueryList);
+        ReleaseInternalDeviceData(pDeviceData);
+        return FALSE;
+    }
+
     bRet = GetD3D9DriverInfo(
         pDeviceData->pUnknown6BC,
         &pDeviceData->DriverCaps,
@@ -363,7 +375,7 @@ BOOL GetD3D9DriverInfo( D3D9_Unknown6BC* pUnknown6BC,
 
     DD_GETDRIVERINFODATA DrvInfo;
     DD_GETDDIVERSIONDATA DdiVersion;
-    DD_GETFORMATCOUNTDATA FormatCountData;
+    DD_GETFORMATCOUNTDATA FormatCountData = { 0 };
     DD_GETEXTENDEDMODECOUNTDATA ExModeCountData;
     DD_GETD3DQUERYCOUNTDATA D3dQueryCountData;
 
@@ -660,7 +672,7 @@ BOOL GetD3D9DriverInfo( D3D9_Unknown6BC* pUnknown6BC,
                         DPRINT1("Driver returned an invalid DD_GETEXTENDEDMODEDATA structure - aborting");
                         return FALSE;
                     }
-                    else if (ExModeData.mode.Width != UINT_MAX)
+                    else if (ExModeData.mode.Width == UINT_MAX)
                     {
                         DPRINT1("Driver didn't set DD_GETEXTENDEDMODEDATA.mode - aborting");
                         return FALSE;
@@ -784,6 +796,12 @@ BOOL GetD3D9DriverInfo( D3D9_Unknown6BC* pUnknown6BC,
     /* GUID_ZPixelFormats */
     {
         DDPIXELFORMAT *pZPixelFormats = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, FormatCountData.dwFormatCount * sizeof(DDPIXELFORMAT));
+
+        if (NULL == pZPixelFormats)
+        {
+            DPRINT1("Out of memory");
+            return FALSE;
+        }
 
         DrvInfo.dwSize = sizeof(DD_GETDRIVERINFODATA);
         DrvInfo.guidInfo = GUID_ZPixelFormats;
