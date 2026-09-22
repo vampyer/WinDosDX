@@ -266,7 +266,7 @@ VOID Hal_DirectDraw_Release (LPDIRECTDRAW7);
             char buffer[1024]; \
             sprintf ( buffer, "Enter Function %s (%s:%d)\n", __FUNCTION__,__FILE__,__LINE__ ); \
             OutputDebugStringA(buffer); \
-            firstcallx = TRUE; \
+            firstcallx = FALSE; \
         }
 
 
@@ -277,7 +277,7 @@ VOID Hal_DirectDraw_Release (LPDIRECTDRAW7);
         char buffer[1024]; \
         sprintf ( buffer, "Setmode have been req width=%ld, height=%ld bpp=%ld freq = %ld\n",width,height,bpp, freq); \
         OutputDebugStringA(buffer); \
-        firstcallxx = TRUE; \
+        firstcallxx = FALSE; \
     }
 #else
     #define DX_WINDBG_trace() //
