@@ -102,16 +102,16 @@ Internal_CreateSurface( LPDDRAWI_DIRECTDRAW_INT pDDraw, LPDDSURFACEDESC2 pDDSD,
     DxHeapMemAlloc(slist_gbl, num_of_surf * sizeof( LPDDRAWI_DDRAWSURFACE_GBL ) );
     if( slist_gbl == NULL )
     {
-        DxHeapMemFree(slist_int);
-        return DDERR_OUTOFMEMORY;
+        ret = DDERR_OUTOFMEMORY;
+        goto cleanup;
     }
 
     /* keep pointers to all more surfs to be able to free them on error */
     DxHeapMemAlloc(slist_more, num_of_surf * sizeof( LPDDRAWI_DDRAWSURFACE_MORE ) );
     if( slist_more == NULL )
     {
-        DxHeapMemFree(slist_int);
-        return DDERR_OUTOFMEMORY;
+        ret = DDERR_OUTOFMEMORY;
+        goto cleanup;
     }
 
     for( count=0; count < num_of_surf; count++ )
@@ -283,16 +283,22 @@ Internal_CreateSurface( LPDDRAWI_DIRECTDRAW_INT pDDraw, LPDDSURFACEDESC2 pDDSD,
     return DD_OK;
 
 cleanup:
-    for(count = 0; count < num_of_surf; count++)
+    /* slist_int/lcl/gbl/more are only safe to index once all four have been
+     * allocated; slist_more is the last of the four, so its being non-NULL
+     * implies the others are too. */
+    if (slist_more != NULL)
     {
-        if (slist_more[count] != NULL)
-            DxHeapMemFree(slist_more[count]);
-        if (slist_gbl[count] != NULL)
-            DxHeapMemFree(slist_gbl[count]);
-        if (slist_lcl[count] != NULL)
-            DxHeapMemFree(slist_lcl[count]);
-        if (slist_int[count] != NULL)
-            DxHeapMemFree(slist_int[count]);
+        for(count = 0; count < num_of_surf; count++)
+        {
+            if (slist_more[count] != NULL)
+                DxHeapMemFree(slist_more[count]);
+            if (slist_gbl[count] != NULL)
+                DxHeapMemFree(slist_gbl[count]);
+            if (slist_lcl[count] != NULL)
+                DxHeapMemFree(slist_lcl[count]);
+            if (slist_int[count] != NULL)
+                DxHeapMemFree(slist_int[count]);
+        }
     }
     if (slist_more != NULL)
         DxHeapMemFree(slist_more);
