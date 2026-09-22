@@ -200,7 +200,7 @@ static UINT WINAPI IDirect3D9Impl_GetAdapterModeCount(LPDIRECT3D9 iface, UINT Ad
     {
         DPRINT1("Invalid Adapter number specified");
         UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
+        return 0;
     }
 
     if (Format != D3DFMT_A2R10G10B10)
@@ -960,6 +960,7 @@ static HRESULT WINAPI IDirect3D9Impl_CreateDevice(LPDIRECT3D9 iface, UINT Adapte
     {
         UNIMPLEMENTED
         DPRINT1("Sorry, only D3DDEVTYPE_HAL is implemented at this time...");
+        UNLOCK_D3D9();
         return D3DERR_INVALIDCALL;
     }
 
