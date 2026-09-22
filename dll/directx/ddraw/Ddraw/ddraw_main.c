@@ -426,13 +426,13 @@ Main_DirectDraw_GetFourCCCodes(LPDDRAWI_DIRECTDRAW_INT This, LPDWORD lpNumCodes,
 
     _SEH2_TRY
     {
-        if(IsBadWritePtr(lpNumCodes,sizeof(LPDWORD)))
+        if(IsBadWritePtr(lpNumCodes,sizeof(DWORD)))
         {
             retVal = DDERR_INVALIDPARAMS;
         }
         else
         {
-            if(!(IsBadWritePtr(lpNumCodes,sizeof(LPDWORD))))
+            if(!(IsBadWritePtr(lpNumCodes,sizeof(DWORD))))
             {
                 DWORD size;
 

@@ -337,7 +337,7 @@ Main_DirectDraw_GetMonitorFrequency (LPDDRAWI_DIRECTDRAW_INT This, LPDWORD lpFre
 
     _SEH2_TRY
     {
-        if(IsBadWritePtr(lpFreq,sizeof(LPDWORD)))
+        if(IsBadWritePtr(lpFreq,sizeof(DWORD)))
         {
             retVal = DDERR_INVALIDPARAMS;
         }
@@ -370,7 +370,7 @@ Main_DirectDraw_GetDisplayMode (LPDDRAWI_DIRECTDRAW_INT This, LPDDSURFACEDESC pD
 
     _SEH2_TRY
     {
-        if(IsBadWritePtr(pDDSD,sizeof(LPDDSURFACEDESC)))
+        if(IsBadWritePtr(pDDSD,sizeof(DDSURFACEDESC)))
         {
             retVal = DDERR_INVALIDPARAMS;
         }
@@ -406,7 +406,7 @@ Main_DirectDraw_GetDisplayMode4 (LPDDRAWI_DIRECTDRAW_INT This, LPDDSURFACEDESC2 
 
     _SEH2_TRY
     {
-        if(IsBadWritePtr(pDDSD,sizeof(LPDDSURFACEDESC2)))
+        if(IsBadWritePtr(pDDSD,sizeof(DDSURFACEDESC2)))
         {
             retVal = DDERR_INVALIDPARAMS;
         }
