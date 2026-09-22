@@ -40,11 +40,11 @@ DirectDrawClipper_Initialize (LPDIRECTDRAWCLIPPER iface,
     DxHeapMemAlloc(This->lpLcl, sizeof(DDRAWI_DDRAWCLIPPER_LCL));
     //This->lpLcl->lpClipMore
     This->lpLcl->lpDD_int = DDraw;
-    This->lpLcl->lpGbl->dwRefCnt = 1;
     This->lpLcl->pAddrefedThisOwner = (IUnknown*)DDraw;
 
     // FIXME: Implement Linking and share global object
     DxHeapMemAlloc(This->lpLcl->lpGbl, sizeof(DDRAWI_DDRAWCLIPPER_GBL));
+    This->lpLcl->lpGbl->dwRefCnt = 1;
     This->lpLcl->lpGbl->dwProcessId = GetCurrentProcessId();
 
     return DD_OK;
