@@ -413,8 +413,27 @@ NICEnableTxRx(
     IN PI225_ADAPTER Adapter)
 {
     ULONG Value;
+    UINT n;
 
     NDIS_DbgPrint(MAX_TRACE, ("Called.\n"));
+
+    /* Rebuild both rings from scratch. On first init they were just set up
+     * by NICAllocateIoResources, but after MiniportReset they can still
+     * hold descriptors the hardware completed (DD set) that software never
+     * processed - the Rx handler would indicate those stale frames. */
+    for (n = 0; n < NUM_TRANSMIT_DESCRIPTORS; ++n)
+    {
+        RtlZeroMemory(Adapter->TransmitDescriptors + n, sizeof(I225_TRANSMIT_DESCRIPTOR));
+    }
+
+    for (n = 0; n < NUM_RECEIVE_DESCRIPTORS; ++n)
+    {
+        PI225_RECEIVE_DESCRIPTOR Descriptor = Adapter->ReceiveDescriptors + n;
+
+        RtlZeroMemory(Descriptor, sizeof(*Descriptor));
+        Descriptor->Address = Adapter->ReceiveBufferPa.QuadPart + n * Adapter->ReceiveBufferEntrySize;
+    }
+
     NDIS_DbgPrint(MID_TRACE, ("Setting up transmit.\n"));
 
     /* Section 4.7.10 (p121-122): per-queue Tx init, then TCTL.EN last */
@@ -449,10 +468,30 @@ NICEnableTxRx(
     I225WriteUlong(Adapter, I225_REG_RDBAL(0), Adapter->ReceiveDescriptorsPa.LowPart);
     I225WriteUlong(Adapter, I225_REG_RDLEN(0), sizeof(I225_RECEIVE_DESCRIPTOR) * NUM_RECEIVE_DESCRIPTORS);
     I225WriteUlong(Adapter, I225_REG_RDH(0), 0);
-    I225WriteUlong(Adapter, I225_REG_RDT(0), NUM_RECEIVE_DESCRIPTORS - 1);
 
+    /* Section 4.7.9 steps 7-10: enable the queue, poll until ENABLE reads
+     * back set, and only then bump the tail - RDT writes to a disabled
+     * queue are ignored (Section 8.9.8, p424). Queue 0 is enabled by
+     * default, so this normally passes on the first read. */
     I225ReadUlong(Adapter, I225_REG_RXDCTL(0), &Value);
     I225WriteUlong(Adapter, I225_REG_RXDCTL(0), Value | I225_RXDCTL_ENABLE);
+
+    for (n = 0; n < MAX_RESET_ATTEMPTS; n++)
+    {
+        I225ReadUlong(Adapter, I225_REG_RXDCTL(0), &Value);
+        if (Value & I225_RXDCTL_ENABLE)
+            break;
+
+        NdisStallExecution(100);
+    }
+
+    if (n == MAX_RESET_ATTEMPTS)
+    {
+        NDIS_DbgPrint(MIN_TRACE, ("Rx queue 0 did not report enabled\n"));
+        return NDIS_STATUS_FAILURE;
+    }
+
+    I225WriteUlong(Adapter, I225_REG_RDT(0), NUM_RECEIVE_DESCRIPTORS - 1);
 
     /* RCTL: use legacy descriptor mode's generic BSIZE=2048 (00b, the
      * reset default, needs no BSIZE bits set) and strip the Ethernet CRC
