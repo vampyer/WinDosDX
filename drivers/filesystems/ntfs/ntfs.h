@@ -304,6 +304,11 @@ typedef struct
     };
 } NTFS_ATTR_RECORD, *PNTFS_ATTR_RECORD;
 
+/* NTFS_ATTR_RECORD.Flags */
+#define NTFS_ATTR_COMPRESSION_MASK  0x00FF  /* Non-zero: data is compressed (LZNT1) */
+#define NTFS_ATTR_ENCRYPTED         0x4000
+#define NTFS_ATTR_SPARSE            0x8000
+
 typedef struct
 {
     ULONG Type;
