@@ -18,8 +18,8 @@
 #define MAX_PATH            260
 #define DOS_CMDLINE_LENGTH  127
 
-#define DOS_VERSION     HEX(0005)   // MAKEWORD(5, 00)
-#define NTDOS_VERSION   HEX(3205)   // MAKEWORD(5, 50)
+#define DOS_VERSION     HEX(1606)   // MAKEWORD(6, 22)
+#define NTDOS_VERSION   HEX(1606)   // MAKEWORD(6, 22)
 
 #define SYSTEM_PSP      HEX(08)
 
