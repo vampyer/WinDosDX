@@ -406,12 +406,11 @@ NICEnableTxRx(
     I225ReadUlong(Adapter, I225_REG_RXDCTL(0), &Value);
     I225WriteUlong(Adapter, I225_REG_RXDCTL(0), Value | I225_RXDCTL_ENABLE);
 
-    /* RCTL: use legacy descriptor mode's generic BSIZE=2048 (00b),
-     * strip-CRC is not confirmed as an RCTL bit for I225 in the sections
-     * read so far (e1000 has RCTL.SECRC at bit 26; not yet individually
-     * re-verified here) - omitted rather than guessed. Buffer size 2048
-     * needs no BSIZE bits set (00b is the reset default). */
-    Value = I225_RCTL_RXEN | I225_RCTL_DPF;
+    /* RCTL: use legacy descriptor mode's generic BSIZE=2048 (00b, the
+     * reset default, needs no BSIZE bits set) and strip the Ethernet CRC
+     * (SECRC, confirmed bit 26, Section 8.9.1 p421) since NDIS callers
+     * don't expect the FCS trailer in received frames. */
+    Value = I225_RCTL_RXEN | I225_RCTL_DPF | I225_RCTL_SECRC;
     Value |= PacketFilterToMask(Adapter->PacketFilter);
     I225WriteUlong(Adapter, I225_REG_RCTL, Value);
 

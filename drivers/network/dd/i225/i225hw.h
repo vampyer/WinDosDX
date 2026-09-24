@@ -205,6 +205,7 @@ C_ASSERT(sizeof(I225_TRANSMIT_DESCRIPTOR) == 16);
 #define I225_RCTL_PSP         (1U << 21)  /* Pad Small Receive Packets */
 #define I225_RCTL_DPF         (1U << 22)  /* Discard Pause Frames */
 #define I225_RCTL_PMCF        (1U << 23)  /* Pass MAC Control Frames */
+#define I225_RCTL_SECRC       (1U << 26)  /* Strip Ethernet CRC - confirmed Section 8.9.1 p421 */
 
 #define I225_RCTL_FILTER_BITS (I225_RCTL_SBP | I225_RCTL_UPE | I225_RCTL_MPE | I225_RCTL_BAM | I225_RCTL_PMCF)
 
@@ -237,27 +238,48 @@ C_ASSERT(sizeof(I225_TRANSMIT_DESCRIPTOR) == 16);
 #define I225_TCTL_EN      (1U << 1)   /* Transmit Enable */
 #define I225_TCTL_PSP     (1U << 3)   /* Pad Short Packets */
 
-/* Transmit IPG defaults - offset confirmed (0x0410, matches e1000's TIPG
- * exactly), but the IPGT/IPGR1/IPGR2 field layout for I225 was not
- * individually re-extracted from the datasheet in this session; e1000's
- * default field shifts (0/10/20) are reused as a starting assumption since
- * TIPG's field layout has been stable across this whole NIC generation,
- * but this should be verified against Section 8.11.3 before relying on it
- * for anything beyond a first bring-up attempt. */
-#define I225_TIPG_IPGT_DEF   (10U << 0)
-#define I225_TIPG_IPGR1_DEF  (10U << 10)
-#define I225_TIPG_IPGR2_DEF  (10U << 20)
+/* Transmit IPG (Inter Packet Gap) - Section 8.11.3 (p439), confirmed.
+ * Bit positions (0/10/20) match e1000's TIPG layout, but the VALUES do
+ * NOT - e1000's borrowed defaults (10/10/10) were wrong for this chip
+ * and were caught and replaced here:
+ *   IPGT=8 (reset default): "IPG equals IPGT + 4... default is 12 bytes"
+ *   - 8 is already the standards-correct value, not a placeholder.
+ *   IPGR1=4 (reset default): half-duplex-only field.
+ *   IPGR=7 (datasheet's explicit recommendation, not the raw 0x6 reset
+ *   default): "A value of 7 is recommended to achieve a 12-byte
+ *   effective IPG" for non-back-to-back half-duplex transmissions. */
+#define I225_TIPG_IPGT_DEF   (8U << 0)
+#define I225_TIPG_IPGR1_DEF  (4U << 10)
+#define I225_TIPG_IPGR2_DEF  (7U << 20)
 
-/* ===================== Still not extracted from the datasheet =====================
+/* ===================== Statistics Registers - Section 8.18 (p464+) =====================
+ * All are RC (read-clears-on-read) per the datasheet, same convention
+ * confirmed by Section 4.7.8 (p119) "All of the statistical counters are
+ * cleared on read" - callers must accumulate across reads, not treat a
+ * single read as the lifetime total. */
+#define I225_REG_CRCERRS  0x4000  /* CRC Error Count */
+#define I225_REG_RXERRC   0x400C  /* RX Error Count */
+#define I225_REG_ECOL     0x4018  /* Excessive Collisions Count */
+#define I225_REG_GPRC     0x4074  /* Good Packets Received Count */
+#define I225_REG_GPTC     0x4080  /* Good Packets Transmitted Count */
+#define I225_REG_RNBC     0x40A0  /* Receive No Buffers Count */
+
+/* RXPBSIZE (0x2404) / TXPBSIZE (0x3404) - Section 8.3 (p382), field
+ * layout confirmed: RXPBSIZE.RXPBSIZE_EXP[5:0]=0x22 (34KB) +
+ * Bmc2ospbsize[11:6]=0x02 (2KB) + RXPBSIZE_BE[17:12]=0x0, TXPBSIZE.
+ * Txpb0size[5:0]=0x14 (20KB) + Txpb1-3size=0 + os2Bmcpbsize[29:24]=0x4
+ * (4KB). Reset defaults already sum to 34+2+20+4=60KB, under the
+ * datasheet's own <=64KB constraint (Section 4.7.9, p120) - left
+ * unprogrammed (hardware reset defaults used as-is) since they're
+ * already valid for single-queue operation, not because they're
+ * unverified.
+ *
+ * ===================== Still not extracted from the datasheet =====================
  * Do not guess these - pull them from the same PDF (repo root) before use:
  *   - RXDCTL/TXDCTL PTHRESH/HTHRESH/WTHRESH threshold field values - this
  *     driver only sets ENABLE (confirmed bit 25 for both, Section
  *     8.9.9/8.11.15) and leaves the threshold fields at their reset
  *     defaults, which is valid but not performance-tuned
- *   - RXPBSIZE/TXPBSIZE full field layout - Section 8.3 (p382), offsets
- *     0x2404/0x3404 seen but fields not cross-referenced against this
- *     driver's actual packet-buffer sizing needs (relying on reset
- *     defaults for now)
  *   - EERD full bit layout beyond CMDV/DONE (address/data shift positions)
  *     - Section 8.4.2 (p382-383) - not needed yet since this driver reads
  *     the station address from RAL0/RAH0 (NVM auto-loaded) rather than
@@ -265,7 +287,7 @@ C_ASSERT(sizeof(I225_TRANSMIT_DESCRIPTOR) == 16);
  *     validation like e1000's NICPowerOn does
  *   - PHY-specific MDIC register numbers/bit meanings for link
  *     speed/duplex/status beyond what CTRL_EXT.SPEED already reports
- *   - RCTL.SECRC (strip-CRC) equivalent bit for I225 not individually
- *     re-verified (e1000 has it at RCTL bit 26) - omitted from this
- *     driver's RCTL programming rather than guessed
+ *     (MDIC itself - offset, DATA/REGADD/OP/R/MDI_ERR fields - IS
+ *     confirmed in this header; only the PHY-internal register map
+ *     accessed through it is not)
  */

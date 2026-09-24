@@ -45,6 +45,15 @@ typedef struct _I225_ADAPTER
     ULONG MediaState;
     ULONG PacketFilter;
 
+    /* Statistics accumulators - the underlying hardware counters
+     * (Section 8.18, p464+) clear on read, so these track running totals
+     * across queries. */
+    ULONG64 StatGoodPacketsRcvd;
+    ULONG64 StatGoodPacketsXmit;
+    ULONG64 StatRcvErrors;
+    ULONG64 StatXmitErrors;
+    ULONG64 StatRcvNoBuffer;
+
     /* Interrupt */
     ULONG InterruptVector;
     ULONG InterruptLevel;

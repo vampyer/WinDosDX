@@ -56,8 +56,44 @@ NICQueryStatisticCounter(
     _In_ PI225_ADAPTER Adapter,
     _In_ NDIS_OID Oid)
 {
-    /* Statistics registers (Section 8.13-8.15) not yet wired up */
-    return 0;
+    ULONG Delta;
+
+    /* These registers clear on read (Section 8.18, confirmed by Section
+     * 4.7.8 p119), so every read's value is the delta since the last
+     * read - accumulate into the adapter's running totals rather than
+     * returning the raw register value. */
+    switch (Oid)
+    {
+    case OID_GEN_RCV_OK:
+        I225ReadUlong(Adapter, I225_REG_GPRC, &Delta);
+        Adapter->StatGoodPacketsRcvd += Delta;
+        return Adapter->StatGoodPacketsRcvd;
+
+    case OID_GEN_XMIT_OK:
+        I225ReadUlong(Adapter, I225_REG_GPTC, &Delta);
+        Adapter->StatGoodPacketsXmit += Delta;
+        return Adapter->StatGoodPacketsXmit;
+
+    case OID_GEN_RCV_ERROR:
+        I225ReadUlong(Adapter, I225_REG_RXERRC, &Delta);
+        Adapter->StatRcvErrors += Delta;
+        return Adapter->StatRcvErrors;
+
+    case OID_GEN_XMIT_ERROR:
+        /* No single dedicated "transmit error" counter is documented;
+         * excessive collisions (ECOL) is the closest available signal. */
+        I225ReadUlong(Adapter, I225_REG_ECOL, &Delta);
+        Adapter->StatXmitErrors += Delta;
+        return Adapter->StatXmitErrors;
+
+    case OID_GEN_RCV_NO_BUFFER:
+        I225ReadUlong(Adapter, I225_REG_RNBC, &Delta);
+        Adapter->StatRcvNoBuffer += Delta;
+        return Adapter->StatRcvNoBuffer;
+
+    default:
+        return 0;
+    }
 }
 
 static
