@@ -1,0 +1,55 @@
+; NEI225.INF
+
+; Installation file for the Intel I225 (Foxville) 2.5GbE controller
+
+[Version]
+Signature  = "$Windows NT$"
+LayoutFile = layout.inf
+Class      = Net
+ClassGUID  = {4D36E972-E325-11CE-BFC1-08002BE10318}
+Provider   = %ReactOS%
+DriverVer  = 09/24/2026,1.00
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[Manufacturer]
+%IntelMfg% = IntelMfg
+
+[IntelMfg]
+%IntelI225_15F3.DeviceDesc% = I225_Inst.ndi,PCI\VEN_8086&DEV_15F3
+
+;----------------------------- I225 DRIVER -----------------------------
+
+[I225_Inst.ndi.NT]
+Characteristics = 0x4 ; NCF_PHYSICAL
+BusType = 5 ; PCIBus
+AddReg = I225_AddReg.NT
+CopyFiles = I225_CopyFiles.NT
+
+[I225_CopyFiles.NT]
+i225.sys
+
+[I225_AddReg.NT]
+HKR, Ndi,            Service,    0, "i225"
+HKR, Ndi\Interfaces, UpperRange, 0, "ndis5"
+HKR, Ndi\Interfaces, LowerRange, 0, "ethernet"
+
+[I225_Inst.ndi.NT.Services]
+AddService = i225, 0x00000002, I225_Service_Inst
+
+[I225_Service_Inst]
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 0
+ServiceBinary = %12%\i225.sys
+LoadOrderGroup = NDIS
+
+;-------------------------------- STRINGS -------------------------------
+
+[Strings]
+ReactOS = "WinDosDX Project"
+
+IntelMfg = "Intel"
+
+IntelI225_15F3.DeviceDesc = "Intel(R) Ethernet Controller I225-V"

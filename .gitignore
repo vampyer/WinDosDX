@@ -14,3 +14,8 @@ modules/[Aa][Hh][Kk]_[Tt]ests
 .vs
 .vscode
 sdk/tools/winesync/winesync.cfg
+
+# Vendor datasheets/reference docs used for driver development - never
+# commit these (repo is public; datasheets are often NDA/"Confidential"
+# marked by the vendor and must not be redistributed)
+*.pdf
