@@ -111,11 +111,19 @@ C_ASSERT(sizeof(I225_TRANSMIT_DESCRIPTOR) == 16);
  * DEV_IDs are not yet confirmed against real hardware - add only once
  * verified against an actual device, not guessed. */
 
+/* Memory BAR - Section 9.3.11 (p531-532). The CSR (register) space is the
+ * first 128KB of the memory BAR; the BAR itself can be larger when the
+ * NVM maps flash into it (flash starts at offset 128K), and the separate
+ * MSI-X BAR is only 16KB. Select the memory resource that is at least
+ * this large and map only the CSR window - never pick by resource order
+ * or by an exact-size match. */
+#define I225_CSR_SPACE_SIZE  0x20000
+
 /* ===================== General Registers - Section 8.2 (p373) ===================== */
 #define I225_REG_CTRL      0x00000  /* Device Control - RW, Section 8.2.1 p373 */
 #define I225_REG_STATUS    0x00008  /* Device Status - RO, Section 8.2.2 p375 */
 #define I225_REG_CTRL_EXT  0x00018  /* Extended Device Control - RW, Section 8.2.3 p375-376 */
-#define I225_REG_MDIC      0x00020  /* MDI Control - RW, Section 8.2.4 p377 */
+#define I225_REG_MDIC      0x00020  /* MDI Control - RW, Section 8.2.4 p378-379 */
 #define I225_REG_VET       0x00038  /* VLAN Ether Type - RW, Section 8.2.8 p381 */
 
 /* CTRL (0x00000) bits - Section 8.2.1 (p373-375) */
@@ -128,19 +136,31 @@ C_ASSERT(sizeof(I225_TRANSMIT_DESCRIPTOR) == 16);
 #define I225_CTRL_VME                (1U << 30)  /* VLAN Mode Enable */
 #define I225_CTRL_PHY_RST            (1U << 31)  /* PHY Reset - hold >=100us */
 
-/* CTRL_EXT (0x00018) bits - Section 8.2.3 (p375-376). Note: unlike e1000
- * (where SPEED/RST_DONE live in STATUS), on I225 both are in CTRL_EXT. */
-#define I225_CTRL_EXT_SPEED_SHIFT    6
-#define I225_CTRL_EXT_SPEED_MASK     (3U << I225_CTRL_EXT_SPEED_SHIFT)
-#define I225_CTRL_EXT_SPEED_2P5      (1U << 22)  /* Speed_2P5: link is 2.5Gb/s */
-#define I225_CTRL_EXT_GIO_MASTER_EN_STATUS (1U << 19)
-#define I225_CTRL_EXT_RST_DONE       (1U << 21)  /* SW reset (CTRL.DEV_RST) completed */
+/* STATUS (0x00008) bits - Section 8.2.2 (p375-376).
+ *
+ * The PDF's text layer places each new section's header BEFORE the tail
+ * of the previous register's table, so the fields printed right after the
+ * "8.2.3 CTRL_EXT" header on p376 (SPEED, GIO Master Enable Status,
+ * RST_DONE, Speed_2P5) are actually the end of the STATUS table. An
+ * earlier revision of this driver misread them as CTRL_EXT bits, which
+ * made reset-completion polling wait on a reserved bit forever. Four
+ * independent confirmations that they are STATUS bits: Section 4.3.1
+ * ("STATUS.RST_DONE"), Section 5.2.3.3 ("GIO Master Enable Status bit in
+ * the Device Status (STATUS) register"), Section 4.7.7.2 ("STATUS.SPEED"),
+ * and CTRL_EXT's own table assigning bits 6/7/20/22 to other fields and
+ * reserving bit 21. */
+#define I225_STATUS_FD               (1U << 0)   /* Full duplex */
+#define I225_STATUS_LU               (1U << 1)   /* Link Up */
+#define I225_STATUS_SPEED_SHIFT      6           /* 00=10, 01=100, 10=1000 Mb/s */
+#define I225_STATUS_SPEED_MASK       (3U << I225_STATUS_SPEED_SHIFT)
+#define I225_STATUS_GIO_MASTER_EN    (1U << 19)  /* Clear => no master requests pending */
+#define I225_STATUS_RST_DONE         (1U << 21)  /* SW reset (CTRL.DEV_RST) completed */
+#define I225_STATUS_SPEED_2P5        (1U << 22)  /* Link is 2.5Gb/s (SPEED then reads 10b) */
 
-/* STATUS (0x00008) bits - Section 8.2.2 (p375) */
-#define I225_STATUS_FD    (1U << 0)  /* Full duplex */
-#define I225_STATUS_LU    (1U << 1)  /* Link Up */
+/* CTRL_EXT (0x00018) bits - Section 8.2.3 (p376-378) */
+#define I225_CTRL_EXT_DRV_LOAD       (1U << 28)  /* Set by driver after load, cleared on unload */
 
-/* MDIC (0x00020) bits - Section 8.2.4 (p377-378) */
+/* MDIC (0x00020) bits - Section 8.2.4 (header p378, field table p379) */
 #define I225_MDIC_REGADD_SHIFT  16
 #define I225_MDIC_OP_WRITE      (1U << 26)
 #define I225_MDIC_OP_READ       (2U << 26)
@@ -154,23 +174,40 @@ C_ASSERT(sizeof(I225_TRANSMIT_DESCRIPTOR) == 16);
 #define I225_EEC_EE_PRES  (1U << 8)  /* NVM present with valid signature */
 #define I225_EEC_AUTO_RD  (1U << 9)  /* NVM auto-read by hardware done */
 
-/* ===================== Interrupt Registers - Section 8.8 (p398+) ===================== */
-#define I225_REG_ICR   0x1500  /* Interrupt Cause Read - RC/W1C */
-#define I225_REG_ICS   0x1504  /* Interrupt Cause Set - WO */
-#define I225_REG_IMS   0x1508  /* Interrupt Mask Set/Read - RW */
-#define I225_REG_IMC   0x150C  /* Interrupt Mask Clear - WO */
-#define I225_REG_EIMC  0x1528  /* Extended Interrupt Mask Clear - WO, used during init (Section 4.7.4, p118) */
+/* ===================== Interrupt Registers - Section 8.8 (p405+) ===================== */
+#define I225_REG_ICR   0x1500  /* Interrupt Cause Read - RC/W1C, Section 8.8.7 */
+#define I225_REG_ICS   0x1504  /* Interrupt Cause Set - WO, Section 8.8.8 */
+#define I225_REG_IMS   0x1508  /* Interrupt Mask Set/Read - RW, Section 8.8.9 */
+#define I225_REG_IMC   0x150C  /* Interrupt Mask Clear - WO, Section 8.8.10 */
+#define I225_REG_IAM   0x1510  /* Interrupt Acknowledge Auto Mask - RW, Section 8.8.11 */
+#define I225_REG_GPIE  0x1514  /* General Purpose Interrupt Enable - RW, Section 8.8.15 */
+#define I225_REG_EICS  0x1520  /* Extended Interrupt Cause Set - WO, Section 8.8.2 */
+#define I225_REG_EIMS  0x1524  /* Extended Interrupt Mask Set/Read - RWM, Section 8.8.3 */
+#define I225_REG_EIMC  0x1528  /* Extended Interrupt Mask Clear - WO, Section 8.8.4 */
+#define I225_REG_EIAC  0x152C  /* Extended Interrupt Auto Clear - RW, Section 8.8.5 */
+#define I225_REG_EIAM  0x1530  /* Extended Interrupt Auto Mask Enable - RW, Section 8.8.6 */
+#define I225_REG_EICR  0x1580  /* Extended Interrupt Cause - RC/W1C, Section 8.8.1 */
 
-/* IMS/ICR/IMC bits - same well-known Intel NIC interrupt-cause bit
- * positions as e1000 (general register block is stable across this NIC
- * family); TXQE at bit 1 not separately confirmed for I225 in the
- * sections read so far, kept consistent with e1000 pending verification. */
+/* This driver uses "INT-x/MSI + Legacy" mode (Table 7-54/7-55, p310/316):
+ * GPIE all zero, causes read from ICR, IMS set per requested cause, and
+ * EIMS set to the Other Cause bit ONLY. In this mode every ICR cause
+ * reaches PCIe through EICR bit 31 (Section 7.3.2.1, p304-305), so if
+ * EIMS.Other is clear, no interrupt is ever delivered no matter what IMS
+ * holds. EIMS.Other resets to 1b but is not cleared by CTRL.DEV_RST
+ * (Section 8.8.3, p406-407), so a driver that disables interrupts through
+ * EIMC must set it again through EIMS when enabling. */
+#define I225_EIMS_OTHER  (1U << 31)
+
+/* ICR/ICS/IMS/IMC bits - Section 8.8.7-8.8.9 (p409-412). Bit 1 is
+ * reserved and bit 15 is PTRAP (probe-trap test mode) on this chip -
+ * e1000's TXQE (bit 1) and TXD_LOW (bit 15) do not exist here. Bit 7 is
+ * RXDW (Rx descriptor write-back), not e1000's "receiver timer". */
 #define I225_IMS_TXDW    (1U << 0)   /* Transmit Descriptor Written Back */
-#define I225_IMS_TXQE    (1U << 1)   /* Transmit Queue Empty */
 #define I225_IMS_LSC     (1U << 2)   /* Link Status Change */
-#define I225_IMS_RXDMT0  (1U << 4)   /* Receive Descriptor Minimum Threshold */
-#define I225_IMS_RXT0    (1U << 7)   /* Receiver Timer Interrupt */
-#define I225_IMS_TXD_LOW (1U << 15)  /* Transmit Descriptor Low Threshold */
+#define I225_IMS_RXDMT0  (1U << 4)   /* Receive Descriptor Minimum Threshold Reached */
+#define I225_IMS_RXMISS  (1U << 6)   /* Rx packet buffer overrun (packet dropped) */
+#define I225_IMS_RXDW    (1U << 7)   /* Receive Descriptor Written Back */
+#define I225_ICR_INTA    (1U << 31)  /* INT line asserted (ICR only; not valid in MSI) */
 
 /* ===================== Receive Registers - Section 8.9 (p417+) ===================== */
 #define I225_REG_RCTL   0x0100   /* Receive Control - RW, Section 8.9.1 p417-420 */

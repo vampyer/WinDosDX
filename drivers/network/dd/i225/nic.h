@@ -18,7 +18,7 @@
 
 #define DRIVER_VERSION 1
 
-#define DEFAULT_INTERRUPT_MASK  (I225_IMS_LSC | I225_IMS_TXDW | I225_IMS_TXQE | I225_IMS_RXDMT0 | I225_IMS_RXT0 | I225_IMS_TXD_LOW)
+#define DEFAULT_INTERRUPT_MASK  (I225_IMS_LSC | I225_IMS_TXDW | I225_IMS_RXDMT0 | I225_IMS_RXDW)
 
 
 typedef struct _I225_ADAPTER
@@ -222,7 +222,11 @@ VOID
 NICApplyInterruptMask(
     _In_ PI225_ADAPTER Adapter)
 {
+    /* Table 7-55 (p316), "INT-x/MSI + Legacy": IMS per requested cause,
+     * EIMS = Other Cause only. Without EIMS.Other no ICR cause reaches
+     * PCIe - see I225_EIMS_OTHER. */
     I225WriteUlong(Adapter, I225_REG_IMS, Adapter->InterruptMask);
+    I225WriteUlong(Adapter, I225_REG_EIMS, I225_EIMS_OTHER);
 }
 
 FORCEINLINE

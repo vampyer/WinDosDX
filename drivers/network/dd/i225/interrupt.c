@@ -66,7 +66,7 @@ MiniportHandleInterrupt(
     }
 
     /* Handling receive interrupts */
-    if (InterruptPending & (I225_IMS_RXDMT0 | I225_IMS_RXT0))
+    if (InterruptPending & (I225_IMS_RXDMT0 | I225_IMS_RXDW))
     {
         volatile PI225_RECEIVE_DESCRIPTOR ReceiveDescriptor;
         PETH_HEADER EthHeader;
@@ -74,7 +74,7 @@ MiniportHandleInterrupt(
         BOOLEAN bGotAny = FALSE;
         ULONG RxDescHead, RxDescTail, CurrRxDesc;
 
-        InterruptPending &= ~(I225_IMS_RXDMT0 | I225_IMS_RXT0);
+        InterruptPending &= ~(I225_IMS_RXDMT0 | I225_IMS_RXDW);
 
         I225ReadUlong(Adapter, I225_REG_RDH(0), &RxDescHead);
         I225ReadUlong(Adapter, I225_REG_RDT(0), &RxDescTail);
@@ -134,12 +134,12 @@ NextReceiveDescriptor:
     }
 
     /* Handling transmit interrupts */
-    if (InterruptPending & (I225_IMS_TXD_LOW | I225_IMS_TXDW | I225_IMS_TXQE))
+    if (InterruptPending & I225_IMS_TXDW)
     {
         PNDIS_PACKET AckPackets[40] = {0};
         ULONG NumPackets = 0, i;
 
-        InterruptPending &= ~(I225_IMS_TXD_LOW | I225_IMS_TXDW | I225_IMS_TXQE);
+        InterruptPending &= ~I225_IMS_TXDW;
 
         while ((Adapter->TxFull || Adapter->LastTxDesc != Adapter->CurrentTxDesc) && NumPackets < ARRAYSIZE(AckPackets))
         {

@@ -94,14 +94,18 @@ NICInitializeAdapterResources(
             break;
 
         case CmResourceTypeMemory:
-            /* Internal registers and memories (BAR0) */
-            if (Adapter->IoAddress.QuadPart == 0)
+            /* The CSR BAR is >= 128KB (larger if the NVM maps flash into
+             * it); the MSI-X BAR is 16KB (Section 9.3.11). Select by size
+             * rather than resource order, and map only the CSR window. */
+            if (Adapter->IoAddress.QuadPart == 0 &&
+                ResourceDescriptor->u.Memory.Length >= I225_CSR_SPACE_SIZE)
             {
                 Adapter->IoAddress.QuadPart = ResourceDescriptor->u.Memory.Start.QuadPart;
-                Adapter->IoLength = ResourceDescriptor->u.Memory.Length;
-                NDIS_DbgPrint(MID_TRACE, ("Memory range is %I64x to %I64x\n",
+                Adapter->IoLength = I225_CSR_SPACE_SIZE;
+                NDIS_DbgPrint(MID_TRACE, ("CSR BAR at %I64x (length 0x%x, mapping 0x%x)\n",
                                           Adapter->IoAddress.QuadPart,
-                                          Adapter->IoAddress.QuadPart + Adapter->IoLength));
+                                          ResourceDescriptor->u.Memory.Length,
+                                          Adapter->IoLength));
             }
             break;
 
@@ -125,17 +129,18 @@ NTAPI
 NICAllocateIoResources(
     IN PI225_ADAPTER Adapter)
 {
+    NDIS_STATUS Status;
     UINT n;
     NDIS_DbgPrint(MAX_TRACE, ("Called.\n"));
 
-    NdisMMapIoSpace((PVOID*)&Adapter->IoBase,
-                     Adapter->AdapterHandle,
-                     Adapter->IoAddress,
-                     Adapter->IoLength);
-
-    if (Adapter->IoBase == NULL)
+    Status = NdisMMapIoSpace((PVOID*)&Adapter->IoBase,
+                             Adapter->AdapterHandle,
+                             Adapter->IoAddress,
+                             Adapter->IoLength);
+    if (Status != NDIS_STATUS_SUCCESS || Adapter->IoBase == NULL)
     {
-        NDIS_DbgPrint(MIN_TRACE, ("Unable to map IO space\n"));
+        NDIS_DbgPrint(MIN_TRACE, ("Unable to map IO space (0x%x)\n", Status));
+        Adapter->IoBase = NULL;
         return NDIS_STATUS_RESOURCES;
     }
 
@@ -295,11 +300,16 @@ NICReleaseIoResources(
     return NDIS_STATUS_SUCCESS;
 }
 
+/* 100 x 100us = 10ms budget for pending master requests to drain */
+#define MAX_MASTER_DISABLE_POLLS  100
+
 /*
  * Section 4.7.4/4.7.5 (p118-119): disable interrupts, issue CTRL.DEV_RST,
- * disable interrupts again, then wait >=3ms (datasheet Section 4.3.1,
- * p109) before touching any other register and verify EEC.Auto_RD and
- * CTRL_EXT.RST_DONE are both set before considering the reset complete.
+ * disable interrupts again, then wait >=3ms (Section 4.3.1, p110) before
+ * touching any other register and verify EEC.Auto_RD and STATUS.RST_DONE
+ * are both set before considering the reset complete. Section 4.3.1 also
+ * requires the master disable flow (Section 5.2.3.3, p131) before
+ * DEV_RST, so the reset cannot race with DMA already in flight.
  */
 NDIS_STATUS
 NTAPI
@@ -310,7 +320,39 @@ NICSoftReset(
     UINT n;
     NDIS_DbgPrint(MAX_TRACE, ("Called.\n"));
 
+    /* Section 7.3.3.11 (p310): GPIE selects the interrupt mode and "should
+     * be set to the correct mode before accessing other interrupt control
+     * registers". All-zero is "INT-x/MSI + Legacy" (Table 7-54). GPIE,
+     * EIAM and EIMS are not reset by CTRL.DEV_RST, so set the whole legacy
+     * configuration explicitly rather than trusting whatever state an
+     * earlier owner (firmware, a previous driver load) left behind. */
+    I225WriteUlong(Adapter, I225_REG_GPIE, 0);
+    I225WriteUlong(Adapter, I225_REG_IAM, 0);
+    I225WriteUlong(Adapter, I225_REG_EIAC, 0);
+    I225WriteUlong(Adapter, I225_REG_EIAM, 0);
+
     NICDisableInterrupts(Adapter);
+
+    /* Master disable: block new master requests, then wait for pending
+     * ones to drain (STATUS.GIO_MASTER_EN clears). On timeout, reset
+     * anyway - DEV_RST is itself the documented recovery for a stuck
+     * device, and it clears GIO_MASTER_DISABLE again (Section 5.2.3.3). */
+    I225ReadUlong(Adapter, I225_REG_CTRL, &Value);
+    I225WriteUlong(Adapter, I225_REG_CTRL, Value | I225_CTRL_GIO_MASTER_DISABLE);
+
+    for (n = 0; n < MAX_MASTER_DISABLE_POLLS; n++)
+    {
+        I225ReadUlong(Adapter, I225_REG_STATUS, &Value);
+        if (!(Value & I225_STATUS_GIO_MASTER_EN))
+            break;
+
+        NdisStallExecution(100);
+    }
+
+    if (n == MAX_MASTER_DISABLE_POLLS)
+    {
+        NDIS_DbgPrint(MIN_TRACE, ("Master requests did not drain before reset, resetting anyway\n"));
+    }
 
     I225ReadUlong(Adapter, I225_REG_CTRL, &Value);
     I225WriteUlong(Adapter, I225_REG_CTRL, Value | I225_CTRL_DEV_RST);
@@ -326,12 +368,12 @@ NICSoftReset(
 
     for (n = 0; n < MAX_RESET_ATTEMPTS; n++)
     {
-        ULONG Eec, CtrlExt;
+        ULONG Eec, Status;
 
         I225ReadUlong(Adapter, I225_REG_EEC, &Eec);
-        I225ReadUlong(Adapter, I225_REG_CTRL_EXT, &CtrlExt);
+        I225ReadUlong(Adapter, I225_REG_STATUS, &Status);
 
-        if ((Eec & I225_EEC_AUTO_RD) && (CtrlExt & I225_CTRL_EXT_RST_DONE))
+        if ((Eec & I225_EEC_AUTO_RD) && (Status & I225_STATUS_RST_DONE))
         {
             NDIS_DbgPrint(MAX_TRACE, ("Device reset complete (%u)\n", n));
             break;
@@ -342,7 +384,7 @@ NICSoftReset(
 
     if (n == MAX_RESET_ATTEMPTS)
     {
-        NDIS_DbgPrint(MIN_TRACE, ("Device did not report reset completion (EEC.Auto_RD / CTRL_EXT.RST_DONE)\n"));
+        NDIS_DbgPrint(MIN_TRACE, ("Device did not report reset completion (EEC.Auto_RD / STATUS.RST_DONE)\n"));
         return NDIS_STATUS_FAILURE;
     }
 
@@ -355,6 +397,12 @@ NICSoftReset(
     Value &= ~I225_CTRL_VME;
     Value |= I225_CTRL_SLU;
     I225WriteUlong(Adapter, I225_REG_CTRL, Value);
+
+    /* Section 8.2.3 (p378): DRV_LOAD "should be set by the software device
+     * driver after it is loaded" - tells manageability firmware a host
+     * driver owns the port. Cleared again in MiniportHalt. */
+    I225ReadUlong(Adapter, I225_REG_CTRL_EXT, &Value);
+    I225WriteUlong(Adapter, I225_REG_CTRL_EXT, Value | I225_CTRL_EXT_DRV_LOAD);
 
     return NDIS_STATUS_SUCCESS;
 }
@@ -521,33 +569,31 @@ NICApplyPacketFilter(
 }
 
 /*
- * Section 8.2.3 (p375-376): on I225, unlike e1000, link speed and the
- * software-reset-completion flag live in CTRL_EXT, not STATUS. STATUS
- * still carries FD/LU.
+ * Section 8.2.2 (p375-376): link up, speed and the 2.5Gb/s flag are all
+ * in STATUS (same place as e1000 for SPEED; Speed_2P5 is I225-specific).
  */
 VOID
 NTAPI
 NICUpdateLinkStatus(
     IN PI225_ADAPTER Adapter)
 {
-    ULONG DeviceStatus, CtrlExt;
+    ULONG DeviceStatus;
     SIZE_T SpeedIndex;
     static ULONG SpeedValues[] = { 10, 100, 1000, 1000 };
 
     NDIS_DbgPrint(MAX_TRACE, ("Called.\n"));
 
     I225ReadUlong(Adapter, I225_REG_STATUS, &DeviceStatus);
-    I225ReadUlong(Adapter, I225_REG_CTRL_EXT, &CtrlExt);
 
     Adapter->MediaState = (DeviceStatus & I225_STATUS_LU) ? NdisMediaStateConnected : NdisMediaStateDisconnected;
 
-    if (CtrlExt & I225_CTRL_EXT_SPEED_2P5)
+    if (DeviceStatus & I225_STATUS_SPEED_2P5)
     {
         Adapter->LinkSpeedMbps = 2500;
     }
     else
     {
-        SpeedIndex = (CtrlExt & I225_CTRL_EXT_SPEED_MASK) >> I225_CTRL_EXT_SPEED_SHIFT;
+        SpeedIndex = (DeviceStatus & I225_STATUS_SPEED_MASK) >> I225_STATUS_SPEED_SHIFT;
         Adapter->LinkSpeedMbps = SpeedValues[SpeedIndex];
     }
 }

@@ -47,7 +47,23 @@ MiniportHalt(
 
     ASSERT(Adapter != NULL);
 
-    NICDisableTxRx(Adapter);
+    /* MiniportInitialize's failure path calls this too, possibly before
+     * the CSR BAR was mapped - only touch hardware if it was. */
+    if (Adapter->IoBase)
+    {
+        ULONG Value;
+
+        NICDisableTxRx(Adapter);
+
+        /* Mask interrupts before deregistering the ISR so a level-triggered
+         * line (e.g. a late link change) can't be left asserted with no
+         * handler on a shared IRQ. */
+        NICDisableInterrupts(Adapter);
+
+        I225ReadUlong(Adapter, I225_REG_CTRL_EXT, &Value);
+        I225WriteUlong(Adapter, I225_REG_CTRL_EXT, Value & ~I225_CTRL_EXT_DRV_LOAD);
+    }
+
     NICUnregisterInterrupts(Adapter);
     NICReleaseIoResources(Adapter);
 
