@@ -19,3 +19,15 @@ sdk/tools/winesync/winesync.cfg
 # commit these (repo is public; datasheets are often NDA/"Confidential"
 # marked by the vendor and must not be redistributed)
 *.pdf
+
+# Local scratch: root-level helper scripts, logs, archives and tool state
+/_*.cmd
+/_*.ps1
+/_*.py
+/*.log
+/*.zip
+/.freebuff/
+/pci.txt
+__pycache__/
+# Unreferenced local experiment, not part of the build
+/sdk/lib/cpprt/int_helpers.cpp
