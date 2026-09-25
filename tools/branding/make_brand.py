@@ -161,6 +161,40 @@ def start_button():
     im.resize((W * 10, H * 10), Image.NEAREST).save(f"{OUT}/preview_start.png")
 
 
+def _text_mask(text):
+    """Ink mask of `text` as the taskbar draws it (Tahoma 8pt = 11px, no
+    antialiasing), plus the (dx, dy) from the drawing origin to the ink."""
+    font = ImageFont.truetype("C:/Windows/Fonts/tahoma.ttf", 11)
+    im = Image.new("1", (240, 24), 0)
+    d = ImageDraw.Draw(im)
+    d.fontmode = "1"
+    d.text((4, 0), text, font=font, fill=1)
+    x0, y0, x1, y1 = im.getbbox()
+    return font, im.crop((x0, y0, x1, y1)), (x0 - 4, y0)
+
+
+def retitle_button(im, old, new, face):
+    """Find an exact rendering of `old` (black on `face`) and redraw it as
+    `new` from the same origin. Does nothing if `old` is not present."""
+    font, mask, (dx, dy) = _text_mask(old)
+    mw, mh = mask.size
+    want = [mask.getpixel((x, y)) for y in range(mh) for x in range(mw)]
+    px = im.load()
+    for y in range(im.height - mh + 1):
+        for x in range(im.width - mw + 1):
+            if all(((px[x + i, y + j] == (0, 0, 0)) == bool(want[j * mw + i]))
+                   for j in range(mh) for i in range(mw)):
+                for j in range(mh):
+                    for i in range(mw):
+                        if want[j * mw + i]:
+                            px[x + i, y + j] = face
+                d = ImageDraw.Draw(im)
+                d.fontmode = "1"
+                d.text((x - dx, y - dy), new, font=font, fill=(0, 0, 0))
+                return True
+    return False
+
+
 def patch_previews():
     """Replace the ReactOS Start flag (and the 171 side banner) inside the
     Taskbar and Start Menu Properties preview bitmaps. Each patch fills a fixed
@@ -174,6 +208,7 @@ def patch_previews():
         ImageDraw.Draw(im).rectangle((3, 13, 19, 28), fill=face)
         ic = icon(14)
         im.paste(ic, (5, 14), ic)
+        retitle_button(im, "ReactOS Explorer", "WinDosDX Explorer", face)
         im.save(f"{OUT}/{n}.bmp")
     banner = Image.open(f"{OUT}/158.bmp").convert("RGB")
     for n in (170, 171):
