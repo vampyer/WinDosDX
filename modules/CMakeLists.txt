@@ -49,3 +49,9 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/optional/DroidSansFallback.ttf)
     add_cd_file(FILE "${CMAKE_CURRENT_SOURCE_DIR}/optional/DroidSansFallback.ttf" DESTINATION reactos/Fonts FOR livecd)
 endif()
+
+# WinDosDX: modern (Visual Studio 2015+) application tests on the boot CD.
+option(WINDOSDX_MODERNAPP_TESTS "Put the modern-application test programs on the boot CD" OFF)
+if(WINDOSDX_MODERNAPP_TESTS)
+    add_subdirectory(rostests/windosdx/modernapps)
+endif()
