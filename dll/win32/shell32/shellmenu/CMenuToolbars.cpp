@@ -413,7 +413,9 @@ HRESULT CMenuToolbarBase::CreateToolbar(HWND hwndParent, DWORD dwFlags)
     m_hWnd = NULL;
     SubclassWindow(toolbar);
 
-    SetWindowTheme(m_hWnd, L"", L"");
+    /* Keep the shell menu visually active instead of falling back to the
+     * classic owner-drawn toolbar appearance. */
+    SetWindowTheme(m_hWnd, L"Explorer", NULL);
 
     SystemParametersInfo(SPI_GETFLATMENU, 0, &m_useFlatMenus, 0);
 

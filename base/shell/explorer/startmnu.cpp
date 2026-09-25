@@ -106,6 +106,10 @@ CreateStartMenu(IN ITrayWindow *Tray,
 
     UpdateStartMenu(pMp, hbmBanner, bSmallIcons, FALSE);
 
+    /* Keep the Start menu flat and borderless, matching the WinDosDX
+     * Windows 7-style taskbar treatment. */
+    IUnknown_Exec(pMp, CGID_MenuDeskBar, 4, TRUE, NULL, NULL);
+
     *ppMenuBand = pMb.Detach();
 
     return pMp.Detach();

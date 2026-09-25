@@ -69,6 +69,7 @@ LRESULT CMenuDeskBar::_OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &b
     }
 
     bHandled = FALSE;
+    SetWindowTheme(m_hWnd, L"Explorer", NULL);
     return 0;
 }
 
@@ -737,20 +738,24 @@ LRESULT CMenuDeskBar::_OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
 {
     bHandled = FALSE;
 
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(&ps);
+    RECT rc;
+    if (!GetClientRect(&rc))
+        WARN("GetClientRect failed\n");
+
+    /* The Windows 7 menu uses a light, flat client area.  Keep the banner
+     * separate so the menu band can still provide the user picture/side
+     * artwork without inheriting the old raised menu background. */
+    FillRect(hdc, &rc, GetSysColorBrush(COLOR_WINDOW));
+
     if (m_Banner && !m_IconSize)
     {
         BITMAP bm;
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(&ps);
-
         HDC hdcMem = ::CreateCompatibleDC(hdc);
         HGDIOBJ hbmOld = ::SelectObject(hdcMem, m_Banner);
 
         ::GetObject(m_Banner, sizeof(bm), &bm);
-
-        RECT rc;
-        if (!GetClientRect(&rc))
-            WARN("GetClientRect failed\n");
 
         const int bx = bm.bmWidth;
         const int by = bm.bmHeight;
@@ -766,10 +771,9 @@ LRESULT CMenuDeskBar::_OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
 
         ::SelectObject(hdcMem, hbmOld);
         ::DeleteDC(hdcMem);
-
-        EndPaint(&ps);
     }
 
+    EndPaint(&ps);
     return TRUE;
 }
 

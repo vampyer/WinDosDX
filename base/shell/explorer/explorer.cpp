@@ -175,6 +175,11 @@ StartWithDesktop(IN HINSTANCE hInstance)
 {
     InitializeAtlModule(hInstance, TRUE);
 
+    /* WinDosDX uses the flat, themed menu treatment associated with the
+     * Windows 7 shell rather than the legacy raised menu style. */
+    SystemParametersInfoW(SPI_SETFLATMENU, TRUE, NULL,
+                          SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
+
     if (RegOpenKeyW(HKEY_CURRENT_USER,
         L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer",
         &hkExplorer) != ERROR_SUCCESS)
