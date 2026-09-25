@@ -73,6 +73,37 @@ BEGIN
     IDS_HELP_COMMAND "https://reactos.org/"
 END
 
+/* Windows 7-style Start menu; not yet translated, shared by all languages. */
+STRINGTABLE
+BEGIN
+    IDS_SM7_ALLPROGRAMS "All Programs"
+    IDS_SM7_BACK "Back"
+    IDS_SM7_EMPTY "(Empty)"
+    IDS_SM7_DOCUMENTS "Documents"
+    IDS_SM7_PICTURES "Pictures"
+    IDS_SM7_MUSIC "Music"
+    IDS_SM7_COMPUTER "Computer"
+    IDS_SM7_CONTROLPANEL "Control Panel"
+    IDS_SM7_DEVICES "Devices and Printers"
+    IDS_SM7_HELP "Help and Support"
+    IDS_SM7_RUN "Run..."
+    IDS_SM7_SHUTDOWN "Shut down"
+    IDS_SM7_SWITCHUSER "S&witch user"
+    IDS_SM7_LOGOFF "&Log off"
+    IDS_SM7_LOCK "Loc&k"
+    IDS_SM7_RESTART "&Restart"
+    IDS_SM7_SLEEP "&Sleep"
+    IDS_SM7_SHUTDOWNDLG "&More options..."
+    IDS_SM7_OPEN "&Open"
+    IDS_SM7_EXPLORE "&Explore"
+    IDS_SM7_OPENLOCATION "Open file &location"
+    IDS_SM7_PIN "P&in to Start Menu"
+    IDS_SM7_UNPIN "Unp&in from Start Menu"
+    IDS_SM7_REMOVE "Remove from this &list"
+    IDS_SM7_PROPERTIES "P&roperties"
+    IDS_SM7_CUSTOMIZE "Customize Start Menu"
+END
+
 IDA_TASKBAR  ACCELERATORS
 BEGIN
     "s", IDMA_START, ALT

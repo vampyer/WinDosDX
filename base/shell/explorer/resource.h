@@ -113,6 +113,36 @@
 #define IDS_TRAYWND_UNDO_TILE              813
 #define IDS_TRAYDESKBTN_TOOLTIP            814
 
+/* Windows 7-style Start menu (startmenu7.cpp). These live in a string
+ * block of their own in explorer.rc so untranslated languages fall back
+ * to English instead of getting empty strings. */
+#define IDS_SM7_ALLPROGRAMS                7104
+#define IDS_SM7_BACK                       7105
+#define IDS_SM7_EMPTY                      7106
+#define IDS_SM7_DOCUMENTS                  7107
+#define IDS_SM7_PICTURES                   7108
+#define IDS_SM7_MUSIC                      7109
+#define IDS_SM7_COMPUTER                   7110
+#define IDS_SM7_CONTROLPANEL               7111
+#define IDS_SM7_DEVICES                    7112
+#define IDS_SM7_HELP                       7113
+#define IDS_SM7_RUN                        7114
+#define IDS_SM7_SHUTDOWN                   7115
+#define IDS_SM7_SWITCHUSER                 7116
+#define IDS_SM7_LOGOFF                     7117
+#define IDS_SM7_LOCK                       7118
+#define IDS_SM7_RESTART                    7119
+#define IDS_SM7_SLEEP                      7120
+#define IDS_SM7_SHUTDOWNDLG                7121
+#define IDS_SM7_OPEN                       7122
+#define IDS_SM7_EXPLORE                    7123
+#define IDS_SM7_OPENLOCATION               7124
+#define IDS_SM7_PIN                        7125
+#define IDS_SM7_UNPIN                      7126
+#define IDS_SM7_REMOVE                     7127
+#define IDS_SM7_PROPERTIES                 7128
+#define IDS_SM7_CUSTOMIZE                  7129
+
 /* These values must be synchronized with shell32 */
 #define IDS_ADVANCED_DISPLAY_FAVORITES              30466
 #define IDS_ADVANCED_DISPLAY_LOG_OFF                30467

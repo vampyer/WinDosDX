@@ -351,6 +351,19 @@ UpdateStartMenu(IN OUT IMenuPopup *pMenuPopup,
                 IN BOOL bRefresh);
 
 /*
+ * startmenu7.cpp
+ */
+HRESULT
+CStartMenu7_CreateInstance(IN ITrayWindow *Tray, REFIID riid, PVOID *ppv);
+VOID
+ShowCustomizeModern(HINSTANCE, HWND);
+DWORD StartMenu7_GetProgramCount();
+VOID StartMenu7_SetProgramCount(DWORD dwCount);
+BOOL StartMenu7_GetLargeIcons();
+VOID StartMenu7_SetLargeIcons(BOOL bLarge);
+VOID StartMenu7_ClearFrequent();
+
+/*
  * startmnucust.cpp
  */
 VOID
