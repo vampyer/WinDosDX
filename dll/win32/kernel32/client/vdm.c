@@ -1500,6 +1500,7 @@ GetNextVDMCommand(PVDM_COMMAND_INFO CommandData)
     GetNextVdmCommand->TitleLen = CommandData->TitleLen;
     GetNextVdmCommand->ReservedLen = CommandData->ReservedLen;
     GetNextVdmCommand->VDMState = CommandData->VDMState;
+    GetNextVdmCommand->ExitCode = CommandData->ExitCode;
 
     /* Count the number of strings */
     if (CommandData->CmdLen) NumStrings++;
