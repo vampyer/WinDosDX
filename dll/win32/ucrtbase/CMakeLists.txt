@@ -14,7 +14,10 @@ add_compile_definitions(
 )
 
 add_library(ucrtbase SHARED
+    c99math.c
+    fenv.c
     printf.c
+    rint.c
     stubs.c
     ucrtbase_stubs.c
     ucrtbase.def
