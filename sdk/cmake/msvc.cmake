@@ -523,7 +523,7 @@ macro(add_asm_files _target)
             endforeach()
             add_custom_command(
                 OUTPUT ${_preprocessed_asm_file}
-                COMMAND cl /nologo /X /I${REACTOS_SOURCE_DIR}/sdk/include/asm /I${REACTOS_BINARY_DIR}/sdk/include/asm ${_directory_includes} ${_source_file_defines} ${_directory_defines} /D__ASM__ /D_USE_ML /EP /c ${_source_file_full_path} > ${_preprocessed_asm_file}
+                COMMAND ${CMAKE_C_COMPILER} /nologo /X /I${REACTOS_SOURCE_DIR}/sdk/include/asm /I${REACTOS_BINARY_DIR}/sdk/include/asm ${_directory_includes} ${_source_file_defines} ${_directory_defines} /D__ASM__ /D_USE_ML /EP /c ${_source_file_full_path} > ${_preprocessed_asm_file}
                 DEPENDS ${_source_file_full_path})
             list(APPEND ${_target} ${_preprocessed_asm_file})
         endif()
