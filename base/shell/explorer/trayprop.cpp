@@ -144,6 +144,7 @@ class CStartMenuSettingsPage : public CPropertyPageImpl<CStartMenuSettingsPage>
 {
 private:
     HBITMAP m_hbmpStartBitmap;
+    HWND m_hwndTaskbar;
 
     void _UpdateDialog()
     {
@@ -188,11 +189,15 @@ public:
     BEGIN_MSG_MAP(CTaskBarSettingsPage)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
         COMMAND_ID_HANDLER(IDC_TASKBARPROP_STARTMENUCLASSICCUST, OnStartMenuCustomize)
+        COMMAND_ID_HANDLER(IDC_TASKBARPROP_STARTMENUCUST, OnStartMenuCustomizeModern)
+        COMMAND_ID_HANDLER(IDC_TASKBARPROP_STARTMENU, OnStyleChanged)
+        COMMAND_ID_HANDLER(IDC_TASKBARPROP_STARTMENUCLASSIC, OnStyleChanged)
         CHAIN_MSG_MAP(CPropertyPageImpl<CStartMenuSettingsPage>)
     END_MSG_MAP()
 
-    CStartMenuSettingsPage():
-        m_hbmpStartBitmap(NULL)
+    CStartMenuSettingsPage(HWND hwndTaskbar):
+        m_hbmpStartBitmap(NULL),
+        m_hwndTaskbar(hwndTaskbar)
     {
     }
 
@@ -216,11 +221,34 @@ public:
         return 0;
     }
 
+    LRESULT OnStartMenuCustomizeModern(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
+    {
+        ShowCustomizeModern(hExplorerInstance, m_hWnd);
+        return 0;
+    }
+
+    LRESULT OnStyleChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
+    {
+        /* The two radios sit in different dialog groups (the description
+         * text between them starts a new group), so uncheck the other one. */
+        BOOL bModern = (wID == IDC_TASKBARPROP_STARTMENU);
+        CheckDlgButton(IDC_TASKBARPROP_STARTMENU, bModern ? BST_CHECKED : BST_UNCHECKED);
+        CheckDlgButton(IDC_TASKBARPROP_STARTMENUCLASSIC, bModern ? BST_UNCHECKED : BST_CHECKED);
+        _UpdateDialog();
+        SetModified(TRUE);
+        return 0;
+    }
+
     int OnApply()
     {
         SHELLSTATE ss;
+        BOOL bWasModern = SHELL_GetSetting(SSF_STARTPANELON, fStartPanelOn);
         ss.fStartPanelOn = !IsDlgButtonChecked(IDC_TASKBARPROP_STARTMENUCLASSIC);
         SHGetSetSettings(&ss, SSF_STARTPANELON, TRUE);
+
+        /* The tray recreates its Start menu on this notification. */
+        if (!bWasModern != !ss.fStartPanelOn)
+            ::SendMessageW(m_hwndTaskbar, WM_SETTINGCHANGE, 0, (LPARAM)L"TraySettings");
         return PSNRET_NOERROR;
     }
 };
@@ -365,7 +393,7 @@ DisplayTrayProperties(IN HWND hwndOwner, IN HWND hwndTaskbar)
     PROPSHEETHEADER psh;
     CSimpleArray<HPROPSHEETPAGE> hpsp;
     CTaskBarSettingsPage tbSettingsPage(hwndTaskbar);
-    CStartMenuSettingsPage smSettingsPage;
+    CStartMenuSettingsPage smSettingsPage(hwndTaskbar);
     CNotifySettingsPage naSettingsPage(hwndTaskbar);
     CStringW caption;
 

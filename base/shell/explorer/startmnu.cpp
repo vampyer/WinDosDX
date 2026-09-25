@@ -62,6 +62,17 @@ CreateStartMenu(IN ITrayWindow *Tray,
     CComPtr<IBandSite> pBs;
     DWORD dwBandId = 0;
 
+    /* "Start menu" (not "Classic Start menu") selected: use the Windows
+     * 7-style menu. It is its own window and has no menu band. */
+    if (SHELL_GetSetting(SSF_STARTPANELON, fStartPanelOn) && !SHRestricted(REST_NOSTARTPANEL))
+    {
+        *ppMenuBand = NULL;
+        hr = CStartMenu7_CreateInstance(Tray, IID_PPV_ARG(IMenuPopup, &pMp));
+        if (SUCCEEDED(hr))
+            return pMp.Detach();
+        ERR("CStartMenu7_CreateInstance failed 0x%08lx, falling back to the classic menu\n", hr);
+    }
+
     hr = CStartMenuSite_CreateInstance(Tray, IID_PPV_ARG(IUnknown, &pSms));
     if (FAILED_UNEXPECTEDLY(hr))
         return NULL;

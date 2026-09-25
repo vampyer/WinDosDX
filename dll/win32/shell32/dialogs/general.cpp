@@ -45,7 +45,7 @@ SHELL32_GetDefaultShellState(LPSHELLSTATE pss)
     pss->iSortDirection = 1;
     pss->version = REGSHELLSTATE_VERSION;
     pss->fSepProcess = FALSE;
-    pss->fStartPanelOn = FALSE; // Note: This should be changed to TRUE when the modern start menu is implemented
+    pss->fStartPanelOn = TRUE; // WinDosDX: the Windows 7-style Start menu is the default
 }
 
 EXTERN_C LSTATUS
