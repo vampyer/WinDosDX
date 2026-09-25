@@ -32,6 +32,8 @@ cl %CFLAGS% /MD /DTEST_NAME=\"crt_dynamic\" "%SRC%crt_basic.c" /Fe:crt_dynamic.e
 cl %CFLAGS% /MT /DTEST_NAME=\"crt_static\" "%SRC%crt_basic.c" /Fe:crt_static.exe || goto :fail
 cl %CFLAGS% /MD "%SRC%win7api.c" /Fe:win7api.exe || goto :fail
 cl %CFLAGS% /MD "%SRC%fsapi.c" /Fe:fsapi.exe || goto :fail
+cl %CFLAGS% /MD "%SRC%fenvtest.c" /Fe:fenvtest.exe || goto :fail
+cl %CFLAGS% /MD "%SRC%c99math.c" /Fe:c99math.exe || goto :fail
 cl %CFLAGS% /MD /EHsc /std:c++17 "%SRC%cpp17.cpp" /Fe:cpp17.exe || goto :fail
 del /q *.obj 2>nul
 copy /y "%REDIST%\vcruntime140.dll" . >nul || goto :fail
