@@ -744,6 +744,22 @@ MmCreatePeb(IN PEPROCESS Process,
             Peb->ImageSubsystemMajorVersion = NtHeaders->OptionalHeader.MajorSubsystemVersion;
             Peb->ImageSubsystemMinorVersion = NtHeaders->OptionalHeader.MinorSubsystemVersion;
 
+            /*
+             * WinDosDX: images linked for NT 6.0 or later (every program
+             * built with Visual Studio 2012 or newer) see Windows 7 SP1,
+             * so modern programs and installers that require Windows 7
+             * will start. Older images, drivers and the OS's own components
+             * keep the real kernel version. An explicit Win32VersionValue
+             * below still overrides this.
+             */
+            if (NtHeaders->OptionalHeader.MajorSubsystemVersion >= 6)
+            {
+                Peb->OSMajorVersion = 6;
+                Peb->OSMinorVersion = 1;
+                Peb->OSBuildNumber = 7601;
+                Peb->OSCSDVersion = 0x0100; /* Service Pack 1 */
+            }
+
             //
             // Check for version data
             //
