@@ -7,7 +7,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_USAGE "Provides Help information for ReactOS commands.\n\n\
+    IDS_USAGE "Provides Help information for WinDosDX commands.\n\n\
 HELP [command]\n\n\
   command - Display help information for this command.\n"
     IDS_HELP1 "Lista av alla tillgängeliga kommandon (+ beskrivning)\n\n\

@@ -6,13 +6,13 @@ IDD_STARTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "MS UI Gothic"
 BEGIN
-    LTEXT "ReactOS セットアップウィザードへようこそ", IDC_STARTTITLE, 115, 8, 195, 24
-    LTEXT "このウィザードは、あなたのコンピュータに ReactOS をインストールまたはアップグレードし、追加のセットアップの準備をします。", IDC_STATIC, 115, 40, 195, 27
+    LTEXT "WinDosDX セットアップウィザードへようこそ", IDC_STARTTITLE, 115, 8, 195, 24
+    LTEXT "このウィザードは、あなたのコンピュータに WinDosDX をインストールまたはアップグレードし、追加のセットアップの準備をします。", IDC_STATIC, 115, 40, 195, 27
 ////
     GROUPBOX " 重要なお知らせ ", IDC_WARNTEXT1, 115, 70, 200, 90, BS_CENTER
-    LTEXT "ReactOS はアルファ段階にあります: 機能は未完成で、現在、活発に開発されています。日常的に使用する OS としては使用せず、評価とテストにのみ使用することをオススメします。\n\
+    LTEXT "WinDosDX はアルファ段階にあります: 機能は未完成で、現在、活発に開発されています。日常的に使用する OS としては使用せず、評価とテストにのみ使用することをオススメします。\n\
 データが破損したり、ハードウェアが損傷する恐れがあります。", IDC_WARNTEXT2, 120, 80, 190, 50, SS_CENTER
-    LTEXT "実際のハードウェアで ReactOS を実行する場合は、データをバックアップするか、予備のコンピュータでテストしてください。", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
+    LTEXT "実際のハードウェアで WinDosDX を実行する場合は、データをバックアップするか、予備のコンピュータでテストしてください。", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
 ////
     LTEXT "セットアップを続行するには [次へ] をクリックしてください。", IDC_STATIC, 115, 169, 195, 17
 END
@@ -21,17 +21,17 @@ IDD_TYPEPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "MS UI Gothic"
 BEGIN
-    AUTORADIOBUTTON "ReactOS をインストールする(&I)", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
-    AUTORADIOBUTTON "ReactOS を更新または修正する(&U)", IDC_UPDATE, 7, 80, 277, 10
-    LTEXT "ReactOS を新しくインストールします。このオプションは、あなたのファイル、設定、プログラムを維持しません。あなたはディスクとパーティションに変更を加えることができます。", IDC_INSTALLTEXT, 19, 36, 279, 27
-    LTEXT "インストールされた ReactOS を更新または修正します。このオプションはあなたのファイル、設定、プログラムを保持します。このオプションは、このコンピュータですでに ReactOS がインストール済みのときのみ利用できます。", IDC_UPDATETEXT, 19, 96, 279, 27
+    AUTORADIOBUTTON "WinDosDX をインストールする(&I)", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
+    AUTORADIOBUTTON "WinDosDX を更新または修正する(&U)", IDC_UPDATE, 7, 80, 277, 10
+    LTEXT "WinDosDX を新しくインストールします。このオプションは、あなたのファイル、設定、プログラムを維持しません。あなたはディスクとパーティションに変更を加えることができます。", IDC_INSTALLTEXT, 19, 36, 279, 27
+    LTEXT "インストールされた WinDosDX を更新または修正します。このオプションはあなたのファイル、設定、プログラムを保持します。このオプションは、このコンピュータですでに WinDosDX がインストール済みのときのみ利用できます。", IDC_UPDATETEXT, 19, 96, 279, 27
 END
 
 IDD_UPDATEREPAIRPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "MS UI Gothic"
 BEGIN
-    LTEXT       "セットアップは、以下のリストのうち、一つをアップグレードできます。また、ReactOS インストールが壊れていれば、セットアップは修正を試すことができます。", IDC_STATIC, 6, 6, 303, 18
+    LTEXT       "セットアップは、以下のリストのうち、一つをアップグレードできます。また、WinDosDX インストールが壊れていれば、セットアップは修正を試すことができます。", IDC_STATIC, 6, 6, 303, 18
     CONTROL     "", IDC_NTOSLIST, "SysListView32", LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP, 6, 30, 303, 90
     PUSHBUTTON  "アップグレードしない(&D)", IDC_SKIPUPGRADE, 218, 127, 92, 14
     LTEXT       "次へをクリックしてOSのインストールをアップグレードするか、「アップグレードしない」をクリックしてください。", IDC_STATIC, 7, 124, 207, 16
@@ -99,7 +99,7 @@ STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "高度なインストール オプション"
 FONT 9, "MS UI Gothic"
 BEGIN
-    LTEXT "ReactOS をインストールするディレクトリを選択してください(&D)", IDC_STATIC, 7, 9, 291, 10
+    LTEXT "WinDosDX をインストールするディレクトリを選択してください(&D)", IDC_STATIC, 7, 9, 291, 10
     EDITTEXT IDC_PATH, 7, 23, 291, 13
     GROUPBOX "ブートローダー", IDC_STATIC, 7, 45, 291, 60
     LTEXT "FreeLoader ブートローダーのインストール位置:\n\nデフォルトでは、ブート ディスクのシステム パーティション (および BIOS ベースのコンピュータの場合はマスター ブート レコードまたはボリューム ブート レコード) にインストールされます。", IDC_STATIC, 13, 57, 279, 44
@@ -128,7 +128,7 @@ BEGIN
     EDITTEXT IDC_DESTDRIVE, 95, 77, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
     LTEXT "インストール先フォルダ:", IDC_STATIC, 6, 89, 88, 11
     EDITTEXT IDC_PATH, 95, 89, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
-    AUTOCHECKBOX "すべてのインストール設定が正しいことを確認しました。また、ReactOS がまだアルファ版であり、あなたのコンピュータやデータを壊す恐れがあることを理解しています。",
+    AUTOCHECKBOX "すべてのインストール設定が正しいことを確認しました。また、WinDosDX がまだアルファ版であり、あなたのコンピュータやデータを壊す恐れがあることを理解しています。",
         IDC_CONFIRM_INSTALL, 7, 104, 309, 18, BS_MULTILINE | WS_GROUP | WS_TABSTOP
     LTEXT "すべてのインストール設定が正しいことを確認し、インストール プロセスを開始するために、インストールをクリックしてください。", IDC_STATIC, 7, 124, 303, 18
 END
@@ -147,7 +147,7 @@ STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "MS UI Gothic"
 BEGIN
     LTEXT "Restarting your Computer", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "ReactOS セットアップの最初の段階が正しく完了しました。", IDC_STATIC, 115, 40, 195, 24
+    LTEXT "WinDosDX セットアップの最初の段階が正しく完了しました。", IDC_STATIC, 115, 40, 195, 24
     // The following text can be replaced by IDS_FINISH_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Setup will now restart your computer to continue with the second installation step.\n\nYour computer will automatically restart in 15 seconds or when you click on Restart.", IDC_FINISHTEXT, 115, 78, 195, 56
@@ -158,8 +158,8 @@ IDD_ABORTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "The ReactOS Setup Wizard ended prematurely", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "The first ReactOS installation step prematurely ended because of an error or because you have canceled it.\n\nYou will be able to run the Setup Wizard at a later time to install or upgrade ReactOS.", IDC_STATIC, 115, 40, 195, 48
+    LTEXT "The WinDosDX Setup Wizard ended prematurely", IDC_FINISHTITLE, 115, 8, 195, 24
+    LTEXT "The first WinDosDX installation step prematurely ended because of an error or because you have canceled it.\n\nYou will be able to run the Setup Wizard at a later time to install or upgrade WinDosDX.", IDC_STATIC, 115, 40, 195, 48
     // The following text can be replaced by IDS_ABORT_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Your computer will automatically restart in 15 seconds or when you click on Restart.", IDC_FINISHTEXT, 115, 110, 195, 24
@@ -170,11 +170,11 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_CAPTION "ReactOS セットアップ"
+    IDS_CAPTION "WinDosDX セットアップ"
     IDS_TYPETITLE "インストールの種類"
-    IDS_TYPESUBTITLE "新しい ReactOS インストールをセットアップしたり、既存のインストールを更新/修復したりできます。"
-    IDS_UPDATETITLE "ReactOS のアップデートまたは修復"
-    IDS_UPDATESUBTITLE "更新または修復する既存の ReactOS インストールを選択します。"
+    IDS_TYPESUBTITLE "新しい WinDosDX インストールをセットアップしたり、既存のインストールを更新/修復したりできます。"
+    IDS_UPDATETITLE "WinDosDX のアップデートまたは修復"
+    IDS_UPDATESUBTITLE "更新または修復する既存の WinDosDX インストールを選択します。"
     IDS_DEVICETITLE "基本デバイスをセットアップします"
     IDS_DEVICESUBTITLE "ディスプレイとキーボードの設定をします。"
     IDS_DRIVETITLE "インストール先パーティションとシステムフォルダをセットアップします"
@@ -183,7 +183,7 @@ BEGIN
     IDS_SUMMARYSUBTITLE "インストールするデバイスを適用する前にチェックするインストール プロパティをリストアップします。"
     IDS_PROCESSTITLE "パーティションをセットアップし、ファイルをコピーし、システムをセットアップします"
     IDS_PROCESSSUBTITLE "パーティションを作成・フォーマットし、ファイルをコピーし、ブートローダをインストール・セットアップします。"
-    IDS_ABORTSETUP "ReactOS はあなたのコンピュータへのインストールが完了していません。もしセットアップをここで中断すれば、ReactOS をインストールするために、セットアップを再起動する必要があります。本当に中断しますか?"
+    IDS_ABORTSETUP "WinDosDX はあなたのコンピュータへのインストールが完了していません。もしセットアップをここで中断すれば、WinDosDX をインストールするために、セットアップを再起動する必要があります。本当に中断しますか?"
     IDS_ABORTSETUP2 "インストールを中断しますか?"
     IDS_NO_TXTSETUP_SIF "'txtsetup.sif'が見つかりません。\nセットアップは続行できません。"
     IDS_FINISH_NO_REBOOT "Setup needs to restart your computer to continue with the second installation step.\n\nClick on Restart to immediately restart your computer.\nClick on Postpone to quit the installer and restart your computer at a later time."
@@ -269,7 +269,7 @@ BEGIN
 スペースは使用できません。"
 
     IDS_ERROR_DIRECTORY_NAME_TITLE "インストール パスが無効です"
-    IDS_ERROR_DIRECTORY_NAME "ReactOS のインストールパスは DOS 8.3の命名規則に従い、英数字、ハイフン(-)、ピリオド(.)のみを含める必要があります。スペースは使用できません。"
+    IDS_ERROR_DIRECTORY_NAME "WinDosDX のインストールパスは DOS 8.3の命名規則に従い、英数字、ハイフン(-)、ピリオド(.)のみを含める必要があります。スペースは使用できません。"
 
     IDS_ERROR_CREATE_PARTITION_TITLE "パーティションの作成"
     IDS_ERROR_CREATE_PARTITION "新しいパーティションの作成に失敗しました。"
@@ -280,8 +280,8 @@ BEGIN
 
     IDS_ERROR_WRITE_PTABLE "セットアップはパーティション テーブルの書き込みに失敗しました。"
 
-    IDS_ERROR_SYSTEM_PARTITION "ReactOS セットアップは、システム上でサポートされているシステム パーティションを見つけられなかったか、\
-新しいパーティションを作成できませんでした。そのようなパーティションがないと、セットアップ プログラムは ReactOS をインストールできません。\n\
+    IDS_ERROR_SYSTEM_PARTITION "WinDosDX セットアップは、システム上でサポートされているシステム パーティションを見つけられなかったか、\
+新しいパーティションを作成できませんでした。そのようなパーティションがないと、セットアップ プログラムは WinDosDX をインストールできません。\n\
 「OK」をクリックしてパーティション選択リストに戻ります。"
 
     IDS_ERROR_FORMAT_UNRECOGNIZED_VOLUME "パーティションをフォーマットしようとしましたが、ボリュームが認識されませんでした。"

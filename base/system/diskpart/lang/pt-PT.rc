@@ -11,7 +11,7 @@ LANGUAGE LANG_PORTUGUESE, SUBLANG_NEUTRAL
 /* Basic application information */
 STRINGTABLE
 BEGIN
-    IDS_APP_HEADER "Particionamento de disco do ReactOS"
+    IDS_APP_HEADER "Particionamento de disco do WinDosDX"
     IDS_APP_USAGE "\nInterpretador de particionamento de disco.\n\n\
 Utilização: DISKPART [/S Nome de ficheiro] [/T T limite] [/?]\n\n\
 /S Nome de ficheiro\tExecuta o script fornecido..\n\

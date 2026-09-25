@@ -82,7 +82,7 @@ BEGIN
     END
     POPUP "Ya&rdım", FCIDM_MENU_HELP
     BEGIN
-        MENUITEM "&ReactOS Hakkında", IDM_HELP_ABOUT
+        MENUITEM "&WinDosDX Hakkında", IDM_HELP_ABOUT
     END
 END
 
@@ -346,6 +346,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_PARSE_ADDR_ERR_TITLE "ReactOS Gezgini"
-    IDS_PARSE_ADDR_ERR_TEXT "ReactOS Gezgini '%1' ögesini bulamadı. Girdiğiniz değeri kontrol edin ve yeniden arayın."
+    IDS_PARSE_ADDR_ERR_TITLE "WinDosDX Gezgini"
+    IDS_PARSE_ADDR_ERR_TEXT "WinDosDX Gezgini '%1' ögesini bulamadı. Girdiğiniz değeri kontrol edin ve yeniden arayın."
 END

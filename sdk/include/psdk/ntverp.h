@@ -144,8 +144,8 @@
 // Company and Trademarks
 //
 #define VER_COMPANYNAME_STR                 \
-    "ReactOS Project"
+    "WinDosDX Project"
 #define VER_PRODUCTNAME_STR                 \
-    "ReactOS Operating System"
+    "WinDosDX Operating System"
 #define VER_LEGALTRADEMARKS_STR             \
-    "ReactOS is a registered trademark of ReactOS Deutschland e.V."
+    ""

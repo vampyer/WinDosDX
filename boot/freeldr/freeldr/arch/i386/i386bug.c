@@ -117,7 +117,7 @@ i386PrintExceptionText(ULONG TrapIndex, PKTRAP_FRAME TrapFrame, PKSPECIAL_REGIST
     i386_ScreenPosY = 0;
 
     PrintText("FreeLdr " KERNEL_VERSION_STR " " KERNEL_VERSION_BUILD_STR "\n"
-              "Report this error on the ReactOS Bug Tracker: https://jira.reactos.org\n\n"
+              "Report this error on the WinDosDX Bug Tracker: https://jira.reactos.org\n\n"
               "0x%02lx: Exception %02X: %s\n\n",
               TrapIndex,
               TrapIndex,

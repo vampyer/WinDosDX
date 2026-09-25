@@ -153,7 +153,7 @@ ReadFreeldrSection(HINF hInf, WCHAR *szSectionName)
 
         if (!_wcsnicmp(szName, L"BootType", 8))
         {
-            if (!_wcsnicmp(szValue, L"ReactOS", 7))
+            if (!_wcsnicmp(szValue, L"WinDosDX", 7))
             {
                 // FIXME: Store as enum
                 pRecord->BootType = 1;

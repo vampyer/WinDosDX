@@ -1,5 +1,5 @@
 /*
- * PROJECT:     ReactOS GUI first stage setup application
+ * PROJECT:     WinDosDX GUI first stage setup application
  * LICENSE:     GPL-2.0-or-later (https://spdx.org/licenses/GPL-2.0-or-later)
  * PURPOSE:     Spanish resource file
  * TRANSLATORS: Copyright 2008 Javier Remacha <remialdo@gmail.com>
@@ -17,17 +17,17 @@ IDD_STARTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "Bienvenido al instalador de ReactOS", IDC_STARTTITLE, 115, 8, 195, 24
-    LTEXT "Este asistente instalará o actualizará ReactOS en su equipo, \
+    LTEXT "Bienvenido al instalador de WinDosDX", IDC_STARTTITLE, 115, 8, 195, 24
+    LTEXT "Este asistente instalará o actualizará WinDosDX en su equipo, \
 y preparará la segunda parte de la instalación.", IDC_STATIC, 115, 40, 195, 27
 ////
     GROUPBOX " INFORMACIÓN IMPORTANTE ", IDC_WARNTEXT1, 115, 70, 200, 90, BS_CENTER
-    LTEXT "ReactOS está en fase alfa, con limitaciones importantes y \
+    LTEXT "WinDosDX está en fase alfa, con limitaciones importantes y \
 todavía en desarrollo. Se recomienda usarlo solo para \
 evaluación y pruebas, y no como su sistema operativo de uso diario.\n\
 Puede perder sus datos o dañar su equipo.", IDC_WARNTEXT2, 120, 80, 190, 50, SS_CENTER
     LTEXT "Asegúrese de tener sus datos bien respaldados y pruébelo en un equipo secundario \
-si intenta ejecutar ReactOS en hardware real.", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
+si intenta ejecutar WinDosDX en hardware real.", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
 ////
     LTEXT "Pulse Siguiente para continuar con la instalación.", IDC_STATIC, 115, 169, 195, 17
 END
@@ -36,17 +36,17 @@ IDD_TYPEPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    AUTORADIOBUTTON "&Instalar ReactOS", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
-    AUTORADIOBUTTON "&Actualizar o reparar ReactOS", IDC_UPDATE, 7, 80, 277, 10
-    LTEXT "Instala una nueva copia de ReactOS. Esta opción borrará sus archivos, programas y ajustes. Realizando cambios a su disco duro y particiones.", IDC_INSTALLTEXT, 19, 36, 279, 27
-    LTEXT "Actualiza o repara una instalación existente de ReactOS. Esta opción mantiene sus archivos, programas y ajustes. Y sólo está disponible si ReactOS ya se ha instalado previamente en este equipo.", IDC_UPDATETEXT, 19, 96, 279, 27
+    AUTORADIOBUTTON "&Instalar WinDosDX", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
+    AUTORADIOBUTTON "&Actualizar o reparar WinDosDX", IDC_UPDATE, 7, 80, 277, 10
+    LTEXT "Instala una nueva copia de WinDosDX. Esta opción borrará sus archivos, programas y ajustes. Realizando cambios a su disco duro y particiones.", IDC_INSTALLTEXT, 19, 36, 279, 27
+    LTEXT "Actualiza o repara una instalación existente de WinDosDX. Esta opción mantiene sus archivos, programas y ajustes. Y sólo está disponible si WinDosDX ya se ha instalado previamente en este equipo.", IDC_UPDATETEXT, 19, 96, 279, 27
 END
 
 IDD_UPDATEREPAIRPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT       "El instalador puede actualizar una de las instalaciones disponibles listadas a continuación o, si la instalación de ReactOS está dañada, intentar repararla.", IDC_STATIC, 6, 6, 303, 18
+    LTEXT       "El instalador puede actualizar una de las instalaciones disponibles listadas a continuación o, si la instalación de WinDosDX está dañada, intentar repararla.", IDC_STATIC, 6, 6, 303, 18
     CONTROL     "", IDC_NTOSLIST, "SysListView32", LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP, 6, 30, 303, 90
     PUSHBUTTON  "&No actualizar", IDC_SKIPUPGRADE, 230, 128, 80, 14
     LTEXT       "Haga clic en Siguiente para actualizar el sistema operativo seleccionado, o en No actualizar para realizar una nueva instalación.", IDC_STATIC, 7, 124, 222, 16
@@ -114,7 +114,7 @@ STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "Opciones avanzadas de instalación"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "Elija la &carpeta donde desea instalar ReactOS:", IDC_STATIC, 7, 9, 291, 10
+    LTEXT "Elija la &carpeta donde desea instalar WinDosDX:", IDC_STATIC, 7, 9, 291, 10
     EDITTEXT IDC_PATH, 7, 23, 291, 13
     GROUPBOX "Cargador de arranque", IDC_STATIC, 7, 45, 291, 60
     LTEXT "Seleccione dónde instalar el cargador\nde arranque FreeLoader.\n\nDe forma predeterminada se instalará en la partición del sistema del disco de arranque (en el Registro de Arranque Maestro (MBR), o del Volumen (VBR) para equipos con BIOS).", IDC_STATIC, 13, 57, 279, 44
@@ -143,7 +143,7 @@ BEGIN
     EDITTEXT IDC_DESTDRIVE, 95, 77, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
     LTEXT "Carpeta de destino:", IDC_STATIC, 18, 89, 74, 11
     EDITTEXT IDC_PATH, 95, 89, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
-    AUTOCHECKBOX "Confirmo que todos mis ajustes de instalación son correctos. También sé que ReactOS está en una fase de desarrollo alfa temprana y podría dañar mi equipo y perder mis datos.",
+    AUTOCHECKBOX "Confirmo que todos mis ajustes de instalación son correctos. También sé que WinDosDX está en una fase de desarrollo alfa temprana y podría dañar mi equipo y perder mis datos.",
         IDC_CONFIRM_INSTALL, 7, 100, 309, 24, BS_MULTILINE | WS_GROUP | WS_TABSTOP
     LTEXT "Asegúrese de que todos sus ajustes son correctos y\nhaga clic en Instalar para empezar el proceso de instalación.", IDC_STATIC, 7, 124, 303, 18
 END
@@ -162,7 +162,7 @@ STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT "Reiniciando el equipo", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "La primera parte de la instalación de ReactOS se ha completado satisfactoriamente.", IDC_STATIC, 115, 40, 195, 24
+    LTEXT "La primera parte de la instalación de WinDosDX se ha completado satisfactoriamente.", IDC_STATIC, 115, 40, 195, 24
     // The following text can be replaced by IDS_FINISH_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "El instalador reiniciará su equipo para continuar con el segundo paso de instalación.\n\nSu equipo se reiniciará automáticamente en unos 15 segundos o tras hacer clic en el botón de Reiniciar.", IDC_FINISHTEXT, 115, 78, 195, 56
@@ -173,8 +173,8 @@ IDD_ABORTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "El instalador de ReactOS ha cancelado la instalación", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "El primer paso de instalación de ReactOS ha terminado por error o por petición del usuario.\n\nPodrá volver a instalar o actualizar ReactOS más tarde.", IDC_STATIC, 115, 40, 195, 48
+    LTEXT "El instalador de WinDosDX ha cancelado la instalación", IDC_FINISHTITLE, 115, 8, 195, 24
+    LTEXT "El primer paso de instalación de WinDosDX ha terminado por error o por petición del usuario.\n\nPodrá volver a instalar o actualizar WinDosDX más tarde.", IDC_STATIC, 115, 40, 195, 48
     // The following text can be replaced by IDS_ABORT_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Su equipo se reiniciará automáticamente en unos 15 segundos o tras hacer clic en el botón de Reiniciar.", IDC_FINISHTEXT, 115, 110, 195, 24
@@ -185,11 +185,11 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_CAPTION "Instalación de ReactOS"
+    IDS_CAPTION "Instalación de WinDosDX"
     IDS_TYPETITLE "Tipo de instalación"
-    IDS_TYPESUBTITLE "Puede configurar una nueva instalación de ReactOS o actualizar/reparar una instalación existente."
-    IDS_UPDATETITLE "Actualizar o reparar ReactOS"
-    IDS_UPDATESUBTITLE "Elija qué instalación existente de ReactOS desea actualizar o reparar."
+    IDS_TYPESUBTITLE "Puede configurar una nueva instalación de WinDosDX o actualizar/reparar una instalación existente."
+    IDS_UPDATETITLE "Actualizar o reparar WinDosDX"
+    IDS_UPDATESUBTITLE "Elija qué instalación existente de WinDosDX desea actualizar o reparar."
     IDS_DEVICETITLE "Instalación de los dispositivos básicos"
     IDS_DEVICESUBTITLE "Seleccione los ajustes de la pantalla y el teclado."
     IDS_DRIVETITLE "Crear la partición para la instalación y la carpeta del sistema"
@@ -198,7 +198,7 @@ BEGIN
     IDS_SUMMARYSUBTITLE "Lista las propiedades de la instalación para su verificación antes de aplicarlas al dispositivo instalado."
     IDS_PROCESSTITLE "Preparar partición, copiar archivos e instalar sistema"
     IDS_PROCESSSUBTITLE "Crear y formatear partición, copiar archivos, instalar e instalar el cargador de arranque."
-    IDS_ABORTSETUP "ReactOS no está completamente instalado en su equipo. Si sale ahora de la instalación tendrá que empezar otra vez de cero para poder instalar ReactOS. ¿Seguro que quiere salir?"
+    IDS_ABORTSETUP "WinDosDX no está completamente instalado en su equipo. Si sale ahora de la instalación tendrá que empezar otra vez de cero para poder instalar WinDosDX. ¿Seguro que quiere salir?"
     IDS_ABORTSETUP2 "¿Abortar instalación?"
     IDS_NO_TXTSETUP_SIF "No se pudo encontrar 'txtsetup.sif'.\nLa instalación no puede continuar."
     IDS_FINISH_NO_REBOOT "El asistente necesita reiniciar su equipo para seguir con el segundo paso de instalación.\n\nUtilice el botón de Reiniciar para reiniciar ahora mismo el equipo,\no haga clic en Posponer para salir del instalador y reiniciar el equipo en otro momento."
@@ -284,7 +284,7 @@ alfanuméricos (a-z, A-Z, 0-9), y\n . \\ - _\n\
 No se permiten espacios."
 
     IDS_ERROR_DIRECTORY_NAME_TITLE "Ruta de instalación incorrecta"
-    IDS_ERROR_DIRECTORY_NAME "La ruta de instalación de ReactOS debe seguir el esquema de nombres DOS 8.3, \
+    IDS_ERROR_DIRECTORY_NAME "La ruta de instalación de WinDosDX debe seguir el esquema de nombres DOS 8.3, \
 y contener únicamente letras, dígitos, guiones y puntos. No se permiten espacios."
 
     IDS_ERROR_CREATE_PARTITION_TITLE "Crear partición"
@@ -296,9 +296,9 @@ y contener únicamente letras, dígitos, guiones y puntos. No se permiten espaci
 
     IDS_ERROR_WRITE_PTABLE "La instalación no pudo escribir las tablas de partición."
 
-    IDS_ERROR_SYSTEM_PARTITION "El instalador de ReactOS no pudo encontrar una partición del sistema compatible\n\
+    IDS_ERROR_SYSTEM_PARTITION "El instalador de WinDosDX no pudo encontrar una partición del sistema compatible\n\
 en su sistema o no pudo crear una nueva. Sin dicha partición\n\
-el programa de instalación no puede instalar ReactOS.\
+el programa de instalación no puede instalar WinDosDX.\
 \nHaga clic en Aceptar para volver a la lista de selección de particiones."
 
     IDS_ERROR_FORMAT_UNRECOGNIZED_VOLUME "Volumen no reconocido al intentar formatear la partición."

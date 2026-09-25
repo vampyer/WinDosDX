@@ -168,10 +168,10 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_APPTITLE "Central de aplicações ReactOS"
+    IDS_APPTITLE "Central de aplicações WinDosDX"
     IDS_APP_AUTHORS "Copyright 2009 Dmitry Chapyshev"
-    IDS_WELCOME_TITLE "Bem-vindo(a) à Central de aplicações ReactOS!"
-    IDS_WELCOME_TEXT "Escolha uma categoria à esquerda, de seguida escolha uma aplicação para instalar ou desinstalar.\nWeb Site ReactOS: "
+    IDS_WELCOME_TITLE "Bem-vindo(a) à Central de aplicações WinDosDX!"
+    IDS_WELCOME_TEXT "Escolha uma categoria à esquerda, de seguida escolha uma aplicação para instalar ou desinstalar.\nWeb Site WinDosDX: "
     IDS_WELCOME_URL "https://reactos.org"
 
     IDS_APPWIZ_TITLE "Add/Remove Programs"

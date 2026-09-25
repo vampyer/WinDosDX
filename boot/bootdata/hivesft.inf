@@ -310,7 +310,7 @@ HKLM,"SOFTWARE\Microsoft\Windows\CurrentVersion\Control Panel\Cpls",,0x00000012
 HKLM,"SOFTWARE\Microsoft\Windows\CurrentVersion\Control Panel\Cpls","Console",0x00020000,"%SystemRoot%\system32\console.dll"
 
 ; Cursors Schemes
-HKLM,"SOFTWARE\Microsoft\Windows\CurrentVersion\Control Panel\Cursors\Schemes","ReactOS Default",0x00020000,""",,,,,,,,,,,,,"""
+HKLM,"SOFTWARE\Microsoft\Windows\CurrentVersion\Control Panel\Cursors\Schemes","WinDosDX Default",0x00020000,""",,,,,,,,,,,,,"""
 
 ; Advanced
 HKLM,"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced",,0x00000012
@@ -589,7 +589,7 @@ HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers","",0x0
 
 ; Version Information
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion","InstallDate",0x00010003,0
-HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion","ProductName",2,"ReactOS"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion","ProductName",2,"WinDosDX"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion","RegDone",0x00000002,""
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion","RegisteredOrganization",2,""
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion","RegisteredOwner",2,""

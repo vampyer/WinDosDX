@@ -9,7 +9,7 @@
 #pragma once
 
 /* Language-independent Vendor strings */
-#define VENDOR_REACTOS      L"ReactOS"
+#define VENDOR_REACTOS      L"WinDosDX"
 #define VENDOR_MICROSOFT    L"Microsoft"
 
 typedef struct _NTOS_INSTALLATION

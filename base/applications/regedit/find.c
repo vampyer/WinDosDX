@@ -14,7 +14,7 @@
 
 static WCHAR s_szFindWhat[256];
 static const WCHAR s_szFindFlags[] = L"FindFlags";
-static const WCHAR s_szFindFlagsR[] = L"FindFlagsReactOS";
+static const WCHAR s_szFindFlagsR[] = L"FindFlagsWinDosDX";
 static HWND s_hwndAbortDialog;
 static BOOL s_bAbort;
 

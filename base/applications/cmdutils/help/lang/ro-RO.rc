@@ -15,7 +15,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_USAGE "Oferă informații de manual referitoare la comenzile ReactOS.\n\n\
+    IDS_USAGE "Oferă informații de manual referitoare la comenzile WinDosDX.\n\n\
 HELP [comandă]\n\n\
   comandă - Afișează informații de manual pentru această comandă.\n"
     IDS_HELP1 "Enumeră toate comenzile disponibile (+ descriere)\n\n\

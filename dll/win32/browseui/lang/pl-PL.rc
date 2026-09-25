@@ -81,7 +81,7 @@ BEGIN
     END
     POPUP "Pomo&c", FCIDM_MENU_HELP
     BEGIN
-        MENUITEM "&ReactOS - informacje", IDM_HELP_ABOUT
+        MENUITEM "&WinDosDX - informacje", IDM_HELP_ABOUT
     END
 END
 
@@ -345,6 +345,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_PARSE_ADDR_ERR_TITLE "Eksplorator ReactOS"
-    IDS_PARSE_ADDR_ERR_TEXT "Eksplorator systemu ReactOS nie może znaleźć elementu '%1'. Sprawdź pisownię i ponów próbę."
+    IDS_PARSE_ADDR_ERR_TITLE "Eksplorator WinDosDX"
+    IDS_PARSE_ADDR_ERR_TEXT "Eksplorator systemu WinDosDX nie może znaleźć elementu '%1'. Sprawdź pisownię i ponów próbę."
 END

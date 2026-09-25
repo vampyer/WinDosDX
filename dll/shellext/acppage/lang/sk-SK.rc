@@ -13,7 +13,7 @@ STYLE DS_SHELLFONT | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "Kompatibilita"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT "Ak máte problémy so spustením tohto programu v systéme ReactOS, vyberte operačný systém, pod názvom ktorého sa systém ReactOS ohlási programu.\nMajte prosím na zreteli, že táto funkcia je stále vo vývoji.", IDC_EXPLANATION, 7, 7, 210, 31
+    LTEXT "Ak máte problémy so spustením tohto programu v systéme WinDosDX, vyberte operačný systém, pod názvom ktorého sa systém WinDosDX ohlási programu.\nMajte prosím na zreteli, že táto funkcia je stále vo vývoji.", IDC_EXPLANATION, 7, 7, 210, 31
     GROUPBOX "Kompatibilný režim", IDC_COMPATGROUP, 7, 41, 210, 49
     CHECKBOX "Spustiť tento program v režime kompatibility pre:", IDC_CHKRUNCOMPATIBILITY, 18, 57, 188, 10, BS_AUTOCHECKBOX | WS_TABSTOP
     COMBOBOX IDC_COMPATIBILITYMODE, 18, 70, 188, 85, CBS_HASSTRINGS | CBS_DROPDOWNLIST | WS_TABSTOP | WS_DISABLED
@@ -46,5 +46,5 @@ STRINGTABLE
 BEGIN
     IDS_COMPAT_TITLE "Kompatibilita"
     IDS_FAILED_NETWORK "Režim kompatibility nie je možné pri tomto programe nastaviť, lebo program sa nachádza na sieťovom úložisku."
-    IDS_FAILED_PROTECTED "Režim kompatibility nie je možné pri tomto programe nastaviť, lebo program je súčasťou ReactOS."
+    IDS_FAILED_PROTECTED "Režim kompatibility nie je možné pri tomto programe nastaviť, lebo program je súčasťou WinDosDX."
 END

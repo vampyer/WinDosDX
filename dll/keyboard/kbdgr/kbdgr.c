@@ -354,10 +354,10 @@ ROSDATA VSC_LPWSTR extended_key_names[] = {
   { 0x51, L"Bild-Nach-Unten" },
   { 0x52, L"Einfg" },
   { 0x53, L"Entf" },
-  { 0x54, L"<ReactOS>" },
+  { 0x54, L"<WinDosDX>" },
   { 0x55, L"Hilfe" },
-  { 0x56, L"Linke <ReactOS>" },
-  { 0x5b, L"Rechte <ReactOS>" },
+  { 0x56, L"Linke <WinDosDX>" },
+  { 0x5b, L"Rechte <WinDosDX>" },
   { 0, NULL },
 };
 

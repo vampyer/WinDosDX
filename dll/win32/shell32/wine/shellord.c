@@ -1678,7 +1678,7 @@ SHELL32_RunControlPanel(_In_ PCWSTR commandLine, _In_opt_ HWND parent)
      * "If the specified Control Panel item is already running, SHRunControlPanel
      *  attempts to switch to that instance rather than opening a new instance."
      * This function is not supported as of Windows Vista, where it always returns FALSE.
-     * However we need to keep it "alive" even when ReactOS is compliled as NT6+
+     * However we need to keep it "alive" even when WinDosDX is compliled as NT6+
      * in order to keep control panel elements launch commands.
      */
     WCHAR parameters[MAX_PATH] = L"shell32.dll,Control_RunDLL ";

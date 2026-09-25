@@ -473,7 +473,7 @@ TypeDlgProc(
                 EnableDlgItem(hwndDlg, IDC_UPDATETEXT, FALSE);
             }
 
-            /* Check the "Install ReactOS" radio button and ensure it is initially focused */
+            /* Check the "Install WinDosDX" radio button and ensure it is initially focused */
             CheckRadioButton(hwndDlg, IDC_INSTALL, IDC_UPDATE, IDC_INSTALL);
             SetFocus(GetDlgItem(hwndDlg, IDC_INSTALL));
             return FALSE;
@@ -503,7 +503,7 @@ TypeDlgProc(
             {
                 case PSN_SETACTIVE:
                 {
-                    /* Ensure the "Install ReactOS" radio button is checked if we don't have
+                    /* Ensure the "Install WinDosDX" radio button is checked if we don't have
                      * a selected installation (default case), which can also happen if the
                      * user clicked on the "Do not upgrade" button on the Upgrade/Repair
                      * selection page, then went back here. */
@@ -1215,7 +1215,7 @@ SummaryDlgProc(
                     else
                     {
                         StringCchCopyW(CurrentItemText, ARRAYSIZE(CurrentItemText),
-                                       L"New ReactOS installation");
+                                       L"New WinDosDX installation");
                     }
                     SetDlgItemTextW(hwndDlg, IDC_INSTALLTYPE, CurrentItemText);
 

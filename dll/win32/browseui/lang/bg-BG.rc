@@ -336,6 +336,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_PARSE_ADDR_ERR_TITLE "ReactOS Explorer"
-    IDS_PARSE_ADDR_ERR_TEXT "ReactOS Explorer не намира '%1'. Проверете правописа и опитайте отново."
+    IDS_PARSE_ADDR_ERR_TITLE "WinDosDX Explorer"
+    IDS_PARSE_ADDR_ERR_TEXT "WinDosDX Explorer не намира '%1'. Проверете правописа и опитайте отново."
 END

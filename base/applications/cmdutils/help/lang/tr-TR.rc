@@ -9,7 +9,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_USAGE "ReactOS komutları için yardım bilgisini sağlar.\n\n\
+    IDS_USAGE "WinDosDX komutları için yardım bilgisini sağlar.\n\n\
 HELP [komut]\n\n\
   komut - Bu komut için yardım bilgisini görüntüler.\n"
     IDS_HELP1 "Tüm kullanılabilir komutların (ve tanımların) listesi:\n\n\

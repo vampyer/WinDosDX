@@ -1,5 +1,5 @@
 /*
- * PROJECT:     ReactOS GUI first stage setup application
+ * PROJECT:     WinDosDX GUI first stage setup application
  * LICENSE:     GPL-2.0-or-later (https://spdx.org/licenses/GPL-2.0-or-later)
  * PURPOSE:     Chinese (Traditional) resource file
  * TRANSLATORS: Copyright 2016 Henry Tang Ih <henrytang2@hotmail.com>
@@ -15,15 +15,15 @@ IDD_STARTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "新細明體"
 BEGIN
-    LTEXT "歡迎使用 ReactOS 安裝精靈", IDC_STARTTITLE, 115, 8, 195, 24
-    LTEXT "這個精靈將在您的電腦上安裝或更新 ReactOS， \
+    LTEXT "歡迎使用 WinDosDX 安裝精靈", IDC_STARTTITLE, 115, 8, 195, 24
+    LTEXT "這個精靈將在您的電腦上安裝或更新 WinDosDX， \
 並為接下來的第二階段安裝做好準備。", IDC_STATIC, 115, 40, 195, 27
 ////
     GROUPBOX " 重要資訊 ", IDC_WARNTEXT1, 115, 70, 200, 90, BS_CENTER
-    LTEXT "ReactOS 目前處於 Alpha 測試階段：功能尚未完善且仍在積極開發中。\
+    LTEXT "WinDosDX 目前處於 Alpha 測試階段：功能尚未完善且仍在積極開發中。\
 建議您將本操作系統用作評估和測試，而非作為日常使用。\n\
 本操作系統可能會導致資料損毁或對電腦硬體造成損害。", IDC_WARNTEXT2, 120, 80, 190, 50, SS_CENTER
-    LTEXT "若您打算在真實硬體中執行 ReactOS，\
+    LTEXT "若您打算在真實硬體中執行 WinDosDX，\
 請備份您的資料或使用非主力電腦來進行測試。", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
 ////
     LTEXT "按［下一步］繼續安裝程式。", IDC_STATIC, 115, 169, 195, 17
@@ -33,17 +33,17 @@ IDD_TYPEPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "新細明體"
 BEGIN
-    AUTORADIOBUTTON "安裝 ReactOS(&I)", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
-    AUTORADIOBUTTON "修復或更新 ReactOS(&U)", IDC_UPDATE, 7, 80, 277, 10
-    LTEXT "安裝 ReactOS 的新副本。此選項不會儲存您的檔案、設定和程式。您可以對磁碟和磁碟區進行更改。", IDC_INSTALLTEXT, 19, 36, 279, 27
-    LTEXT "更新或修復已安裝的 ReactOS 副本。此選項會儲存您的檔案、設定和程式。只有在 ReactOS 已經安裝在此電腦時才能使用此選項。", IDC_UPDATETEXT, 19, 96, 279, 27
+    AUTORADIOBUTTON "安裝 WinDosDX(&I)", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
+    AUTORADIOBUTTON "修復或更新 WinDosDX(&U)", IDC_UPDATE, 7, 80, 277, 10
+    LTEXT "安裝 WinDosDX 的新副本。此選項不會儲存您的檔案、設定和程式。您可以對磁碟和磁碟區進行更改。", IDC_INSTALLTEXT, 19, 36, 279, 27
+    LTEXT "更新或修復已安裝的 WinDosDX 副本。此選項會儲存您的檔案、設定和程式。只有在 WinDosDX 已經安裝在此電腦時才能使用此選項。", IDC_UPDATETEXT, 19, 96, 279, 27
 END
 
 IDD_UPDATEREPAIRPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "新細明體"
 BEGIN
-    LTEXT       "安裝程式可以升級下列的其中一個可用的 ReactOS 安裝。如果某個 ReactOS 安裝損毀，安裝程式可以嘗試修復它。", IDC_STATIC, 6, 6, 303, 18
+    LTEXT       "安裝程式可以升級下列的其中一個可用的 WinDosDX 安裝。如果某個 WinDosDX 安裝損毀，安裝程式可以嘗試修復它。", IDC_STATIC, 6, 6, 303, 18
     CONTROL     "", IDC_NTOSLIST, "SysListView32", LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP, 6, 30, 303, 90
     PUSHBUTTON  "不要升級(&D)", IDC_SKIPUPGRADE, 230, 128, 80, 14
     LTEXT       "Click Next to upgrade the selected OS installation, or on 'Do not upgrade' to perform a new installation.", IDC_STATIC, 7, 124, 222, 16
@@ -111,7 +111,7 @@ STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "進階安裝選項"
 FONT 9, "新細明體"
 BEGIN
-    LTEXT "請選擇 ReactOS 的安裝路徑(&D)：", IDC_STATIC, 7, 9, 291, 10
+    LTEXT "請選擇 WinDosDX 的安裝路徑(&D)：", IDC_STATIC, 7, 9, 291, 10
     EDITTEXT IDC_PATH, 7, 23, 291, 13
     GROUPBOX "載入程式", IDC_STATIC, 7, 45, 291, 60
     LTEXT "請選擇 FreeLoader 載入程式的安裝位置。\n\n預設情況下，載入程式會安裝到啟動磁碟的系統分割區。如電腦使用傳統 BIOS，它也可以安裝到主開機記錄 (MBR) 或磁碟區開機記錄 (VBR) 。", IDC_STATIC, 13, 57, 279, 44
@@ -140,7 +140,7 @@ BEGIN
     EDITTEXT IDC_DESTDRIVE, 95, 77, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
     LTEXT "目的地路徑：", IDC_STATIC, 18, 89, 74, 11
     EDITTEXT IDC_PATH, 95, 89, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
-    AUTOCHECKBOX "我確定所有的安裝設定是正確的。\n我亦明白 ReactOS 目前處於 Alpha 測試階段，有可能損壞電腦或導致我的資料損毀。",
+    AUTOCHECKBOX "我確定所有的安裝設定是正確的。\n我亦明白 WinDosDX 目前處於 Alpha 測試階段，有可能損壞電腦或導致我的資料損毀。",
         IDC_CONFIRM_INSTALL, 7, 104, 309, 18, BS_MULTILINE | WS_GROUP | WS_TABSTOP
     LTEXT "請確定所有的安裝設定是正確的，\n然後按［安裝］，開始安裝程序。", IDC_STATIC, 7, 124, 303, 18
 END
@@ -159,7 +159,7 @@ STYLE DS_SHELLFONT | WS_CHILD
 FONT 9, "新細明體"
 BEGIN
     LTEXT "Restarting your Computer", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "ReactOS 的第一階段安裝已順利完成。", IDC_STATIC, 115, 40, 195, 24
+    LTEXT "WinDosDX 的第一階段安裝已順利完成。", IDC_STATIC, 115, 40, 195, 24
     // The following text can be replaced by IDS_FINISH_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Setup will now restart your computer to continue with the second installation step.\n\nYour computer will automatically restart in 15 seconds or when you click on Restart.", IDC_FINISHTEXT, 115, 78, 195, 56
@@ -170,8 +170,8 @@ IDD_ABORTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "The ReactOS Setup Wizard ended prematurely", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "The first ReactOS installation step prematurely ended because of an error or because you have canceled it.\n\nYou will be able to run the Setup Wizard at a later time to install or upgrade ReactOS.", IDC_STATIC, 115, 40, 195, 48
+    LTEXT "The WinDosDX Setup Wizard ended prematurely", IDC_FINISHTITLE, 115, 8, 195, 24
+    LTEXT "The first WinDosDX installation step prematurely ended because of an error or because you have canceled it.\n\nYou will be able to run the Setup Wizard at a later time to install or upgrade WinDosDX.", IDC_STATIC, 115, 40, 195, 48
     // The following text can be replaced by IDS_ABORT_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Your computer will automatically restart in 15 seconds or when you click on Restart.", IDC_FINISHTEXT, 115, 110, 195, 24
@@ -182,11 +182,11 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_CAPTION "ReactOS 安裝程式"
+    IDS_CAPTION "WinDosDX 安裝程式"
     IDS_TYPETITLE "安裝類型"
-    IDS_TYPESUBTITLE "您可以安裝全新的 ReactOS 系統，或者是更新／修復現有的系統。"
-    IDS_UPDATETITLE "更新或修復 ReactOS"
-    IDS_UPDATESUBTITLE "選擇您想更新或修復的現有 ReactOS 安裝。"
+    IDS_TYPESUBTITLE "您可以安裝全新的 WinDosDX 系統，或者是更新／修復現有的系統。"
+    IDS_UPDATETITLE "更新或修復 WinDosDX"
+    IDS_UPDATESUBTITLE "選擇您想更新或修復的現有 WinDosDX 安裝。"
     IDS_DEVICETITLE "設定基本裝置"
     IDS_DEVICESUBTITLE "指定顯示和鍵盤設定。"
     IDS_DRIVETITLE "設定安裝磁碟區和系統資料夾"
@@ -195,7 +195,7 @@ BEGIN
     IDS_SUMMARYSUBTITLE "正是安裝前列出安裝屬性以供檢查。"
     IDS_PROCESSTITLE "設定磁碟分割，複製檔案並安裝系統"
     IDS_PROCESSSUBTITLE "建立並格式化磁碟分割，複製檔案，安裝並設定載入程式。"
-    IDS_ABORTSETUP "ReactOS 尚未完全安裝在您的電腦上。如果現在結束安裝程式，您將需要重新執行安裝程式來安裝 ReactOS。您確定要結束嗎？"
+    IDS_ABORTSETUP "WinDosDX 尚未完全安裝在您的電腦上。如果現在結束安裝程式，您將需要重新執行安裝程式來安裝 WinDosDX。您確定要結束嗎？"
     IDS_ABORTSETUP2 "終止安裝？"
     IDS_NO_TXTSETUP_SIF "無法找到「txtsetup.sif」。\n安裝程式無法繼續。"
     IDS_FINISH_NO_REBOOT "Setup needs to restart your computer to continue with the second installation step.\n\nClick on Restart to immediately restart your computer.\nClick on Postpone to quit the installer and restart your computer at a later time."
@@ -281,7 +281,7 @@ BEGIN
 不可使用空格。"
 
     IDS_ERROR_DIRECTORY_NAME_TITLE "無效的安裝路徑"
-    IDS_ERROR_DIRECTORY_NAME " ReactOS 的安裝路徑必須跟隨 DOS 8.3 命名規則， \
+    IDS_ERROR_DIRECTORY_NAME " WinDosDX 的安裝路徑必須跟隨 DOS 8.3 命名規則， \
 且只可以使用 (半型) 英文字母、數字、連字號及句號。不可使用空格。"
 
     IDS_ERROR_CREATE_PARTITION_TITLE "建立磁碟分割"
@@ -293,9 +293,9 @@ BEGIN
 
     IDS_ERROR_WRITE_PTABLE "安裝程式無法寫入磁碟分割表格。"
 
-    IDS_ERROR_SYSTEM_PARTITION "ReactOS 安裝程式無法從您的系統找到支援的系統分割區\n\
+    IDS_ERROR_SYSTEM_PARTITION "WinDosDX 安裝程式無法從您的系統找到支援的系統分割區\n\
 或者無法建立新的分割。如果沒有這個磁碟分割，\n\
-安裝程式將無法安裝 ReactOS。\
+安裝程式將無法安裝 WinDosDX。\
 \n按［確定］返回磁碟分割選擇列表。"
 
     IDS_ERROR_FORMAT_UNRECOGNIZED_VOLUME "嘗試格式化磁碟分割時發生錯誤：無法識別的磁碟區。"

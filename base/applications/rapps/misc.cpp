@@ -306,7 +306,7 @@ InitLogs()
         (key.SetDWORDValue(L"CategoryCount", dwCategoryNum) == ERROR_SUCCESS))
 
     {
-        hLog = RegisterEventSourceW(NULL, L"ReactOS Application Manager");
+        hLog = RegisterEventSourceW(NULL, L"WinDosDX Application Manager");
     }
 }
 

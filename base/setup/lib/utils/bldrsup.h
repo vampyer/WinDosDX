@@ -82,7 +82,7 @@ typedef struct _BOOT_STORE_ENTRY
  */
 } BOOT_STORE_ENTRY, *PBOOT_STORE_ENTRY;
 
-/* "NTOS" (aka. ReactOS or MS Windows NT) <= 5.x options */
+/* "NTOS" (aka. WinDosDX or MS Windows NT) <= 5.x options */
 typedef struct _NTOS_OPTIONS
 {
     UCHAR Signature[8];     // "NTOS_5\0\0"

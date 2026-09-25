@@ -57,7 +57,7 @@ static ADVBOOT_OPTIONS AdvBootOptions[] = // OptionsMenuList
     {ActionBootLog,             "Enable Boot Logging"},
     {ActionVGAMode,             "Enable VGA Mode"},
     {ActionLKGConfig,           "Last Known Good Configuration"},
-    {ActionSafeBootDSRepair,    "Directory Services Restore Mode"}, // "(ReactOS domain controllers only)"
+    {ActionSafeBootDSRepair,    "Directory Services Restore Mode"}, // "(WinDosDX domain controllers only)"
     {ActionDebugMode,           "Debugging Mode"},
 
 #if DBG && defined(_M_IX86)
@@ -73,7 +73,7 @@ static ADVBOOT_OPTIONS AdvBootOptions[] = // OptionsMenuList
 #ifdef HAS_OPTION_MENU_EDIT_CMDLINE
     {ActionEditBootCmdLine,     "Edit Boot Command Line (F10)"},
 #endif
-    {ActionStartNormally,       "Start ReactOS normally"},
+    {ActionStartNormally,       "Start WinDosDX normally"},
     {ActionReboot,              "Reboot"},
     {ActionBackToPrevMenu,      "Return to OS Choices menu"},
 };
@@ -166,7 +166,7 @@ MenuNTOptions(
     ULONG SelectedMenuItem = 0;
 
     /* Build the menu, filtering out any item that may not be applicable,
-     * and set the "Start ReactOS normally" as default. */
+     * and set the "Start WinDosDX normally" as default. */
     for (i = 0, MenuItemCount = 0; i < RTL_NUMBER_OF(AdvBootOptions); ++i)
     {
         /* Hide the "Return to OS Choices" item if no OS entry is selected */

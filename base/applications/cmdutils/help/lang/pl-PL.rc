@@ -17,7 +17,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_USAGE "Podaje informacje o poleceniach ReactOS.\n\n\
+    IDS_USAGE "Podaje informacje o poleceniach WinDosDX.\n\n\
 HELP [polecenie]\n\n\
   polecenie - wyświetla informacje o tym poleceniu.\n"
     IDS_HELP1 "Lista wszystkich dostępnych komend (+opisy)\n\n\

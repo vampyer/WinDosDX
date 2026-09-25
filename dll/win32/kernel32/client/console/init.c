@@ -26,7 +26,7 @@ BOOLEAN ConsoleInitialized = FALSE;
 extern HANDLE InputWaitHandle;
 static volatile LONG g_bConsoleIMEStartingUp = FALSE; // We use interlock, so LONG
 
-static const PWSTR DefaultConsoleTitle = L"ReactOS Console";
+static const PWSTR DefaultConsoleTitle = L"WinDosDX Console";
 
 /* FUNCTIONS ******************************************************************/
 

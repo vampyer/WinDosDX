@@ -690,7 +690,7 @@ LocaleDlgProc(
                         static WCHAR szMsg[RC_STRING_MAX_SIZE];
                         INT ret;
                         LoadStringW(GetModuleHandle(NULL), IDS_CANCEL_CONFIRM, szMsg, ARRAYSIZE(szMsg));
-                        ret = MessageBoxW(hwndDlg, szMsg, L"ReactOS LiveCD", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2);
+                        ret = MessageBoxW(hwndDlg, szMsg, L"WinDosDX LiveCD", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2);
                         if (ret == IDOK || ret == IDYES)
                         {
                             pState->NextPage = DONE;
@@ -786,7 +786,7 @@ StartDlgProc(
                             static WCHAR szMsg[RC_STRING_MAX_SIZE];
                             INT ret;
                             LoadStringW(GetModuleHandle(NULL), IDS_CANCEL_CONFIRM, szMsg, ARRAYSIZE(szMsg));
-                            ret = MessageBoxW(hwndDlg, szMsg, L"ReactOS LiveCD", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2);
+                            ret = MessageBoxW(hwndDlg, szMsg, L"WinDosDX LiveCD", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2);
                             if (ret == IDOK || ret == IDYES)
                             {
                                 pState->NextPage = DONE;
@@ -860,7 +860,7 @@ ParseUnattend(
 
 /**
  * @brief
- * Expands the path for the ReactOS Installer "reactos.exe".
+ * Expands the path for the WinDosDX Installer "reactos.exe".
  * See also base/setup/welcome/welcome.c!ExpandInstallerPath()
  **/
 static BOOL
@@ -994,9 +994,9 @@ RunLiveCD(
     if (!ExpandInstallerPath(L"reactos.exe", Installer, _countof(Installer)))
         *Installer = UNICODE_NULL;
     if (*Installer)
-        TRACE("ReactOS Installer: '%S'\n", Installer);
+        TRACE("WinDosDX Installer: '%S'\n", Installer);
     else
-        WARN("Could not find the ReactOS Installer\n");
+        WARN("Could not find the WinDosDX Installer\n");
 
     /* If the ReactOS Installer was located, use its path for the
      * unattended file; otherwise, use the current ReactOS directory. */

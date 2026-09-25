@@ -93,10 +93,10 @@ struct ICD_Data* IntGetIcdData(HDC hdc)
         if((ret != ERROR_SUCCESS) || (dwValueType != REG_SZ) || !wcslen(CustomDrvInfo.DriverName))
             goto custom_end;
 
-        if(!_wcsicmp(CustomDrvInfo.DriverName, L"ReactOS Software Implementation"))
+        if(!_wcsicmp(CustomDrvInfo.DriverName, L"WinDosDX Software Implementation"))
         {
             /* Always announce the fact that we're forcing ROSSWI */
-            ERR("Forcing ReactOS Software Implementation\n");
+            ERR("Forcing WinDosDX Software Implementation\n");
             CustomDriverState = OGL_CD_ROSSWI;
             return NULL;
         }

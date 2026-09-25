@@ -1,5 +1,5 @@
 /*
- * PROJECT:     ReactOS GUI first stage setup application
+ * PROJECT:     WinDosDX GUI first stage setup application
  * LICENSE:     GPL-2.0-or-later (https://spdx.org/licenses/GPL-2.0-or-later)
  * PURPOSE:     Turkish resource file
  * TRANSLATORS: Copyright 2012 Arda Tanrıkulu (ardatan) (ardatanrikulu [at] gmail [dot] com)
@@ -17,16 +17,16 @@ IDD_STARTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "ReactOS Kurulum Sihirbazı'na hoş geldiniz", IDC_STARTTITLE, 115, 8, 195, 24
-    LTEXT "Bu sihirbaz bilgisayarınıza ReactOS'u kuracak veya yükseltecek \
+    LTEXT "WinDosDX Kurulum Sihirbazı'na hoş geldiniz", IDC_STARTTITLE, 115, 8, 195, 24
+    LTEXT "Bu sihirbaz bilgisayarınıza WinDosDX'u kuracak veya yükseltecek \
 ve kurulumun ikinci aşamasına hazırlayacaktır.", IDC_STATIC, 115, 40, 195, 27
 ////
     GROUPBOX " ÖNEMLİ BİLGİ ", IDC_WARNTEXT1, 115, 70, 200, 90, BS_CENTER
-    LTEXT "ReactOS Alfa aşamasındadır: Özellikleri tamamlanmamıştır ve \
+    LTEXT "WinDosDX Alfa aşamasındadır: Özellikleri tamamlanmamıştır ve \
 yoğun geliştirme aşamasındadır. Günlük kullanım işletim sistemi olarak değil, yalnızca \
 deneme ve test amacıyla kullanılması önerilir.\n\
 Verilerinizi bozabilir veya donanımınıza zarar verebilir.", IDC_WARNTEXT2, 120, 80, 190, 50, SS_CENTER
-    LTEXT "Eğer ReactOS'u gerçek bir donanımda çalıştırmayı deneyecekseniz, \
+    LTEXT "Eğer WinDosDX'u gerçek bir donanımda çalıştırmayı deneyecekseniz, \
 verilerinizi yedekleyin veya ikincil bir bilgisayarda test edin.", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
 ////
     LTEXT "Kuruluma devam etmek için İleri'ye tıklayınız.", IDC_STATIC, 115, 169, 195, 17
@@ -36,17 +36,17 @@ IDD_TYPEPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    AUTORADIOBUTTON "ReactOS'u &Yükleme", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
-    AUTORADIOBUTTON "ReactOS'u &Onarma ya da Yükseltme", IDC_UPDATE, 7, 80, 277, 10
-    LTEXT "ReactOS'un yeni bir kopyasını yükler. Bu seçenek; dosyalarınızı, ayarlarınızı ve programlarınızı korumaz. Disklere ve bölümlere değişiklikler yapabilirsiniz.", IDC_INSTALLTEXT, 19, 36, 279, 27
-    LTEXT "Kurulu olan ReactOS'u günceller ya da onarır. Bu seçenek; dosyalarınızı, ayarlarınızı ve programlarınızı korur. Bu seçenek yalnızca ReactOS bu bilgisayarda önceden kuruluysa kullanılabilir.", IDC_UPDATETEXT, 19, 96, 279, 27
+    AUTORADIOBUTTON "WinDosDX'u &Yükleme", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
+    AUTORADIOBUTTON "WinDosDX'u &Onarma ya da Yükseltme", IDC_UPDATE, 7, 80, 277, 10
+    LTEXT "WinDosDX'un yeni bir kopyasını yükler. Bu seçenek; dosyalarınızı, ayarlarınızı ve programlarınızı korumaz. Disklere ve bölümlere değişiklikler yapabilirsiniz.", IDC_INSTALLTEXT, 19, 36, 279, 27
+    LTEXT "Kurulu olan WinDosDX'u günceller ya da onarır. Bu seçenek; dosyalarınızı, ayarlarınızı ve programlarınızı korur. Bu seçenek yalnızca WinDosDX bu bilgisayarda önceden kuruluysa kullanılabilir.", IDC_UPDATETEXT, 19, 96, 279, 27
 END
 
 IDD_UPDATEREPAIRPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT       "Kurulum Yöneticisi aşağıda listelenen ReactOS kurulumlarından birini yükseltebilir ya da eğer ReactOS kurulumu zarar görmüşse onu onarmaya çalışabilir.", IDC_STATIC, 6, 6, 303, 18
+    LTEXT       "Kurulum Yöneticisi aşağıda listelenen WinDosDX kurulumlarından birini yükseltebilir ya da eğer WinDosDX kurulumu zarar görmüşse onu onarmaya çalışabilir.", IDC_STATIC, 6, 6, 303, 18
     CONTROL     "", IDC_NTOSLIST, "SysListView32", LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP, 6, 30, 303, 90
     PUSHBUTTON  "&Yükseltme yapma", IDC_SKIPUPGRADE, 230, 128, 80, 14
     LTEXT       "Seçilen işletim sistemi kurulumu için İleri'ye ya da yükseltme yapmadan yeni bir kuruluma devam etmek için 'Yükseltme yapma'ya tıklayınız.", IDC_STATIC, 7, 124, 222, 16
@@ -114,7 +114,7 @@ STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "Gelişmiş Kurulum Seçenekleri"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "ReactOS'u kurmak istediğiniz &dizini seçiniz:", IDC_STATIC, 7, 9, 291, 10
+    LTEXT "WinDosDX'u kurmak istediğiniz &dizini seçiniz:", IDC_STATIC, 7, 9, 291, 10
     EDITTEXT IDC_PATH, 7, 23, 291, 13
     GROUPBOX "Önyükleyici", IDC_STATIC, 7, 45, 291, 60
     LTEXT "FreeLoader önyükleyicisinin kurulacağı konumu seçiniz.\n\nVarsayılan olarak önyükleme diskinin sistem bölümüne (ve BIOS tabanlı bilgisayarlarda Ana ya da Birim Önyükleme Kaydına) kurulur.", IDC_STATIC, 13, 57, 279, 44
@@ -143,7 +143,7 @@ BEGIN
     EDITTEXT IDC_DESTDRIVE, 95, 77, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
     LTEXT "Hedef dizin:", IDC_STATIC, 18, 89, 74, 11
     EDITTEXT IDC_PATH, 95, 89, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
-    AUTOCHECKBOX "Bütün kurulum ayarlarının doğru olduğunu onaylıyorum. Ayrıca, ReactOS'un alfa durumunda yazılım olduğunu ve bilgisayarımı ya da verilerimi bozabileceğini kabul ediyorum.",
+    AUTOCHECKBOX "Bütün kurulum ayarlarının doğru olduğunu onaylıyorum. Ayrıca, WinDosDX'un alfa durumunda yazılım olduğunu ve bilgisayarımı ya da verilerimi bozabileceğini kabul ediyorum.",
         IDC_CONFIRM_INSTALL, 7, 100, 309, 24, BS_MULTILINE | WS_GROUP | WS_TABSTOP
     LTEXT "Lütfen bütün kurulum ayarlarının doğru olduğundan emin olunuz,\nardından kurulum işlemine başlamak için Kur'a tıklayınız.", IDC_STATIC, 7, 124, 303, 18
 END
@@ -162,7 +162,7 @@ STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT "Bilgisayarınız Yeniden Başlatılıyor", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "İlk ReactOS kurulum aşaması başarıyla tamamlandı.", IDC_STATIC, 115, 40, 195, 24
+    LTEXT "İlk WinDosDX kurulum aşaması başarıyla tamamlandı.", IDC_STATIC, 115, 40, 195, 24
     // The following text can be replaced by IDS_FINISH_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Kurulum, ikinci aşamaya geçmek için bilgisayarınızı yeniden başlatacak.\n\nBilgisayarınız 15 saniye içinde veya Yeniden Başlat'a tıkladığınızda otomatik olarak yeniden başlatılacaktır.", IDC_FINISHTEXT, 115, 78, 195, 56
@@ -173,8 +173,8 @@ IDD_ABORTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "ReactOS Kurulum Sihirbazı beklenmedik şekilde sona erdi", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "ReactOS'un ilk kurulum aşaması bir hata nedeniyle veya işlemi iptal etmenizden dolayı erkenden sona erdi.\n\nReactOS'u kurmak veya yükseltmek için Kurulum Sihirbazı'nı daha sonra yeniden çalıştırabilirsiniz.", IDC_STATIC, 115, 40, 195, 48
+    LTEXT "WinDosDX Kurulum Sihirbazı beklenmedik şekilde sona erdi", IDC_FINISHTITLE, 115, 8, 195, 24
+    LTEXT "WinDosDX'un ilk kurulum aşaması bir hata nedeniyle veya işlemi iptal etmenizden dolayı erkenden sona erdi.\n\nWinDosDX'u kurmak veya yükseltmek için Kurulum Sihirbazı'nı daha sonra yeniden çalıştırabilirsiniz.", IDC_STATIC, 115, 40, 195, 48
     // The following text can be replaced by IDS_ABORT_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Bilgisayarınız 15 saniye içinde veya Yeniden Başlat'a tıkladığınızda otomatik olarak yeniden başlatılacaktır.", IDC_FINISHTEXT, 115, 110, 195, 24
@@ -185,11 +185,11 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_CAPTION "ReactOS Kur"
+    IDS_CAPTION "WinDosDX Kur"
     IDS_TYPETITLE "Kurulum Türü"
-    IDS_TYPESUBTITLE "Yeni bir ReactOS kurulumu yapabilir veya mevcut bir kurulumu güncelleyebilir/onarabilirsiniz."
-    IDS_UPDATETITLE "ReactOS'u Güncelle veya Onar"
-    IDS_UPDATESUBTITLE "Hangi mevcut ReactOS kurulumunu güncellemek veya onarmak istediğinizi seçiniz."
+    IDS_TYPESUBTITLE "Yeni bir WinDosDX kurulumu yapabilir veya mevcut bir kurulumu güncelleyebilir/onarabilirsiniz."
+    IDS_UPDATETITLE "WinDosDX'u Güncelle veya Onar"
+    IDS_UPDATESUBTITLE "Hangi mevcut WinDosDX kurulumunu güncellemek veya onarmak istediğinizi seçiniz."
     IDS_DEVICETITLE "Ana Aygıtların Kurulumu"
     IDS_DEVICESUBTITLE "Ekran ve klavye ayarlarını yapınız."
     IDS_DRIVETITLE "Kurulum Bölümünün ve Sistem Dizininin Hazırlanması"
@@ -198,7 +198,7 @@ BEGIN
     IDS_SUMMARYSUBTITLE "Aygıtınıza uygulanmadan önce gözden geçirmeniz için listelenen kurulum seçenekleri."
     IDS_PROCESSTITLE "Bölümün Biçimlendirilmesi, Dosyaların Kopyalanması ve Önyükleyicinin Kurulması"
     IDS_PROCESSSUBTITLE "Bölüm oluşturuluyor ve biçimlendiriliyor, dosyalar kopyalanıyor, önyükleyici kuruluyor ve hazırlanıyor."
-    IDS_ABORTSETUP "ReactOS, bilgisayarınıza tümüyle kurulamadı. Eğer Kurulum Yöneticisi'nden şimdi çıkarsanız, ReactOS'u kurmak için daha sonra yeniden çalıştırmanız gerekecektir. Gerçekten çıkılsın mı?"
+    IDS_ABORTSETUP "WinDosDX, bilgisayarınıza tümüyle kurulamadı. Eğer Kurulum Yöneticisi'nden şimdi çıkarsanız, WinDosDX'u kurmak için daha sonra yeniden çalıştırmanız gerekecektir. Gerçekten çıkılsın mı?"
     IDS_ABORTSETUP2 "Kurulum iptal edilsin mi?"
     IDS_NO_TXTSETUP_SIF """txtsetup.sif"" bulunamıyor.\nKurulum Yöneticisi işleme devam edemiyor."
     IDS_FINISH_NO_REBOOT "Kurulumun ikinci aşamasına devam edebilmesi için bilgisayarınızı yeniden başlatması gerekiyor.\n\nBilgisayarınızı hemen yeniden başlatmak için Yeniden Başlat'a tıklayın.\nKurulumdan çıkıp bilgisayarınızı daha sonra yeniden başlatmak için Ertele'ye tıklayın."
@@ -284,7 +284,7 @@ alfanümerikler (a-z, A-Z, 0-9) ve\n . \\ - _\n\
 Boşluk kullanımına izin verilmez."
 
     IDS_ERROR_DIRECTORY_NAME_TITLE "Geçersiz kurulum yolu"
-    IDS_ERROR_DIRECTORY_NAME "ReactOS kurulum yolu DOS 8.3 adlandırma şemasına uymalı \
+    IDS_ERROR_DIRECTORY_NAME "WinDosDX kurulum yolu DOS 8.3 adlandırma şemasına uymalı \
 ve yalnızca harf, rakam, tire ve nokta içermelidir. Boşluk kullanımına izin verilmez."
 
     IDS_ERROR_CREATE_PARTITION_TITLE "Bölüm oluştur"
@@ -296,9 +296,9 @@ ve yalnızca harf, rakam, tire ve nokta içermelidir. Boşluk kullanımına izin
 
     IDS_ERROR_WRITE_PTABLE "Kurulum, bölüm tablolarını yazamadı."
 
-    IDS_ERROR_SYSTEM_PARTITION "ReactOS Kurulumu sisteminizde desteklenen bir sistem bölümü\n\
+    IDS_ERROR_SYSTEM_PARTITION "WinDosDX Kurulumu sisteminizde desteklenen bir sistem bölümü\n\
 bulamadı veya yeni bir tane oluşturamadı. Böyle bir bölüm olmadan\n\
-Kurulum programı ReactOS'u kuramaz.\
+Kurulum programı WinDosDX'u kuramaz.\
 \nBölüm seçimi listesine dönmek için Tamam'a tıklayınız."
 
     IDS_ERROR_FORMAT_UNRECOGNIZED_VOLUME "Bölüm biçimlendirilmeye çalışılırken tanımlanamayan birim saptandı."

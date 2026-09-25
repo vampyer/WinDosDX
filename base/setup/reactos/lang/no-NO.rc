@@ -6,17 +6,17 @@ IDD_STARTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "Velkommen til ReactOS installering veiviseren", IDC_STARTTITLE, 115, 8, 195, 24
-    LTEXT "This wizard will install or upgrade ReactOS on your computer, \
+    LTEXT "Velkommen til WinDosDX installering veiviseren", IDC_STARTTITLE, 115, 8, 195, 24
+    LTEXT "This wizard will install or upgrade WinDosDX on your computer, \
 and prepare the second part of the setup.", IDC_STATIC, 115, 40, 195, 27
 ////
     GROUPBOX " IMPORTANT INFORMATION ", IDC_WARNTEXT1, 115, 70, 200, 90, BS_CENTER
-    LTEXT "ReactOS is in Alpha stage: it is not feature- complete and is \
+    LTEXT "WinDosDX is in Alpha stage: it is not feature- complete and is \
 under heavy development. It is recommended to use it only for \
 evaluation and testing and not as your daily-usage OS.\n\
 It may corrupt your data or damage your hardware.", IDC_WARNTEXT2, 120, 80, 190, 50, SS_CENTER
     LTEXT "Backup your data or test on a secondary computer \
-if you attempt to run ReactOS on real hardware.", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
+if you attempt to run WinDosDX on real hardware.", IDC_WARNTEXT3, 120, 130, 190, 27, SS_CENTER
 ////
     LTEXT "Klikk Neste for å fortsette installasjonen.", IDC_STATIC, 115, 169, 195, 17
 END
@@ -25,17 +25,17 @@ IDD_TYPEPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    AUTORADIOBUTTON "&Installere ReactOS", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
-    AUTORADIOBUTTON "&Reparere eller oppdatere ReactOS", IDC_UPDATE, 7, 80, 277, 10
-    LTEXT "Install a new copy of ReactOS. This option does not keep your files, settings and programs. You can make changes to disks and partitions.", IDC_INSTALLTEXT, 19, 36, 279, 27
-    LTEXT "Update or repair an installed copy of ReactOS. This option keeps your files, settings and programs. This option is only available if ReactOS is already installed on this computer.", IDC_UPDATETEXT, 19, 96, 279, 27
+    AUTORADIOBUTTON "&Installere WinDosDX", IDC_INSTALL, 7, 20, 277, 10, WS_GROUP
+    AUTORADIOBUTTON "&Reparere eller oppdatere WinDosDX", IDC_UPDATE, 7, 80, 277, 10
+    LTEXT "Install a new copy of WinDosDX. This option does not keep your files, settings and programs. You can make changes to disks and partitions.", IDC_INSTALLTEXT, 19, 36, 279, 27
+    LTEXT "Update or repair an installed copy of WinDosDX. This option keeps your files, settings and programs. This option is only available if WinDosDX is already installed on this computer.", IDC_UPDATETEXT, 19, 96, 279, 27
 END
 
 IDD_UPDATEREPAIRPAGE DIALOGEX 0, 0, 317, 143
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT       "The Setup program can upgrade one of the available ReactOS installations listed below, or, if a ReactOS installation is damaged, the Setup program can attempt to repair it.", IDC_STATIC, 6, 6, 303, 18
+    LTEXT       "The Setup program can upgrade one of the available WinDosDX installations listed below, or, if a WinDosDX installation is damaged, the Setup program can attempt to repair it.", IDC_STATIC, 6, 6, 303, 18
     CONTROL     "", IDC_NTOSLIST, "SysListView32", LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP, 6, 30, 303, 90
     PUSHBUTTON  "&Do not upgrade", IDC_SKIPUPGRADE, 230, 128, 80, 14
     LTEXT       "Click Next to upgrade the selected OS installation, or on 'Do not upgrade' to perform a new installation.", IDC_STATIC, 7, 124, 222, 16
@@ -103,7 +103,7 @@ STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "Advanced Installation Options"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "Choose the &directory where you want to install ReactOS:", IDC_STATIC, 7, 9, 291, 10
+    LTEXT "Choose the &directory where you want to install WinDosDX:", IDC_STATIC, 7, 9, 291, 10
     EDITTEXT IDC_PATH, 7, 23, 291, 13
     GROUPBOX "Oppstartslaster", IDC_STATIC, 7, 45, 291, 60
     LTEXT "Select the location where the FreeLoader\nbootloader should be installed.\n\nBy default, it is installed on the system partition of the boot disk (and either in the Master or the Volume Boot Record for BIOS-based computers).", IDC_STATIC, 13, 57, 279, 44
@@ -132,7 +132,7 @@ BEGIN
     EDITTEXT IDC_DESTDRIVE, 95, 77, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
     LTEXT "Destination directory:", IDC_STATIC, 18, 89, 74, 11
     EDITTEXT IDC_PATH, 95, 89, 210, 12, ES_READONLY | ES_AUTOHSCROLL | NOT WS_BORDER | NOT WS_TABSTOP
-    AUTOCHECKBOX "I confirm that all the installation settings are correct. I also acknowledge that\nReactOS is alpha-quality software and may break on my computer or corrupt my data.",
+    AUTOCHECKBOX "I confirm that all the installation settings are correct. I also acknowledge that\nWinDosDX is alpha-quality software and may break on my computer or corrupt my data.",
         IDC_CONFIRM_INSTALL, 7, 104, 309, 18, BS_MULTILINE | WS_GROUP | WS_TABSTOP
     LTEXT "Please confirm that all the installation settings are correct,\nthen click on Install to start the installation process.", IDC_STATIC, 7, 124, 303, 18
 END
@@ -151,7 +151,7 @@ STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT "Restarting your Computer", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "The first ReactOS installation step has completed successfully.", IDC_STATIC, 115, 40, 195, 24
+    LTEXT "The first WinDosDX installation step has completed successfully.", IDC_STATIC, 115, 40, 195, 24
     // The following text can be replaced by IDS_FINISH_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Setup will now restart your computer to continue with the second installation step.\n\nYour computer will automatically restart in 15 seconds or when you click on Restart.", IDC_FINISHTEXT, 115, 78, 195, 56
@@ -162,8 +162,8 @@ IDD_ABORTPAGE DIALOGEX 0, 0, 317, 193
 STYLE DS_SHELLFONT | WS_CHILD
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT "The ReactOS Setup Wizard ended prematurely", IDC_FINISHTITLE, 115, 8, 195, 24
-    LTEXT "The first ReactOS installation step prematurely ended because of an error or because you have canceled it.\n\nYou will be able to run the Setup Wizard at a later time to install or upgrade ReactOS.", IDC_STATIC, 115, 40, 195, 48
+    LTEXT "The WinDosDX Setup Wizard ended prematurely", IDC_FINISHTITLE, 115, 8, 195, 24
+    LTEXT "The first WinDosDX installation step prematurely ended because of an error or because you have canceled it.\n\nYou will be able to run the Setup Wizard at a later time to install or upgrade WinDosDX.", IDC_STATIC, 115, 40, 195, 48
     // The following text can be replaced by IDS_ABORT_NO_REBOOT at runtime;
     // please ensure it can hold in the text control!
     LTEXT "Your computer will automatically restart in 15 seconds or when you click on Restart.", IDC_FINISHTEXT, 115, 110, 195, 24
@@ -174,11 +174,11 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_CAPTION "ReactOS installering"
+    IDS_CAPTION "WinDosDX installering"
     IDS_TYPETITLE "Installation Type"
-    IDS_TYPESUBTITLE "You can setup a new ReactOS installation, or update/repair an existing installation."
-    IDS_UPDATETITLE "Update or Repair ReactOS"
-    IDS_UPDATESUBTITLE "Choose which existing ReactOS installation you want to update or repair."
+    IDS_TYPESUBTITLE "You can setup a new WinDosDX installation, or update/repair an existing installation."
+    IDS_UPDATETITLE "Update or Repair WinDosDX"
+    IDS_UPDATESUBTITLE "Choose which existing WinDosDX installation you want to update or repair."
     IDS_DEVICETITLE "Installer grunnleggende enheter"
     IDS_DEVICESUBTITLE "Velg innstillingene til skjermen og tastaturet."
     IDS_DRIVETITLE "Valg av installasjon partisjon og system mappe"
@@ -187,7 +187,7 @@ BEGIN
     IDS_SUMMARYSUBTITLE "Sjekk listen av installasjon egenskapene før du fortsetter installasjon av enhetene."
     IDS_PROCESSTITLE "Forbrede partisjon, kopiere filer og installere system"
     IDS_PROCESSSUBTITLE "Opprett og formater partisjon, kopier filer, installere og sett opp oppstartlaster."
-    IDS_ABORTSETUP "ReactOS er ikke fullstendig installert på datamaskinen. Hvis du avslutter nå, trenger du å kjøre installeringen på nytt for å installere ReactOS. Vil du virkelig avslutte?"
+    IDS_ABORTSETUP "WinDosDX er ikke fullstendig installert på datamaskinen. Hvis du avslutter nå, trenger du å kjøre installeringen på nytt for å installere WinDosDX. Vil du virkelig avslutte?"
     IDS_ABORTSETUP2 "Avbryt installasjonen?"
     IDS_NO_TXTSETUP_SIF "Unable to find 'txtsetup.sif'.\nSetup is unable to continue."
     IDS_FINISH_NO_REBOOT "Setup needs to restart your computer to continue with the second installation step.\n\nClick on Restart to immediately restart your computer.\nClick on Postpone to quit the installer and restart your computer at a later time."
@@ -273,7 +273,7 @@ alphanumericals (a-z, A-Z, 0-9), and\n . \\ - _\n\
 Spaces are not allowed."
 
     IDS_ERROR_DIRECTORY_NAME_TITLE "Invalid installation path"
-    IDS_ERROR_DIRECTORY_NAME "The ReactOS installation path must follow the DOS 8.3 naming scheme, \
+    IDS_ERROR_DIRECTORY_NAME "The WinDosDX installation path must follow the DOS 8.3 naming scheme, \
 and only contain letters, digits, dashes and periods. Spaces are not allowed."
 
     IDS_ERROR_CREATE_PARTITION_TITLE "Create partition"
@@ -285,9 +285,9 @@ and only contain letters, digits, dashes and periods. Spaces are not allowed."
 
     IDS_ERROR_WRITE_PTABLE "Setup failed to write partition tables."
 
-    IDS_ERROR_SYSTEM_PARTITION "The ReactOS Setup could not find a supported system partition\n\
+    IDS_ERROR_SYSTEM_PARTITION "The WinDosDX Setup could not find a supported system partition\n\
 on your system or could not create a new one. Without such a partition\n\
-the Setup program cannot install ReactOS.\
+the Setup program cannot install WinDosDX.\
 \nClick on OK to return to the partition selection list."
 
     IDS_ERROR_FORMAT_UNRECOGNIZED_VOLUME "Unrecognized volume while attempting to format the partition."

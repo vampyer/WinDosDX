@@ -2656,9 +2656,9 @@ FsVolCallback(
             // or use an external drive as the system drive/partition
             // (e.g. floppy, USB drive, etc...)
             //
-            PopupError("The ReactOS Setup could not find a supported system partition\n"
+            PopupError("The WinDosDX Setup could not find a supported system partition\n"
                        "on your system or could not create a new one. Without such a partition\n"
-                       "the Setup program cannot install ReactOS.\n"
+                       "the Setup program cannot install WinDosDX.\n"
                        "Press ENTER to return to the partition selection list.",
                        MUIGetString(STRING_CONTINUE),
                        Ir, POPUP_WAIT_ENTER);
@@ -4060,7 +4060,7 @@ RunUSetup(VOID)
         CONSOLE_ClearScreen();
         CONSOLE_Flush();
 
-        // CONSOLE_SetUnderlinedTextXY(4, 3, " ReactOS " KERNEL_VERSION_STR " Setup ");
+        // CONSOLE_SetUnderlinedTextXY(4, 3, " WinDosDX " KERNEL_VERSION_STR " Setup ");
 
         switch (Page)
         {

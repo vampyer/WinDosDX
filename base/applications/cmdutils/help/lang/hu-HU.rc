@@ -14,7 +14,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_USAGE "Segítséget nyújt a ReactOS parancsok használatához.\n\n\
+    IDS_USAGE "Segítséget nyújt a WinDosDX parancsok használatához.\n\n\
 HELP [command]\n\n\
   parancs - Segítséget ad ehhez a parancshoz.\n"
     IDS_HELP1 "Támogatott parancsok megjelenítése (+ leírás)\n\n\

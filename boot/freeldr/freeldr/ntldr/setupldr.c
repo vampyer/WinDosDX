@@ -176,7 +176,7 @@ SetupLdrScanBootDrivers(
             InfGetDataField(&InfContext, 0, &DriverName) &&
             InfGetDataField(&InfContext, 13, &dirIndex))
         {
-            if ((strcmp(Media, "x") == 0) && // HACK: ReactOS-specific
+            if ((strcmp(Media, "x") == 0) && // HACK: WinDosDX-specific
                 InfFindFirstLine(InfHandle, "Directories", dirIndex, &dirContext) &&
                 InfGetDataField(&dirContext, 1, &ImagePath))
             {
@@ -444,7 +444,7 @@ LoadReactOSSetup(
     /* Let the user know we started loading */
     UiDrawBackdrop(UiGetScreenHeight());
     UiDrawStatusText("Setup is loading...");
-    UiDrawProgressBarCenter("Loading ReactOS Setup...");
+    UiDrawProgressBarCenter("Loading WinDosDX Setup...");
 
     /* Retrieve the system path */
     *BootPath = ANSI_NULL;

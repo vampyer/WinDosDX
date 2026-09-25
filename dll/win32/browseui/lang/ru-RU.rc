@@ -81,7 +81,7 @@ BEGIN
     END
     POPUP "&Справка", FCIDM_MENU_HELP
     BEGIN
-        MENUITEM "&О ReactOS", IDM_HELP_ABOUT
+        MENUITEM "&О WinDosDX", IDM_HELP_ABOUT
     END
 END
 
@@ -345,6 +345,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_PARSE_ADDR_ERR_TITLE "Проводник ReactOS"
-    IDS_PARSE_ADDR_ERR_TEXT "Проводник ReactOS не может найти '%1'. Проверьте правильность написания и попробуйте снова."
+    IDS_PARSE_ADDR_ERR_TITLE "Проводник WinDosDX"
+    IDS_PARSE_ADDR_ERR_TEXT "Проводник WinDosDX не может найти '%1'. Проверьте правильность написания и попробуйте снова."
 END

@@ -344,6 +344,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_PARSE_ADDR_ERR_TITLE "Navigatorul ReactOS"
-    IDS_PARSE_ADDR_ERR_TEXT "Navigatorul ReactOS nu poate găsi '%1'. Verificați ortografia și încercați din nou."
+    IDS_PARSE_ADDR_ERR_TITLE "Navigatorul WinDosDX"
+    IDS_PARSE_ADDR_ERR_TEXT "Navigatorul WinDosDX nu poate găsi '%1'. Verificați ortografia și încercați din nou."
 END

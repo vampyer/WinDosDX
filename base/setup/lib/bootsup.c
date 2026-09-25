@@ -81,14 +81,14 @@ CreateFreeLoaderReactOSEntries(
 
     /* ReactOS_Debug */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS_Debug");
-    BootEntry->FriendlyName = L"\"ReactOS (Debug)\"";
+    BootEntry->FriendlyName = L"\"WinDosDX (Debug)\"";
     Options->OsLoadOptions  = L"/DEBUG /DEBUGPORT=COM1 /BAUDRATE=115200 /SOS";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS_Debug"));
 
 #ifdef _WINKD_
     /* ReactOS_VBoxDebug */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS_VBoxDebug");
-    BootEntry->FriendlyName = L"\"ReactOS (VBox Debug)\"";
+    BootEntry->FriendlyName = L"\"WinDosDX (VBox Debug)\"";
     Options->OsLoadOptions  = L"/DEBUG /DEBUGPORT=VBOX /SOS";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS_VBoxDebug"));
 #endif
@@ -96,33 +96,33 @@ CreateFreeLoaderReactOSEntries(
 #ifndef _WINKD_
     /* ReactOS_KdSerial */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS_KdSerial");
-    BootEntry->FriendlyName = L"\"ReactOS (RosDbg)\"";
+    BootEntry->FriendlyName = L"\"WinDosDX (RosDbg)\"";
     Options->OsLoadOptions  = L"/DEBUG /DEBUGPORT=COM1 /BAUDRATE=115200 /SOS /KDSERIAL";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS_KdSerial"));
 #endif
 
     /* ReactOS_Screen */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS_Screen");
-    BootEntry->FriendlyName = L"\"ReactOS (Screen)\"";
+    BootEntry->FriendlyName = L"\"WinDosDX (Screen)\"";
     Options->OsLoadOptions  = L"/DEBUG /DEBUGPORT=SCREEN /SOS";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS_Screen"));
 
     /* ReactOS_LogFile */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS_LogFile");
-    BootEntry->FriendlyName = L"\"ReactOS (Log file)\"";
+    BootEntry->FriendlyName = L"\"WinDosDX (Log file)\"";
     Options->OsLoadOptions  = L"/DEBUG /DEBUGPORT=FILE /SOS";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS_LogFile"));
 
     /* ReactOS_Ram */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS_Ram");
-    BootEntry->FriendlyName = L"\"ReactOS (RAM Disk)\"";
+    BootEntry->FriendlyName = L"\"WinDosDX (RAM Disk)\"";
     Options->OsLoadPath     = L"ramdisk(0)\\ReactOS";
     Options->OsLoadOptions  = L"/DEBUG /DEBUGPORT=COM1 /BAUDRATE=115200 /SOS /RDPATH=reactos.img /RDIMAGEOFFSET=32256";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS_Ram"));
 
     /* ReactOS_EMS */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS_EMS");
-    BootEntry->FriendlyName = L"\"ReactOS (Emergency Management Services)\"";
+    BootEntry->FriendlyName = L"\"WinDosDX (Emergency Management Services)\"";
     Options->OsLoadPath     = ArcPath;
     Options->OsLoadOptions  = L"/DEBUG /DEBUGPORT=COM1 /BAUDRATE=115200 /SOS /redirect=com2 /redirectbaudrate=115200";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS_EMS"));
@@ -298,7 +298,7 @@ CreateFreeLoaderIniForReactOSAndBootSector(
 
 //
 // I think this function can be generalizable as:
-// "find the corresponding 'ReactOS' boot entry in this loader config file
+// "find the corresponding 'WinDosDX' boot entry in this loader config file
 // (here abstraction comes there), and if none, add a new one".
 //
 
@@ -371,7 +371,7 @@ EnumerateReactOSEntries(
     // DPRINT("    Found a Win2k3 install '%S' with ARC path '%S'\n",
            // BootEntry->FriendlyName, Options->OsLoadPath);
 
-    DPRINT("EnumerateReactOSEntries: OsLoadPath: '%S'\n", Options->OsLoadPath);
+    DPRINT("EnumerateWinDosDXEntries: OsLoadPath: '%S'\n", Options->OsLoadPath);
 
     Data->UseExistingEntry = TRUE;
     RtlStringCchCopyW(Data->OsName, ARRAYSIZE(Data->OsName), BootEntry->FriendlyName);
@@ -386,7 +386,7 @@ SkipThisEntry:
         RtlStringCchPrintfW(Data->SectionName, ARRAYSIZE(Data->SectionName),
                             L"ReactOS_%lu", Data->i);
         RtlStringCchPrintfW(Data->OsName, ARRAYSIZE(Data->OsName),
-                            L"\"ReactOS %lu\"", Data->i);
+                            L"\"WinDosDX %lu\"", Data->i);
         Data->i++;
     }
     return STATUS_SUCCESS;
@@ -424,11 +424,11 @@ UpdateFreeLoaderIni(
     //
     Status = EnumerateBootStoreEntries(BootStoreHandle, EnumerateReactOSEntries, &Data);
 
-    /* Create a new "ReactOS" entry if there is none already existing that suits us */
+    /* Create a new "WinDosDX" entry if there is none already existing that suits us */
     if (!Data.UseExistingEntry)
     {
         // RtlStringCchPrintfW(Data.SectionName, ARRAYSIZE(Data.SectionName), L"ReactOS_%lu", Data.i);
-        // RtlStringCchPrintfW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"ReactOS %lu\"", Data.i);
+        // RtlStringCchPrintfW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"WinDosDX %lu\"", Data.i);
 
         BootEntry->Version = FreeLdr;
         BootEntry->BootFilePath = NULL;
@@ -975,7 +975,7 @@ InstallFatBootcodeToPartition(
             Status = CreateFreeLoaderIniForReactOS(SystemRootPath->Buffer, DestinationArcPath->Buffer);
             if (!NT_SUCCESS(Status))
             {
-                DPRINT1("CreateFreeLoaderIniForReactOS() failed (Status %lx)\n", Status);
+                DPRINT1("CreateFreeLoaderIniForWinDosDX() failed (Status %lx)\n", Status);
                 return Status;
             }
 
@@ -1149,7 +1149,7 @@ InstallFatBootcodeToPartition(
                              SystemRootPath->Buffer, BootSector);
                 if (!NT_SUCCESS(Status))
                 {
-                    DPRINT1("CreateFreeLoaderIniForReactOSAndBootSector() failed (Status %lx)\n", Status);
+                    DPRINT1("CreateFreeLoaderIniForWinDosDXAndBootSector() failed (Status %lx)\n", Status);
                     return Status;
                 }
 
@@ -1169,7 +1169,7 @@ InstallFatBootcodeToPartition(
                 Status = CreateFreeLoaderIniForReactOS(SystemRootPath->Buffer, DestinationArcPath->Buffer);
                 if (!NT_SUCCESS(Status))
                 {
-                    DPRINT1("CreateFreeLoaderIniForReactOS() failed (Status %lx)\n", Status);
+                    DPRINT1("CreateFreeLoaderIniForWinDosDX() failed (Status %lx)\n", Status);
                     return Status;
                 }
             }
@@ -1266,7 +1266,7 @@ InstallBtrfsBootcodeToPartition(
                          SystemRootPath->Buffer, BootSector);
             if (!NT_SUCCESS(Status))
             {
-                DPRINT1("CreateFreeLoaderIniForReactOSAndBootSector() failed (Status %lx)\n", Status);
+                DPRINT1("CreateFreeLoaderIniForWinDosDXAndBootSector() failed (Status %lx)\n", Status);
                 return Status;
             }
 
@@ -1286,7 +1286,7 @@ InstallBtrfsBootcodeToPartition(
             Status = CreateFreeLoaderIniForReactOS(SystemRootPath->Buffer, DestinationArcPath->Buffer);
             if (!NT_SUCCESS(Status))
             {
-                DPRINT1("CreateFreeLoaderIniForReactOS() failed (Status %lx)\n", Status);
+                DPRINT1("CreateFreeLoaderIniForWinDosDX() failed (Status %lx)\n", Status);
                 return Status;
             }
         }
@@ -1363,7 +1363,7 @@ InstallNtfsBootcodeToPartition(
                      SystemRootPath->Buffer, BootSector);
         if (!NT_SUCCESS(Status))
         {
-            DPRINT1("CreateFreeLoaderIniForReactOSAndBootSector() failed (Status %lx)\n", Status);
+            DPRINT1("CreateFreeLoaderIniForWinDosDXAndBootSector() failed (Status %lx)\n", Status);
             return Status;
         }
 
@@ -1383,7 +1383,7 @@ InstallNtfsBootcodeToPartition(
         Status = CreateFreeLoaderIniForReactOS(SystemRootPath->Buffer, DestinationArcPath->Buffer);
         if (!NT_SUCCESS(Status))
         {
-            DPRINT1("CreateFreeLoaderIniForReactOS() failed (Status %lx)\n", Status);
+            DPRINT1("CreateFreeLoaderIniForWinDosDX() failed (Status %lx)\n", Status);
             return Status;
         }
     }
@@ -1556,7 +1556,7 @@ InstallBootManagerAndBootEntriesWorker(
         Status = CreateFreeLoaderIniForReactOS(SystemRootPath->Buffer, DestinationArcPath->Buffer);
         if (!NT_SUCCESS(Status))
         {
-            DPRINT1("CreateFreeLoaderIniForReactOS() failed (Status 0x%08lx)\n", Status);
+            DPRINT1("CreateFreeLoaderIniForWinDosDX() failed (Status 0x%08lx)\n", Status);
             return Status;
         }
 

@@ -14,7 +14,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_USAGE "Poskytuje informace nápovědy pro příkazy ReactOS.\n\n\
+    IDS_USAGE "Poskytuje informace nápovědy pro příkazy WinDosDX.\n\n\
 HELP [command]\n\n\
   command - Zobrazí nápovědu pro daný příkaz.\n"
     IDS_HELP1 "Vypíše všechny dostupné příkazy (+ jejich popis)\n\n\
