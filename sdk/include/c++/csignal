@@ -1,0 +1,11 @@
+// C++ forwarding C signal header.
+//
+// ISO C++ 14882: <csignal> is specified in 18.2.2  Implementation properties:
+// C library.
+//
+// stlport resolves the native C++ headers through NATIVE_CPP_INCLUDE, which
+// points at this directory, so every header it may ask for has to exist here.
+
+#pragma once
+
+#include <signal.h>

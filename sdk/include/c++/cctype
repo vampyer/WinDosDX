@@ -1,0 +1,10 @@
+// C++ forwarding C ctype header.
+//
+// ISO C++ 14882: 18.2.1  Implementation properties: C library
+//
+// stlport resolves the native C++ headers through NATIVE_CPP_INCLUDE, which
+// points at this directory, so every header it may ask for has to exist here.
+
+#pragma once
+
+#include <ctype.h>

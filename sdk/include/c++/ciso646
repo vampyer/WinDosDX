@@ -1,0 +1,9 @@
+// C++ header <ciso646>
+//
+// ISO C++ 14882: 17.11.1  Header <ciso646> synopsis
+//
+// This header only specifies alternative spellings of the C++ keywords and
+// logical operators.  Compilers provide the alternative spellings by default,
+// so nothing needs to be defined here.
+
+#pragma once
