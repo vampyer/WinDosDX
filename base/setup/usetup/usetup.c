@@ -1718,7 +1718,7 @@ SelectPartitionPage(PINPUT_RECORD Ir)
             if (CurrentPartition->DiskEntry->MediaType == FixedMedia &&
                 !CurrentPartition->DiskEntry->BiosFound)
             {
-                PopupError("The disk you have selected for installing ReactOS\n"
+                PopupError("The disk you have selected for installing WinDosDX\n"
                            "is not visible by the firmware of your computer,\n"
                            "and so may not be bootable.\n"
                            "Press ENTER to continue anyway.",

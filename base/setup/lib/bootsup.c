@@ -75,7 +75,7 @@ CreateFreeLoaderReactOSEntries(
 
     /* ReactOS */
     // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS");
-    BootEntry->FriendlyName = L"\"ReactOS\"";
+    BootEntry->FriendlyName = L"\"WinDosDX\"";
     Options->OsLoadOptions  = L"/FASTDETECT";
     AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS"));
 
@@ -416,7 +416,7 @@ UpdateFreeLoaderIni(
     Data.i = 1;
     Data.ArcPath = ArcPath;
     RtlStringCchCopyW(Data.SectionName, ARRAYSIZE(Data.SectionName), L"ReactOS");
-    RtlStringCchCopyW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"ReactOS\"");
+    RtlStringCchCopyW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"WinDosDX\"");
 
     //
     // FIXME: We temporarily use EnumerateBootStoreEntries, until
@@ -478,7 +478,7 @@ UpdateBootIni(
     // Data.i = 1;
     Data.ArcPath = EntryName;
     // RtlStringCchCopyW(Data.SectionName, ARRAYSIZE(Data.SectionName), L"ReactOS");
-    RtlStringCchCopyW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"ReactOS\"");
+    RtlStringCchCopyW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"WinDosDX\"");
 
     //
     // FIXME: We temporarily use EnumerateBootStoreEntries, until
@@ -1020,7 +1020,7 @@ InstallFatBootcodeToPartition(
         DPRINT1("Update 'boot.ini'\n");
         Status = UpdateBootIni(SystemRootPath->Buffer,
                                L"C:\\bootsect.ros",
-                               L"\"ReactOS\"");
+                               L"\"WinDosDX\"");
         if (!NT_SUCCESS(Status))
         {
             DPRINT1("UpdateBootIni() failed (Status %lx)\n", Status);
