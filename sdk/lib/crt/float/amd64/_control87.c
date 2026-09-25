@@ -29,8 +29,10 @@ unsigned int __cdecl _control87(unsigned int newval, unsigned int mask)
     /* Update it according to the given parameters */
     updated = (oldval & ~mask) | (newval & mask);
 
-    /* Convert back to native */
-    native = _fpcw_abstract_to_native(updated);
+    /* Convert back to native, keeping the sticky exception flags: MXCSR
+     * holds control and status together, and changing a control setting
+     * must not clear exceptions that have already been raised. */
+    native = _fpcw_abstract_to_native(updated) | (native & _MM_EXCEPT_MASK);
 
     /* Set the native value */
     _set_native_fpcw(native);

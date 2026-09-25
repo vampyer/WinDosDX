@@ -28,6 +28,66 @@ unsigned int __getfpcw87(void);
 void __setfpcw87(unsigned int);
 #endif
 
+#ifdef _M_IX86
+#ifdef _MSC_VER
+#include <intrin.h>
+#else
+#include <cpuid.h>
+#endif
+
+/* SSE2 present? Modern x86 compilers do double math in SSE registers, so
+ * the control settings must be applied to MXCSR as well as the x87 unit. */
+static int Sse2Supported(void)
+{
+    static int cached = -1;
+    if (cached < 0)
+    {
+#ifdef _MSC_VER
+        int regs[4];
+        __cpuid(regs, 1);
+        cached = (regs[3] >> 26) & 1;
+#else
+        unsigned int a, b, c, d;
+        cached = __get_cpuid(1, &a, &b, &c, &d) ? (int)((d >> 26) & 1) : 0;
+#endif
+    }
+    return cached;
+}
+
+/* Apply the abstract exception masks and rounding mode to MXCSR, keeping
+ * the sticky exception flags and the DAZ/FZ denormal bits. */
+static void SetSseControl(unsigned int flags)
+{
+    unsigned int mxcsr;
+
+#if defined(__GNUC__)
+    __asm__ __volatile__( "stmxcsr %0" : "=m" (mxcsr) : );
+#else
+    __asm stmxcsr [mxcsr];
+#endif
+
+    mxcsr &= ~(0x1f80 | 0x6000); /* exception masks, rounding control */
+    if (flags & _EM_INVALID)    mxcsr |= 0x0080;
+    if (flags & _EM_DENORMAL)   mxcsr |= 0x0100;
+    if (flags & _EM_ZERODIVIDE) mxcsr |= 0x0200;
+    if (flags & _EM_OVERFLOW)   mxcsr |= 0x0400;
+    if (flags & _EM_UNDERFLOW)  mxcsr |= 0x0800;
+    if (flags & _EM_INEXACT)    mxcsr |= 0x1000;
+    switch (flags & (_RC_UP | _RC_DOWN))
+    {
+    case _RC_UP|_RC_DOWN: mxcsr |= 0x6000; break;
+    case _RC_UP:          mxcsr |= 0x4000; break;
+    case _RC_DOWN:        mxcsr |= 0x2000; break;
+    }
+
+#if defined(__GNUC__)
+    __asm__ __volatile__( "ldmxcsr %0" : : "m" (mxcsr) );
+#else
+    __asm ldmxcsr [mxcsr];
+#endif
+}
+#endif /* _M_IX86 */
+
 /*
  * @implemented
  */
@@ -109,6 +169,11 @@ unsigned int CDECL _control87(unsigned int newval, unsigned int mask)
   __asm__ __volatile__( "fldcw %0" : : "m" (fpword) );
 #else
   __asm fldcw [fpword];
+#endif
+
+#ifdef _M_IX86
+  if (Sse2Supported())
+      SetSseControl(flags);
 #endif
 
   return flags;
