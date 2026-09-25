@@ -1,0 +1,77 @@
+;
+; PROJECT:        WinDosDX Storage Stack
+; LICENSE:        GNU GPLv2 only as published by the Free Software Foundation
+; PURPOSE:        NVMe Storport Miniport Driver INF
+;
+
+[version]
+signature="$Windows NT$"
+Class=hdc
+ClassGuid={4D36E96A-E325-11CE-BFC1-08002BE10318}
+Provider=%WinDosDX%
+
+[DestinationDirs]
+DefaultDestDir = 12 ; DIRID_DRIVERS
+
+[Manufacturer]
+%WinDosDX%=STORNVME,NTx86,NTamd64
+
+[SourceDisksNames]
+1 = %DeviceDesc%,,,
+
+[SourceDisksFiles]
+stornvme.sys = 1
+
+[STORNVME.NTx86]
+%NVMeDisk.DeviceDesc%=stornvme_Inst, PCI\CC_010802; NVMe PCI Storage Controller
+%NVMeDisk.DeviceDesc%=stornvme_Inst, PCI\VEN_1987&DEV_5013&CC_010802; NVMe PCI Storage Controller
+
+[STORNVME.NTamd64]
+%NVMeDisk.DeviceDesc%=stornvme_Inst, PCI\CC_010802; NVMe PCI Storage Controller
+%NVMeDisk.DeviceDesc%=stornvme_Inst, PCI\VEN_1987&DEV_5013&CC_010802; NVMe PCI Storage Controller
+
+[ControlFlags]
+ExcludeFromSelect = *
+
+[stornvme_Inst]
+CopyFiles = stornvme_CopyFiles
+
+[stornvme_Inst.HW]
+HKR, "StorPort", "EnableIdlePowerManagement", %REG_DWORD%, 0x00
+
+[stornvme_Inst.Services]
+AddService = stornvme, %SPSVCINST_ASSOCSERVICE%, stornvme_Service_Inst, Miniport_EventLog_Inst
+
+[stornvme_Service_Inst]
+DisplayName    = %DeviceDesc%
+ServiceType    = %SERVICE_KERNEL_DRIVER%
+StartType      = %SERVICE_SYSTEM_START%
+ErrorControl   = %SERVICE_ERROR_NORMAL%
+ServiceBinary  = %12%\stornvme.sys
+LoadOrderGroup = SCSI Miniport
+AddReg         = stornvme_addreg
+
+[stornvme_CopyFiles]
+stornvme.sys
+
+[stornvme_addreg]
+HKR, "Parameters\PnpInterface", "5", %REG_DWORD%, 0x00000001
+HKR, "Parameters", "BusType", %REG_DWORD%, 0x0000000B
+
+[Miniport_EventLog_Inst]
+AddReg = Miniport_EventLog_AddReg
+
+[Miniport_EventLog_AddReg]
+HKR,,EventMessageFile,%REG_EXPAND_SZ%,"%%SystemRoot%%\System32\IoLogMsg.dll"
+HKR,,TypesSupported,%REG_DWORD%,7
+
+[Strings]
+WinDosDX            = "WinDosDX"
+DeviceDesc          = "WinDosDX NVMe Miniport"
+NVMeDisk.DeviceDesc = "WinDosDX NVMe SCSI Miniport"
+SPSVCINST_ASSOCSERVICE = 0x00000002
+SERVICE_KERNEL_DRIVER  = 1
+SERVICE_SYSTEM_START   = 2
+SERVICE_ERROR_NORMAL   = 1
+REG_EXPAND_SZ          = 0x00020000
+REG_DWORD              = 0x00010001
