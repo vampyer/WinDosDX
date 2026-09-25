@@ -17,6 +17,7 @@ list(APPEND SOURCE
     GetUserDefaultLocaleName.c
     InitOnce.c
     IsValidLocaleName.c
+    SetFileInformationByHandle.c
     LCIDToLocaleName.c
     LocaleNameToLCID.c
     sync.c

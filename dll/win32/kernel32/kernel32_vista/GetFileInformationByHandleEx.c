@@ -47,6 +47,23 @@ BOOL WINAPI DECLSPEC_HOTPATCH GetFileInformationByHandleEx(HANDLE handle, FILE_I
 
     case FileAttributeTagInfo:
         status = NtQueryInformationFile(handle, &io, info, size, FileAttributeTagInformation);
+#ifdef __REACTOS__
+        /* Not every file system driver implements this class (e.g. CDFS).
+         * Without reparse point support the answer is the attributes and a
+         * zero tag, so derive it from FileBasicInformation; the Visual C++
+         * std::filesystem runtime depends on this query succeeding. */
+        if ((status == STATUS_INVALID_PARAMETER || status == STATUS_INVALID_INFO_CLASS ||
+             status == STATUS_NOT_IMPLEMENTED) && size >= sizeof(FILE_ATTRIBUTE_TAG_INFO))
+        {
+            FILE_BASIC_INFORMATION basic;
+            status = NtQueryInformationFile(handle, &io, &basic, sizeof(basic), FileBasicInformation);
+            if (NT_SUCCESS(status))
+            {
+                ((FILE_ATTRIBUTE_TAG_INFO *)info)->FileAttributes = basic.FileAttributes;
+                ((FILE_ATTRIBUTE_TAG_INFO *)info)->ReparseTag = 0;
+            }
+        }
+#endif
         break;
 
     case FileBasicInfo:

@@ -1108,6 +1108,40 @@ VfatGetNetworkOpenInformation(
     return STATUS_SUCCESS;
 }
 
+/*
+ * FUNCTION: Retrieve the attribute tag information. FAT has no reparse
+ * points, so the tag is always 0. Programs built with the Visual C++
+ * std::filesystem runtime query this class for every status() call.
+ */
+static
+NTSTATUS
+VfatGetAttributeTagInformation(
+    PVFATFCB Fcb,
+    PFILE_ATTRIBUTE_TAG_INFORMATION TagInfo,
+    PULONG BufferLength)
+{
+    ASSERT(TagInfo);
+    ASSERT(Fcb);
+
+    if (*BufferLength < sizeof(FILE_ATTRIBUTE_TAG_INFORMATION))
+        return STATUS_BUFFER_OVERFLOW;
+
+    TagInfo->FileAttributes = *Fcb->Attributes & 0x3f;
+    /* Synthesize FILE_ATTRIBUTE_NORMAL, as for the other information classes */
+    if (0 == (TagInfo->FileAttributes & (FILE_ATTRIBUTE_DIRECTORY |
+                                         FILE_ATTRIBUTE_ARCHIVE |
+                                         FILE_ATTRIBUTE_SYSTEM |
+                                         FILE_ATTRIBUTE_HIDDEN |
+                                         FILE_ATTRIBUTE_READONLY)))
+    {
+        TagInfo->FileAttributes |= FILE_ATTRIBUTE_NORMAL;
+    }
+    TagInfo->ReparseTag = 0;
+
+    *BufferLength -= sizeof(FILE_ATTRIBUTE_TAG_INFORMATION);
+    return STATUS_SUCCESS;
+}
+
 
 static
 NTSTATUS
@@ -1534,6 +1568,12 @@ VfatQueryInformation(
 
         case FileAlternateNameInformation:
             Status = STATUS_NOT_IMPLEMENTED;
+            break;
+
+        case FileAttributeTagInformation:
+            Status = VfatGetAttributeTagInformation(FCB,
+                                                    SystemBuffer,
+                                                    &BufferLength);
             break;
 
         default:
