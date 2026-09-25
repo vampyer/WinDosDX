@@ -8,6 +8,9 @@ Outputs:
   rosbitmap.bmp, rosbitmap_mask.bmp -> base/system/userinit/res/  (LiveCD logo)
   158.bmp                           -> base/shell/explorer/res/bmp/ (Start menu banner)
   143.bmp                           -> base/shell/explorer/res/bmp/ (Start button)
+  146-153.bmp, 170.bmp, 171.bmp     -> base/shell/explorer/res/bmp/ (Taskbar and
+                                       Start Menu Properties previews, patched
+                                       in place: Start flag and side banner)
 
 Usage (needs Pillow and Segoe UI Bold, i.e. a Windows host):
   python tools/branding/make_brand.py [OUTDIR]     # write bitmaps + previews to OUTDIR
@@ -158,9 +161,40 @@ def start_button():
     im.resize((W * 10, H * 10), Image.NEAREST).save(f"{OUT}/preview_start.png")
 
 
+def patch_previews():
+    """Replace the ReactOS Start flag (and the 171 side banner) inside the
+    Taskbar and Start Menu Properties preview bitmaps. Each patch fills a fixed
+    rectangle with its surrounding colour and redraws, so re-running is
+    idempotent."""
+    src_dir = os.path.join(REPO, "base/shell/explorer/res/bmp")
+    face = (212, 208, 200)
+    for n in range(146, 154):
+        # Taskbar previews: flag drawn at 1:1 on the Start button.
+        im = Image.open(os.path.join(src_dir, f"{n}.bmp")).convert("RGB")
+        ImageDraw.Draw(im).rectangle((3, 13, 19, 28), fill=face)
+        ic = icon(14)
+        im.paste(ic, (5, 14), ic)
+        im.save(f"{OUT}/{n}.bmp")
+    banner = Image.open(f"{OUT}/158.bmp").convert("RGB")
+    for n in (170, 171):
+        # Start menu previews: scaled-down screenshots of the whole screen.
+        im = Image.open(os.path.join(src_dir, f"{n}.bmp")).convert("RGB")
+        bg = im.getpixel((3, 175))
+        ImageDraw.Draw(im).rectangle((4, 173, 11, 177), fill=bg)
+        ic = icon(5)
+        im.paste(ic, (5, 173), ic)
+        if n == 171:
+            im.paste(banner.resize((9, 101), Image.LANCZOS), (2, 69))
+        im.save(f"{OUT}/{n}.bmp")
+        INSTALL[f"{n}.bmp"] = "base/shell/explorer/res/bmp"
+    for n in range(146, 154):
+        INSTALL[f"{n}.bmp"] = "base/shell/explorer/res/bmp"
+
+
 livecd_logo()
 start_banner()
 start_button()
+patch_previews()
 print("wrote bitmaps and previews to", OUT)
 
 if ARGS.install:
