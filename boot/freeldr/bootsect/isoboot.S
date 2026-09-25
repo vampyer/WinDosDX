@@ -138,6 +138,12 @@ relocated:
     cmp ax, HEX(AA55)
     jne .boot_freeldr
 
+#ifdef FORCE_BOOT_MEDIUM
+    // Disposable autorun images have a valid partition table but no host OS
+    // bootloader. Always continue from the El Torito medium in that case.
+    jmp .boot_freeldr
+#endif
+
 #ifdef WAIT_FOR_KEY
     // We could either boot from the ReactOS medium or from hard disk. Let the user decide!
     // Display the 'Press key' message.

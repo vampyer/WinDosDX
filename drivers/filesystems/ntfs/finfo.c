@@ -441,8 +441,8 @@ NtfsQueryInformation(PNTFS_IRP_CONTEXT IrpContext)
     SystemBuffer = Irp->AssociatedIrp.SystemBuffer;
     BufferLength = Stack->Parameters.QueryFile.Length;
 
-    if (!ExAcquireResourceSharedLite(&Fcb->MainResource,
-                                     BooleanFlagOn(IrpContext->Flags, IRPCONTEXT_CANWAIT)))
+    if (!ExAcquireResourceExclusiveLite(&Fcb->MainResource,
+                                        BooleanFlagOn(IrpContext->Flags, IRPCONTEXT_CANWAIT)))
     {
         return NtfsMarkIrpContextForQueue(IrpContext);
     }
@@ -570,6 +570,7 @@ NtfsSetEndOfFile(PNTFS_FCB Fcb,
     LARGE_INTEGER CurrentFileSize;
     PFILE_RECORD_HEADER FileRecord;
     PNTFS_ATTR_CONTEXT DataContext;
+    PNTFS_ATTR_CONTEXT AttributeListContext = NULL;
     ULONG AttributeOffset;
     NTSTATUS Status = STATUS_SUCCESS;
     ULONGLONG AllocationSize;
@@ -577,6 +578,11 @@ NtfsSetEndOfFile(PNTFS_FCB Fcb,
     ULONGLONG ParentMFTId;
     UNICODE_STRING FileName;
 
+    if (NtfsFCBIsCompressed(Fcb) || NtfsFCBIsEncrypted(Fcb) ||
+        NtfsFCBIsSparse(Fcb))
+    {
+        return STATUS_NOT_IMPLEMENTED;
+    }
 
     // Allocate non-paged memory for the file record
     FileRecord = ExAllocateFromNPagedLookasideList(&DeviceExt->FileRecLookasideList);
@@ -598,6 +604,15 @@ NtfsSetEndOfFile(PNTFS_FCB Fcb,
     }
 
     DPRINT("Found record for %wS\n", Fcb->ObjectName);
+
+    Status = FindAttribute(DeviceExt, FileRecord, AttributeAttributeList,
+                           L"", 0, &AttributeListContext, NULL);
+    if (NT_SUCCESS(Status))
+    {
+        ReleaseAttributeContext(AttributeListContext);
+        ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+        return STATUS_NOT_IMPLEMENTED;
+    }
 
     CurrentFileSize.QuadPart = NtfsGetFileSize(DeviceExt, FileRecord, L"", 0, NULL);
 
@@ -649,10 +664,19 @@ NtfsSetEndOfFile(PNTFS_FCB Fcb,
         }
     }
 
+    Status = NtfsPrepareForMetadataUpdate(DeviceExt);
+    if (!NT_SUCCESS(Status))
+    {
+        ReleaseAttributeContext(DataContext);
+        ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+        return Status;
+    }
+
     // set the attribute data length
     Status = SetAttributeDataLength(FileObject, Fcb, DataContext, AttributeOffset, FileRecord, NewFileSize);
     if (!NT_SUCCESS(Status))
     {
+        NtfsMarkJournalFailure(DeviceExt, 0x0301);
         ReleaseAttributeContext(DataContext);
         ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
         return Status;
@@ -664,6 +688,7 @@ NtfsSetEndOfFile(PNTFS_FCB Fcb,
     if (FileNameAttribute == NULL)
     {
         DPRINT1("Unable to find FileName attribute associated with file!\n");
+        NtfsMarkJournalFailure(DeviceExt, 0x0302);
         ReleaseAttributeContext(DataContext);
         ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
         return STATUS_INVALID_PARAMETER;
@@ -684,6 +709,10 @@ NtfsSetEndOfFile(PNTFS_FCB Fcb,
                                   NewFileSize->QuadPart,
                                   AllocationSize,
                                   CaseSensitive);
+    if (!NT_SUCCESS(Status))
+    {
+        NtfsMarkJournalFailure(DeviceExt, 0x0303);
+    }
 
     ReleaseAttributeContext(DataContext);
     ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
@@ -742,9 +771,12 @@ NtfsSetInformation(PNTFS_IRP_CONTEXT IrpContext)
     SystemBuffer = Irp->AssociatedIrp.SystemBuffer;
     BufferLength = Stack->Parameters.QueryFile.Length;
 
-    if (!ExAcquireResourceSharedLite(&Fcb->MainResource,
-                                     BooleanFlagOn(IrpContext->Flags, IRPCONTEXT_CANWAIT)))
+    /* Serialize metadata changes with volume flush/checkpoint. */
+    ExAcquireResourceExclusiveLite(&DeviceExt->DirResource, TRUE);
+    if (!ExAcquireResourceExclusiveLite(&Fcb->MainResource,
+                                        BooleanFlagOn(IrpContext->Flags, IRPCONTEXT_CANWAIT)))
     {
+        ExReleaseResourceLite(&DeviceExt->DirResource);
         return NtfsMarkIrpContextForQueue(IrpContext);
     }
 
@@ -774,6 +806,7 @@ NtfsSetInformation(PNTFS_IRP_CONTEXT IrpContext)
     }
 
     ExReleaseResourceLite(&Fcb->MainResource);
+    ExReleaseResourceLite(&DeviceExt->DirResource);
 
     if (NT_SUCCESS(Status))
         Irp->IoStatus.Information =
@@ -783,4 +816,5 @@ NtfsSetInformation(PNTFS_IRP_CONTEXT IrpContext)
 
     return Status;
 }
+
 /* EOF */

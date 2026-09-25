@@ -361,6 +361,10 @@ Enable this if the module uses typeid or dynamic_cast. You will probably need to
         set(CMAKE_PDB_OUTPUT_DIRECTORY "${REACTOS_BINARY_DIR}/symbols")
     endif()
 
+    # Test-only switch used to launch the disposable NTFS image regression
+    # payload as the interactive shell. It is OFF for normal boot media.
+    option(NTFS_REGRESSION_AUTORUN "Enable the disposable NTFS regression autorun image" OFF)
+
     #begin with boot so reactos_cab target is defined before all other modules
     add_subdirectory(boot)
     add_subdirectory(base)

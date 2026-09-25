@@ -412,6 +412,631 @@ NtfsGetVolumeData(PDEVICE_OBJECT DeviceObject,
 
 
 static
+BOOLEAN
+NtfsValidateRestartPage(PUCHAR Page,
+                        ULONG PageSize,
+                        ULONG BytesPerSector,
+                        BOOLEAN FirstPage,
+                        PULONG SystemPageSize);
+
+static
+BOOLEAN
+NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb);
+
+static
+BOOLEAN
+NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
+{
+    PFILE_RECORD_HEADER LogFileRecord;
+    PNTFS_ATTR_CONTEXT DataContext;
+    PUCHAR RestartPage;
+    ULONGLONG DataLength;
+    ULONG BytesRead;
+    ULONG Magic;
+    ULONG SystemPageSize;
+    ULONG LogPageSize;
+    ULONG UsaOffset;
+    ULONG UsaCount;
+    ULONG RestartAreaOffset;
+    USHORT RestartFlags;
+    BOOLEAN IsRestartPage;
+
+    /* Temporary autorun diagnostic: preserve the first failed check in the
+       otherwise-unused high VCB flag byte so the test payload can report it. */
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000100;
+
+    LogFileRecord = ExAllocateFromNPagedLookasideList(&Vcb->FileRecLookasideList);
+    if (!LogFileRecord)
+    {
+        return FALSE;
+    }
+
+    if (!NT_SUCCESS(ReadFileRecord(Vcb, NTFS_FILE_LOGFILE, LogFileRecord)))
+    {
+        ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
+        return FALSE;
+    }
+
+    if (!NT_SUCCESS(FindAttribute(Vcb, LogFileRecord, AttributeData, L"", 0,
+                                   &DataContext, NULL)))
+    {
+        ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
+        return FALSE;
+    }
+
+    DataLength = AttributeDataLength(DataContext->pRecord);
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000300;
+    if (DataContext->pRecord->IsNonResident || DataLength < Vcb->NtfsInfo.BytesPerSector)
+    {
+        ReleaseAttributeContext(DataContext);
+        ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
+        return FALSE;
+    }
+
+    RestartPage = ExAllocatePoolWithTag(NonPagedPool,
+                                        Vcb->NtfsInfo.BytesPerSector,
+                                        TAG_NTFS);
+    if (!RestartPage)
+    {
+        ReleaseAttributeContext(DataContext);
+        ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
+        return FALSE;
+    }
+
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000400;
+    BytesRead = ReadAttribute(Vcb, DataContext, 0, RestartPage,
+                              Vcb->NtfsInfo.BytesPerSector);
+    ReleaseAttributeContext(DataContext);
+    ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
+
+    if (BytesRead != Vcb->NtfsInfo.BytesPerSector)
+    {
+        ExFreePoolWithTag(RestartPage, TAG_NTFS);
+        return FALSE;
+    }
+
+    Magic = *(PULONG)RestartPage;
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000500;
+    IsRestartPage = (Magic == 0x52545352 || Magic == 0x444b4843); /* RSTR or CHKD */
+    if (!IsRestartPage)
+    {
+        ExFreePoolWithTag(RestartPage, TAG_NTFS);
+        return FALSE;
+    }
+
+    SystemPageSize = *(PULONG)(RestartPage + 0x10);
+    LogPageSize = *(PULONG)(RestartPage + 0x14);
+    UsaOffset = *(PUSHORT)(RestartPage + 0x04);
+    UsaCount = *(PUSHORT)(RestartPage + 0x06);
+    RestartAreaOffset = *(PUSHORT)(RestartPage + 0x18);
+
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000600;
+    if (SystemPageSize < Vcb->NtfsInfo.BytesPerSector ||
+        SystemPageSize > 0x10000 ||
+        (SystemPageSize & (SystemPageSize - 1)) != 0 ||
+        LogPageSize < Vcb->NtfsInfo.BytesPerSector ||
+        LogPageSize > SystemPageSize ||
+        (LogPageSize & (LogPageSize - 1)) != 0 ||
+        ((PUSHORT)(RestartPage + 0x1c))[1] != 1 ||
+        ((PUSHORT)(RestartPage + 0x1c))[0] > 1 ||
+        RestartAreaOffset < sizeof(ULONG) * 8 ||
+        (RestartAreaOffset & 7) != 0 ||
+        RestartAreaOffset + 16 > Vcb->NtfsInfo.BytesPerSector - 2 ||
+        RestartAreaOffset + 16 > SystemPageSize)
+    {
+        ExFreePoolWithTag(RestartPage, TAG_NTFS);
+        return FALSE;
+    }
+
+    if (Magic == 0x52545352 &&
+        (UsaOffset < 0x1e ||
+         UsaCount != SystemPageSize / Vcb->NtfsInfo.BytesPerSector + 1 ||
+         UsaOffset + UsaCount * sizeof(USHORT) > RestartAreaOffset))
+    {
+        ExFreePoolWithTag(RestartPage, TAG_NTFS);
+        return FALSE;
+    }
+
+    RestartFlags = *(PUSHORT)(RestartPage + RestartAreaOffset + 14);
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000800;
+    ExFreePoolWithTag(RestartPage, TAG_NTFS);
+
+    /* This driver does not create native log-client records.  Require the
+       explicit clean bit so clearing it is never mistaken for an idle log. */
+    if (!(RestartFlags & 0x0002))
+    {
+        return FALSE;
+    }
+
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000900;
+    IsRestartPage = NtfsCheckSecondRestartPage(Vcb);
+    if (IsRestartPage)
+        Vcb->Flags &= ~0x0000FF00;
+    return IsRestartPage;
+}
+
+
+static
+BOOLEAN
+NtfsValidateRestartPage(PUCHAR Page,
+                        ULONG PageSize,
+                        ULONG BytesPerSector,
+                        BOOLEAN FirstPage,
+                        PULONG SystemPageSize)
+{
+    ULONG Magic;
+    ULONG SystemSize;
+    ULONG LogPageSize;
+    ULONG UsaOffset;
+    ULONG UsaCount;
+    ULONG RestartAreaOffset;
+
+    if (PageSize < 0x1e)
+    {
+        return FALSE;
+    }
+
+    Magic = *(PULONG)Page;
+    if (Magic != 0x52545352 && Magic != 0x444b4843) /* RSTR or CHKD */
+    {
+        return FALSE;
+    }
+
+    SystemSize = *(PULONG)(Page + 0x10);
+    LogPageSize = *(PULONG)(Page + 0x14);
+    UsaOffset = *(PUSHORT)(Page + 0x04);
+    UsaCount = *(PUSHORT)(Page + 0x06);
+    RestartAreaOffset = *(PUSHORT)(Page + 0x18);
+
+    if (SystemSize < BytesPerSector || SystemSize > 0x10000 ||
+        (SystemSize & (SystemSize - 1)) != 0 ||
+        LogPageSize < BytesPerSector || LogPageSize > SystemSize ||
+        (LogPageSize & (LogPageSize - 1)) != 0 ||
+        ((PUSHORT)(Page + 0x1c))[1] != 1 ||
+        ((PUSHORT)(Page + 0x1c))[0] > 1 ||
+        RestartAreaOffset < sizeof(ULONG) * 8 ||
+        (RestartAreaOffset & 7) != 0 ||
+        RestartAreaOffset + 16 > PageSize ||
+        RestartAreaOffset + 16 > 510)
+    {
+        return FALSE;
+    }
+
+    if (Magic == 0x52545352 &&
+        (UsaOffset < 0x1e ||
+         UsaCount != SystemSize / BytesPerSector + 1 ||
+         UsaOffset + UsaCount * sizeof(USHORT) > RestartAreaOffset))
+    {
+        return FALSE;
+    }
+
+    if (FirstPage)
+    {
+        *SystemPageSize = SystemSize;
+    }
+    else if (*SystemPageSize != SystemSize)
+    {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+static
+BOOLEAN
+NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb)
+{
+    PFILE_RECORD_HEADER LogFileRecord;
+    PNTFS_ATTR_CONTEXT DataContext;
+    PUCHAR Header;
+    PUCHAR SecondPage;
+    ULONGLONG DataLength;
+    ULONG SystemPageSize = 0;
+    ULONG BytesRead;
+    ULONG RestartAreaOffset;
+    USHORT RestartFlags;
+    BOOLEAN Result = FALSE;
+
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A00;
+    LogFileRecord = ExAllocateFromNPagedLookasideList(&Vcb->FileRecLookasideList);
+    if (!LogFileRecord)
+    {
+        return FALSE;
+    }
+    if (!NT_SUCCESS(ReadFileRecord(Vcb, NTFS_FILE_LOGFILE, LogFileRecord)))
+    {
+        goto Cleanup;
+    }
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A10;
+    if (!NT_SUCCESS(FindAttribute(Vcb, LogFileRecord, AttributeData, L"", 0,
+                                   &DataContext, NULL)))
+    {
+        goto Cleanup;
+    }
+
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A20;
+    DataLength = AttributeDataLength(DataContext->pRecord);
+    if (DataContext->pRecord->IsNonResident || DataLength < 0x400)
+    {
+        ReleaseAttributeContext(DataContext);
+        goto Cleanup;
+    }
+
+    Header = ExAllocatePoolWithTag(NonPagedPool, 0x200, TAG_NTFS);
+    if (!Header)
+    {
+        ReleaseAttributeContext(DataContext);
+        goto Cleanup;
+    }
+    BytesRead = ReadAttribute(Vcb, DataContext, 0, Header, 0x200);
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A30;
+    if (BytesRead != 0x200 ||
+        !NtfsValidateRestartPage(Header, 0x200,
+                                 Vcb->NtfsInfo.BytesPerSector, TRUE,
+                                 &SystemPageSize) ||
+        DataLength / SystemPageSize < 2)
+    {
+        ExFreePoolWithTag(Header, TAG_NTFS);
+        ReleaseAttributeContext(DataContext);
+        goto Cleanup;
+    }
+    ExFreePoolWithTag(Header, TAG_NTFS);
+
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A40;
+    SecondPage = ExAllocatePoolWithTag(NonPagedPool, 0x200, TAG_NTFS);
+    if (!SecondPage)
+    {
+        ReleaseAttributeContext(DataContext);
+        goto Cleanup;
+    }
+    BytesRead = ReadAttribute(Vcb, DataContext, SystemPageSize,
+                              SecondPage, 0x200);
+    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A50;
+    if (BytesRead == 0x200 &&
+        NtfsValidateRestartPage(SecondPage, 0x200,
+                                Vcb->NtfsInfo.BytesPerSector, FALSE,
+                                &SystemPageSize))
+    {
+        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A60;
+        RestartAreaOffset = *(PUSHORT)(SecondPage + 0x18);
+        RestartFlags = *(PUSHORT)(SecondPage + RestartAreaOffset + 14);
+        Result = (RestartFlags & 0x0002) != 0;
+        if (Result)
+            Vcb->Flags &= ~0x0000FF00;
+    }
+    ExFreePoolWithTag(SecondPage, TAG_NTFS);
+    ReleaseAttributeContext(DataContext);
+
+Cleanup:
+    ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
+    return Result;
+}
+
+
+static
+NTSTATUS
+NtfsFlushJournalPages(PDEVICE_EXTENSION Vcb)
+{
+    PIRP Irp;
+    KEVENT Event;
+    IO_STATUS_BLOCK IoStatus;
+    NTSTATUS Status;
+
+    KeInitializeEvent(&Event, NotificationEvent, FALSE);
+    Irp = IoBuildSynchronousFsdRequest(IRP_MJ_FLUSH_BUFFERS,
+                                       Vcb->StorageDevice,
+                                       NULL,
+                                       0,
+                                       NULL,
+                                       &Event,
+                                       &IoStatus);
+    if (!Irp)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    Status = IoCallDriver(Vcb->StorageDevice, Irp);
+    if (Status == STATUS_PENDING)
+    {
+        KeWaitForSingleObject(&Event, Executive, KernelMode, FALSE, NULL);
+        Status = IoStatus.Status;
+    }
+
+    return Status;
+}
+
+
+static
+NTSTATUS
+NtfsWriteRestartPage(PDEVICE_EXTENSION Vcb,
+                     PFILE_RECORD_HEADER LogFileRecord,
+                     PNTFS_ATTR_CONTEXT DataContext,
+                     ULONGLONG Offset,
+                     ULONG SystemPageSize,
+                     BOOLEAN Clean)
+{
+    PUCHAR Page;
+    ULONG SystemSize;
+    ULONG RestartAreaOffset;
+    ULONG LengthWritten;
+    ULONG BytesRead;
+    NTSTATUS Status;
+
+    Page = ExAllocatePoolWithTag(NonPagedPool, SystemPageSize, TAG_NTFS);
+    if (!Page)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    SystemSize = SystemPageSize;
+    BytesRead = ReadAttribute(Vcb, DataContext, Offset, Page, SystemPageSize);
+    if (BytesRead != SystemPageSize ||
+        !NtfsValidateRestartPage(Page, SystemPageSize,
+                                 Vcb->NtfsInfo.BytesPerSector, FALSE,
+                                 &SystemSize))
+    {
+        ExFreePoolWithTag(Page, TAG_NTFS);
+        return STATUS_DATA_ERROR;
+    }
+
+    if (*(PULONG)Page != 0x444b4843 || *(PUSHORT)(Page + 0x06) != 0)
+    {
+        Status = FixupUpdateSequenceArray(Vcb, &((PINDEX_BUFFER)Page)->Ntfs);
+        if (!NT_SUCCESS(Status))
+        {
+            ExFreePoolWithTag(Page, TAG_NTFS);
+            return Status;
+        }
+    }
+
+    RestartAreaOffset = *(PUSHORT)(Page + 0x18);
+    if (Clean)
+    {
+        *(PUSHORT)(Page + RestartAreaOffset + 14) |= 0x0002;
+    }
+    else
+    {
+        *(PUSHORT)(Page + RestartAreaOffset + 14) &= (USHORT)~0x0002;
+    }
+
+    Status = AddFixupArray(Vcb, &((PINDEX_BUFFER)Page)->Ntfs);
+    if (NT_SUCCESS(Status))
+    {
+        NtfsCrashInjectPoint(NTFS_CRASH_BEFORE_RESTART_PAGE);
+        Status = WriteAttribute(Vcb, DataContext, Offset, Page,
+                                SystemPageSize, &LengthWritten,
+                                LogFileRecord);
+        if (NT_SUCCESS(Status))
+        {
+            NtfsCrashInjectPoint(NTFS_CRASH_AFTER_RESTART_PAGE);
+        }
+        if (NT_SUCCESS(Status) && LengthWritten != SystemPageSize)
+        {
+            Status = STATUS_END_OF_FILE;
+        }
+    }
+
+    ExFreePoolWithTag(Page, TAG_NTFS);
+    return Status;
+}
+
+
+static
+NTSTATUS
+NtfsVerifyJournalState(PDEVICE_EXTENSION Vcb,
+                        PNTFS_ATTR_CONTEXT DataContext,
+                        ULONG SystemPageSize,
+                        BOOLEAN Clean)
+{
+    PUCHAR Page;
+    ULONG Offset;
+    ULONG BytesRead;
+    ULONG RestartAreaOffset;
+    ULONG SystemSize = SystemPageSize;
+    USHORT RestartFlags;
+    NTSTATUS Status = STATUS_SUCCESS;
+
+    Page = ExAllocatePoolWithTag(NonPagedPool, SystemPageSize, TAG_NTFS);
+    if (!Page)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    /* Re-read both complete pages from the storage path.  This is deliberately
+       after the device flush and before the caller is allowed to mutate MFT,
+       index, or file metadata. */
+    for (Offset = 0; Offset <= SystemPageSize; Offset += SystemPageSize)
+    {
+        BytesRead = ReadAttribute(Vcb, DataContext, Offset, Page, SystemPageSize);
+        if (BytesRead != SystemPageSize ||
+            !NtfsValidateRestartPage(Page, SystemPageSize,
+                                     Vcb->NtfsInfo.BytesPerSector,
+                                     Offset == 0, &SystemSize))
+        {
+            Status = STATUS_DATA_ERROR;
+            break;
+        }
+
+        RestartAreaOffset = *(PUSHORT)(Page + 0x18);
+        RestartFlags = *(PUSHORT)(Page + RestartAreaOffset + 14);
+        if ((Clean && !(RestartFlags & 0x0002)) ||
+            (!Clean && (RestartFlags & 0x0002)))
+        {
+            Status = STATUS_DATA_ERROR;
+            break;
+        }
+    }
+
+    ExFreePoolWithTag(Page, TAG_NTFS);
+    return Status;
+}
+
+
+static
+NTSTATUS
+NtfsSetJournalState(PDEVICE_EXTENSION Vcb,
+                     BOOLEAN Clean)
+{
+    PFILE_RECORD_HEADER LogFileRecord;
+    PNTFS_ATTR_CONTEXT DataContext;
+    PUCHAR Header;
+    ULONGLONG DataLength;
+    ULONG SystemPageSize = 0;
+    ULONG LengthRead;
+    NTSTATUS Status;
+
+    if (Vcb->Flags & VCB_VOLUME_DIRTY)
+    {
+        return STATUS_VOLUME_DIRTY;
+    }
+
+    ExAcquireResourceExclusiveLite(&Vcb->JournalResource, TRUE);
+    LogFileRecord = ExAllocateFromNPagedLookasideList(&Vcb->FileRecLookasideList);
+    if (!LogFileRecord)
+    {
+        ExReleaseResourceLite(&Vcb->JournalResource);
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    Status = ReadFileRecord(Vcb, NTFS_FILE_LOGFILE, LogFileRecord);
+    if (!NT_SUCCESS(Status))
+    {
+        goto Cleanup;
+    }
+
+    Status = FindAttribute(Vcb, LogFileRecord, AttributeData, L"", 0,
+                           &DataContext, NULL);
+    if (!NT_SUCCESS(Status))
+    {
+        goto Cleanup;
+    }
+
+    DataLength = AttributeDataLength(DataContext->pRecord);
+    if (DataContext->pRecord->IsNonResident || DataLength < 0x200)
+    {
+        ReleaseAttributeContext(DataContext);
+        Status = STATUS_DATA_ERROR;
+        goto Cleanup;
+    }
+
+    Header = ExAllocatePoolWithTag(NonPagedPool, 0x200, TAG_NTFS);
+    if (!Header)
+    {
+        ReleaseAttributeContext(DataContext);
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
+    }
+
+    LengthRead = ReadAttribute(Vcb, DataContext, 0, Header, 0x200);
+    if (LengthRead != 0x200 ||
+        !NtfsValidateRestartPage(Header, 0x200,
+                                 Vcb->NtfsInfo.BytesPerSector, TRUE,
+                                 &SystemPageSize) ||
+        DataLength / SystemPageSize < 2)
+    {
+        ExFreePoolWithTag(Header, TAG_NTFS);
+        ReleaseAttributeContext(DataContext);
+        Status = STATUS_DATA_ERROR;
+        goto Cleanup;
+    }
+    ExFreePoolWithTag(Header, TAG_NTFS);
+
+    /* The first restart page is the authoritative publication point. */
+    if (Clean)
+    {
+        Status = NtfsWriteRestartPage(Vcb, LogFileRecord, DataContext,
+                                      SystemPageSize, SystemPageSize, TRUE);
+        if (NT_SUCCESS(Status))
+        {
+            Status = NtfsWriteRestartPage(Vcb, LogFileRecord, DataContext,
+                                          0, SystemPageSize, TRUE);
+        }
+    }
+    else
+    {
+        Status = NtfsWriteRestartPage(Vcb, LogFileRecord, DataContext,
+                                      0, SystemPageSize, FALSE);
+        if (NT_SUCCESS(Status))
+        {
+            Status = NtfsWriteRestartPage(Vcb, LogFileRecord, DataContext,
+                                          SystemPageSize, SystemPageSize, FALSE);
+        }
+    }
+
+    if (NT_SUCCESS(Status))
+    {
+        Status = NtfsFlushJournalPages(Vcb);
+    }
+    if (NT_SUCCESS(Status))
+    {
+        Status = NtfsVerifyJournalState(Vcb, DataContext,
+                                        SystemPageSize, Clean);
+    }
+
+    ReleaseAttributeContext(DataContext);
+
+    if (!NT_SUCCESS(Status))
+    {
+        Vcb->Flags |= VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY;
+        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x0000D200;
+    }
+    else if (Clean)
+    {
+        Vcb->Flags &= ~VCB_JOURNAL_DIRTY;
+        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x0000D400;
+    }
+    else
+    {
+        Vcb->Flags |= VCB_JOURNAL_DIRTY;
+        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x0000D300;
+    }
+
+Cleanup:
+    ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList,
+                                LogFileRecord);
+    ExReleaseResourceLite(&Vcb->JournalResource);
+    return Status;
+}
+
+
+NTSTATUS
+NtfsPrepareForMetadataUpdate(PDEVICE_EXTENSION Vcb)
+{
+    if (Vcb->Flags & VCB_VOLUME_DIRTY)
+    {
+        return STATUS_VOLUME_DIRTY;
+    }
+    if (Vcb->Flags & VCB_JOURNAL_DIRTY)
+    {
+        return STATUS_SUCCESS;
+    }
+    return NtfsSetJournalState(Vcb, FALSE);
+}
+
+
+NTSTATUS
+NtfsCheckpointJournal(PDEVICE_EXTENSION Vcb)
+{
+    if (!(Vcb->Flags & VCB_JOURNAL_DIRTY))
+    {
+        return STATUS_SUCCESS;
+    }
+    return NtfsSetJournalState(Vcb, TRUE);
+}
+
+
+VOID
+NtfsMarkJournalFailure(PDEVICE_EXTENSION Vcb,
+                       ULONG CallSite)
+{
+    Vcb->Flags |= VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY;
+    Vcb->Flags = (Vcb->Flags & ~0x00FFFF00) |
+                 ((CallSite & 0x0000FFFF) << 8);
+}
+
+
+static
 NTSTATUS
 NtfsMountVolume(PDEVICE_OBJECT DeviceObject,
                 PIRP Irp)
@@ -464,6 +1089,17 @@ NtfsMountVolume(PDEVICE_OBJECT DeviceObject,
     if (!NT_SUCCESS(Status))
         goto ByeBye;
 
+    if (!NtfsCheckLogFileClean(Vcb))
+    {
+        WARN_(NTFS, "NTFS volume is dirty or has an invalid $LogFile; writes will be denied.\n");
+        Vcb->Flags |= VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY;
+    }
+    else
+    {
+        Vcb->Flags &= ~(VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY);
+        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000F00;
+    }
+
     Lookaside = TRUE;
 
     NewDeviceObject->Vpb = DeviceToMount->Vpb;
@@ -508,7 +1144,7 @@ NtfsMountVolume(PDEVICE_OBJECT DeviceObject,
     Vcb->StreamFileObject->Vpb = Vcb->Vpb;
     Ccb->PtrFileObject = Vcb->StreamFileObject;
     Fcb->FileObject = Vcb->StreamFileObject;
-    Fcb->Vcb = (PDEVICE_EXTENSION)Vcb->StorageDevice;
+    Fcb->Vcb = Vcb;
 
     Fcb->Flags = FCB_IS_VOLUME_STREAM;
 
@@ -535,6 +1171,7 @@ NtfsMountVolume(PDEVICE_OBJECT DeviceObject,
     _SEH2_END;
 
     ExInitializeResourceLite(&Vcb->DirResource);
+    ExInitializeResourceLite(&Vcb->JournalResource);
 
     KeInitializeSpinLock(&Vcb->FcbListLock);
 
@@ -855,43 +1492,68 @@ LockOrUnlockVolume(PDEVICE_EXTENSION DeviceExt,
     PFILE_OBJECT FileObject;
     PNTFS_FCB Fcb;
     PIO_STACK_LOCATION Stack;
+    NTSTATUS Status;
 
     DPRINT("LockOrUnlockVolume(%p, %p, %d)\n", DeviceExt, Irp, Lock);
 
     Stack = IoGetCurrentIrpStackLocation(Irp);
     FileObject = Stack->FileObject;
-    Fcb = FileObject->FsContext;
-
-    /* Only allow locking with the volume open */
-    if (!(Fcb->Flags & FCB_IS_VOLUME))
+    if (!FileObject)
     {
-        return STATUS_ACCESS_DENIED;
+        return STATUS_INVALID_HANDLE;
     }
 
-    /* Bail out if it's already in the demanded state */
+    ExAcquireResourceExclusiveLite(&DeviceExt->DirResource, TRUE);
+    Fcb = FileObject->FsContext;
+    if (!Fcb)
+    {
+        Status = STATUS_INVALID_HANDLE;
+        goto Exit;
+    }
+
+    if (!(Fcb->Flags & FCB_IS_VOLUME))
+    {
+        Status = STATUS_ACCESS_DENIED;
+        goto Exit;
+    }
+
     if (((DeviceExt->Flags & VCB_VOLUME_LOCKED) && Lock) ||
         (!(DeviceExt->Flags & VCB_VOLUME_LOCKED) && !Lock))
     {
-        return STATUS_ACCESS_DENIED;
+        Status = STATUS_ACCESS_DENIED;
+        goto Exit;
     }
 
-    /* Deny locking if we're not alone */
-    if (Lock && DeviceExt->OpenHandleCount != 1)
-    {
-        return STATUS_ACCESS_DENIED;
-    }
-
-    /* Finally, proceed */
     if (Lock)
     {
+        if (DeviceExt->VolumeLockOwner != NULL ||
+            DeviceExt->OpenHandleCount != 1 ||
+            DeviceExt->VolumeFcb->OpenHandleCount != 1)
+        {
+            Status = STATUS_ACCESS_DENIED;
+            goto Exit;
+        }
+
+        DeviceExt->VolumeLockOwner = FileObject;
         DeviceExt->Flags |= VCB_VOLUME_LOCKED;
     }
     else
     {
+        if (DeviceExt->VolumeLockOwner != FileObject)
+        {
+            Status = STATUS_ACCESS_DENIED;
+            goto Exit;
+        }
+
+        DeviceExt->VolumeLockOwner = NULL;
         DeviceExt->Flags &= ~VCB_VOLUME_LOCKED;
     }
 
-    return STATUS_SUCCESS;
+    Status = STATUS_SUCCESS;
+
+Exit:
+    ExReleaseResourceLite(&DeviceExt->DirResource);
+    return Status;
 }
 
 
@@ -935,6 +1597,48 @@ NtfsUserFsRequest(PDEVICE_OBJECT DeviceObject,
 
         case FSCTL_UNLOCK_VOLUME:
             Status = LockOrUnlockVolume(DeviceExt, Irp, FALSE);
+            break;
+
+        case FSCTL_IS_VOLUME_DIRTY:
+            if (Stack->Parameters.FileSystemControl.OutputBufferLength < sizeof(ULONG))
+            {
+                Status = STATUS_BUFFER_TOO_SMALL;
+                break;
+            }
+
+            ExAcquireResourceSharedLite(&DeviceExt->DirResource, TRUE);
+            *(PULONG)Irp->AssociatedIrp.SystemBuffer =
+                ((DeviceExt->Flags & (VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY)) ?
+                 VOLUME_IS_DIRTY : 0) |
+                ((DeviceExt->Flags & 0x00FFFF00) << 8);
+            ExReleaseResourceLite(&DeviceExt->DirResource);
+            Irp->IoStatus.Information = sizeof(ULONG);
+            Status = STATUS_SUCCESS;
+            break;
+
+        case FSCTL_MARK_VOLUME_DIRTY:
+            if (!NtfsGlobalData->EnableWriteSupport)
+            {
+                Status = STATUS_ACCESS_DENIED;
+            }
+            else
+            {
+                ExAcquireResourceExclusiveLite(&DeviceExt->DirResource, TRUE);
+                Status = NtfsPrepareForMetadataUpdate(DeviceExt);
+                if (NT_SUCCESS(Status))
+                {
+                    /* FSCTL_MARK_VOLUME_DIRTY is an explicit, durable
+                       request to keep the volume read-only until reboot. */
+                    DeviceExt->Flags |= VCB_VOLUME_DIRTY;
+                    DeviceExt->Flags = (DeviceExt->Flags & ~0x0000FF00) | 0x0000D500;
+                }
+                ExReleaseResourceLite(&DeviceExt->DirResource);
+            }
+            break;
+
+        case FSCTL_DISMOUNT_VOLUME:
+            /* Teardown is not implemented; refusing is safer than reporting a false dismount. */
+            Status = STATUS_NOT_IMPLEMENTED;
             break;
 
         case FSCTL_GET_NTFS_VOLUME_DATA:

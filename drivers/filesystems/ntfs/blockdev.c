@@ -54,6 +54,26 @@ NtfsReadDisk(IN PDEVICE_OBJECT DeviceObject,
 
     DPRINT("NtfsReadDisk(%p, %I64x, %lu, %lu, %p, %d)\n", DeviceObject, StartingOffset, Length, SectorSize, Buffer, Override);
 
+    if (DeviceObject == NULL || SectorSize == 0 || StartingOffset < 0)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    if (Length == 0)
+    {
+        return STATUS_SUCCESS;
+    }
+
+    if (Buffer == NULL)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    if ((ULONGLONG)StartingOffset > (ULONGLONG)-1 - Length)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
     KeInitializeEvent(&Event,
                       NotificationEvent,
                       FALSE);
@@ -65,6 +85,27 @@ NtfsReadDisk(IN PDEVICE_OBJECT DeviceObject,
     {
         RealReadOffset = ROUND_DOWN(StartingOffset, SectorSize);
         RealLength = ROUND_UP(Length, SectorSize);
+
+        /*
+         * Rounding Length alone is not enough when the requested range starts
+         * in the middle of a sector.  For example, offset 1 and length 512
+         * needs sectors [0, 1024), not just [0, 512).  The old calculation
+         * left the last byte of the caller's buffer uninitialized and could
+         * therefore return corrupt data to the caller.
+         */
+        if (RealReadOffset + RealLength < (ULONGLONG)StartingOffset + Length)
+        {
+            if (RealLength > MAXULONG - SectorSize)
+            {
+                return STATUS_INVALID_PARAMETER;
+            }
+            RealLength += SectorSize;
+        }
+
+        if (RealLength > MAXULONG - SectorSize)
+        {
+            return STATUS_INVALID_PARAMETER;
+        }
 
         ReadBuffer = ExAllocatePoolWithTag(NonPagedPool, RealLength + SectorSize, TAG_NTFS);
         if (ReadBuffer == NULL)
@@ -178,8 +219,23 @@ NtfsWriteDisk(IN PDEVICE_OBJECT DeviceObject,
 
     DPRINT("NtfsWriteDisk(%p, %I64x, %lu, %lu, %p)\n", DeviceObject, StartingOffset, Length, SectorSize, Buffer);
 
+    if (DeviceObject == NULL || SectorSize == 0 || StartingOffset < 0)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
     if (Length == 0)
         return STATUS_SUCCESS;
+
+    if (Buffer == NULL)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    if ((ULONGLONG)StartingOffset > (ULONGLONG)-1 - Length)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
 
     RealWriteOffset = (ULONGLONG)StartingOffset;
     RealLength = Length;

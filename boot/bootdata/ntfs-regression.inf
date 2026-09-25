@@ -1,0 +1,5 @@
+; Test-only NTFS regression autorun fragment.
+; Included only when NTFS_REGRESSION_AUTORUN=ON.
+HKLM,"SYSTEM\CurrentControlSet\Services\Ntfs","MyDataDoesNotMatterSoEnableExperimentalWriteSupportForEveryNTFSVolume",0x00010001,0x00000001
+HKCU,"SOFTWARE\Microsoft\Windows\CurrentVersion\Run","ntfs-regression",0x00020002,"%SystemRoot%\system32\ntfs-regression.exe"
+HKCU,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon","Shell",0x00020002,"%SystemRoot%\system32\ntfs-regression.exe"

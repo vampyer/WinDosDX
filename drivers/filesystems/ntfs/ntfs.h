@@ -101,6 +101,7 @@ typedef struct
     NTFSIDENTIFIER Identifier;
 
     ERESOURCE DirResource;
+    ERESOURCE JournalResource;
 //    ERESOURCE FatResource;
 
     KSPIN_LOCK FcbListLock;
@@ -121,10 +122,13 @@ typedef struct
     ULONG MftDataOffset;
     ULONG Flags;
     ULONG OpenHandleCount;
+    PFILE_OBJECT VolumeLockOwner;
 
 } DEVICE_EXTENSION, *PDEVICE_EXTENSION, NTFS_VCB, *PNTFS_VCB;
 
 #define VCB_VOLUME_LOCKED       0x0001
+#define VCB_VOLUME_DIRTY        0x0002
+#define VCB_JOURNAL_DIRTY       0x0004
 
 typedef struct
 {
@@ -138,6 +142,7 @@ typedef struct
     PWCHAR DirectorySearchPattern;
     ULONG LastCluster;
     ULONG LastOffset;
+    BOOLEAN VcbHandleCounted;
 } NTFS_CCB, *PNTFS_CCB;
 
 typedef struct
@@ -153,7 +158,13 @@ typedef struct
     NPAGED_LOOKASIDE_LIST FcbLookasideList;
     NPAGED_LOOKASIDE_LIST AttrCtxtLookasideList;
     BOOLEAN EnableWriteSupport;
+    ULONG CrashInjectionMask;
 } NTFS_GLOBAL_DATA, *PNTFS_GLOBAL_DATA;
+
+#define NTFS_CRASH_BEFORE_MFT_BITMAP       0x00000001
+#define NTFS_CRASH_AFTER_MFT_BITMAP        0x00000002
+#define NTFS_CRASH_BEFORE_RESTART_PAGE     0x00000004
+#define NTFS_CRASH_AFTER_RESTART_PAGE      0x00000008
 
 
 typedef enum
@@ -565,6 +576,21 @@ typedef struct
 extern PNTFS_GLOBAL_DATA NtfsGlobalData;
 
 FORCEINLINE
+BOOLEAN
+NtfsVolumeIsWritable(PDEVICE_EXTENSION Vcb)
+{
+    return NtfsGlobalData->EnableWriteSupport &&
+           !(Vcb->Flags & (VCB_VOLUME_DIRTY | VCB_VOLUME_LOCKED));
+}
+
+FORCEINLINE
+VOID
+NtfsMarkVolumeDirty(PDEVICE_EXTENSION Vcb)
+{
+    Vcb->Flags |= VCB_VOLUME_DIRTY;
+}
+
+FORCEINLINE
 NTSTATUS
 NtfsMarkIrpContextForQueue(PNTFS_IRP_CONTEXT IrpContext)
 {
@@ -939,6 +965,9 @@ BOOLEAN
 NtfsFCBIsEncrypted(PNTFS_FCB Fcb);
 
 BOOLEAN
+NtfsFCBIsSparse(PNTFS_FCB Fcb);
+
+BOOLEAN
 NtfsFCBIsRoot(PNTFS_FCB Fcb);
 
 VOID
@@ -960,6 +989,9 @@ NtfsGrabFCBFromTable(PNTFS_VCB Vcb,
 NTSTATUS
 NtfsFCBInitializeCache(PNTFS_VCB Vcb,
                        PNTFS_FCB Fcb);
+
+NTSTATUS
+NtfsFlushBuffers(PNTFS_IRP_CONTEXT IrpContext);
 
 PNTFS_FCB
 NtfsMakeRootFCB(PNTFS_VCB Vcb);
@@ -1018,6 +1050,19 @@ NtfsSetInformation(PNTFS_IRP_CONTEXT IrpContext);
 NTSTATUS
 NtfsFileSystemControl(PNTFS_IRP_CONTEXT IrpContext);
 
+NTSTATUS
+NtfsPrepareForMetadataUpdate(PDEVICE_EXTENSION Vcb);
+
+NTSTATUS
+NtfsCheckpointJournal(PDEVICE_EXTENSION Vcb);
+
+VOID
+NtfsMarkJournalFailure(PDEVICE_EXTENSION Vcb,
+                       ULONG CallSite);
+
+VOID
+NtfsCrashInjectPoint(ULONG InjectionPoint);
+
 
 /* mft.c */
 NTSTATUS
@@ -1032,6 +1077,10 @@ AddNewMftEntry(PFILE_RECORD_HEADER FileRecord,
                PDEVICE_EXTENSION DeviceExt,
                PULONGLONG DestinationIndex,
                BOOLEAN CanWait);
+
+NTSTATUS
+RemoveNewMftEntry(PDEVICE_EXTENSION DeviceExt,
+                  ULONGLONG MftIndex);
 
 VOID
 NtfsDumpData(ULONG_PTR Buffer, ULONG Length);

@@ -51,7 +51,7 @@ NtfsReadFile(PDEVICE_EXTENSION DeviceExt,
     NTSTATUS Status = STATUS_SUCCESS;
     PNTFS_FCB Fcb;
     PFILE_RECORD_HEADER FileRecord;
-    PNTFS_ATTR_CONTEXT DataContext;
+    PNTFS_ATTR_CONTEXT DataContext = NULL;
     ULONG RealLength;
     ULONG RealReadOffset;
     ULONG RealLengthRead;
@@ -68,6 +68,11 @@ NtfsReadFile(PDEVICE_EXTENSION DeviceExt,
     {
         DPRINT1("Null read!\n");
         return STATUS_SUCCESS;
+    }
+
+    if (Buffer == NULL)
+    {
+        return STATUS_INVALID_PARAMETER;
     }
 
     Fcb = (PNTFS_FCB)FileObject->FsContext;
@@ -128,7 +133,10 @@ NtfsReadFile(PDEVICE_EXTENSION DeviceExt,
         }
         FindCloseAttribute(&Context);
 
-        ReleaseAttributeContext(DataContext);
+        if (DataContext)
+        {
+            ReleaseAttributeContext(DataContext);
+        }
         ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
         return Status;
     }
@@ -143,8 +151,8 @@ NtfsReadFile(PDEVICE_EXTENSION DeviceExt,
     }
 
     ToRead = Length;
-    if (ReadOffset + Length > StreamSize)
-        ToRead = StreamSize - ReadOffset;
+    if ((ULONGLONG)ReadOffset + Length > StreamSize)
+        ToRead = (ULONG)(StreamSize - ReadOffset);
 
     RealReadOffset = ReadOffset;
     RealLength = ToRead;
@@ -174,16 +182,16 @@ NtfsReadFile(PDEVICE_EXTENSION DeviceExt,
 
     DPRINT("Effective read: %lu at %lu for stream '%S'\n", RealLength, RealReadOffset, Fcb->Stream);
     RealLengthRead = ReadAttribute(DeviceExt, DataContext, RealReadOffset, (PCHAR)ReadBuffer, RealLength);
-    if (RealLengthRead == 0)
+    if (RealLengthRead < ToRead)
     {
-        DPRINT1("Read failure!\n");
+        DPRINT1("Read failure: got %lu of %lu bytes!\n", RealLengthRead, ToRead);
         ReleaseAttributeContext(DataContext);
         ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
         if (AllocatedBuffer)
         {
             ExFreePoolWithTag(ReadBuffer, TAG_NTFS);
         }
-        return Status;
+        return STATUS_UNEXPECTED_IO_ERROR;
     }
 
     ReleaseAttributeContext(DataContext);
@@ -237,6 +245,12 @@ NtfsRead(PNTFS_IRP_CONTEXT IrpContext)
     ReadLength = Stack->Parameters.Read.Length;
     ReadOffset = Stack->Parameters.Read.ByteOffset;
     Buffer = NtfsGetUserBuffer(Irp, BooleanFlagOn(Irp->Flags, IRP_PAGING_IO));
+
+    if (ReadOffset.u.HighPart != 0)
+    {
+        Irp->IoStatus.Information = 0;
+        return STATUS_INVALID_PARAMETER;
+    }
 
     Status = NtfsReadFile(DeviceExt,
                           FileObject,
@@ -320,9 +334,11 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
     NTSTATUS Status = STATUS_NOT_IMPLEMENTED;
     PNTFS_FCB Fcb;
     PFILE_RECORD_HEADER FileRecord;
-    PNTFS_ATTR_CONTEXT DataContext;
+    PNTFS_ATTR_CONTEXT DataContext = NULL;
+    PNTFS_ATTR_CONTEXT AttributeListContext = NULL;
     ULONG AttributeOffset;
     ULONGLONG StreamSize;
+    BOOLEAN JournalPrepared = FALSE;
 
     DPRINT("NtfsWriteFile(%p, %p, %p, %lu, %lu, %x, %s, %p)\n",
            DeviceExt,
@@ -361,6 +377,12 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
         return STATUS_NOT_IMPLEMENTED;
     }
 
+    if (NtfsFCBIsEncrypted(Fcb) || NtfsFCBIsSparse(Fcb))
+    {
+        DPRINT1("Encrypted or sparse file writes are unsupported!\n");
+        return STATUS_NOT_IMPLEMENTED;
+    }
+
     // allocate non-paged memory for the FILE_RECORD_HEADER
     FileRecord = ExAllocateFromNPagedLookasideList(&DeviceExt->FileRecLookasideList);
     if (FileRecord == NULL)
@@ -381,6 +403,15 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
     }
 
     DPRINT("Found record for %wS\n", Fcb->ObjectName);
+
+    Status = FindAttribute(DeviceExt, FileRecord, AttributeAttributeList,
+                           L"", 0, &AttributeListContext, NULL);
+    if (NT_SUCCESS(Status))
+    {
+        ReleaseAttributeContext(AttributeListContext);
+        ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+        return STATUS_NOT_IMPLEMENTED;
+    }
 
     // Find the attribute with the data stream for our file
     DPRINT("Finding Data Attribute...\n");
@@ -414,7 +445,10 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
         }
         FindCloseAttribute(&Context);
 
-        ReleaseAttributeContext(DataContext);
+        if (DataContext)
+        {
+            ReleaseAttributeContext(DataContext);
+        }
         ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
         return Status;
     }
@@ -437,12 +471,23 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
             ULONGLONG ParentMFTId;
             UNICODE_STRING filename;
 
-            DataSize.QuadPart = WriteOffset + Length;
+            DataSize.QuadPart = (ULONGLONG)WriteOffset + Length;
+
+            Status = NtfsPrepareForMetadataUpdate(DeviceExt);
+            if (!NT_SUCCESS(Status))
+            {
+                ReleaseAttributeContext(DataContext);
+                ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+                *LengthWritten = 0;
+                return Status;
+            }
+            JournalPrepared = TRUE;
 
             // set the attribute data length
             Status = SetAttributeDataLength(FileObject, Fcb, DataContext, AttributeOffset, FileRecord, &DataSize);
             if (!NT_SUCCESS(Status))
             {
+                NtfsMarkJournalFailure(DeviceExt, 0x0501);
                 ReleaseAttributeContext(DataContext);
                 ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
                 *LengthWritten = 0;
@@ -470,6 +515,10 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
                                           DataSize.QuadPart,
                                           AllocationSize,
                                           CaseSensitive);
+            if (!NT_SUCCESS(Status))
+            {
+                NtfsMarkJournalFailure(DeviceExt, 0x0502);
+            }
 
         }
         else
@@ -479,6 +528,14 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
             ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
             *LengthWritten = 0;
             return STATUS_ACCESS_DENIED;
+        }
+
+        if (!NT_SUCCESS(Status))
+        {
+            ReleaseAttributeContext(DataContext);
+            ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+            *LengthWritten = 0;
+            return Status;
         }
     }
 
@@ -490,6 +547,10 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
     // Did the write fail?
     if (!NT_SUCCESS(Status))
     {
+        if (JournalPrepared)
+        {
+            NtfsMarkJournalFailure(DeviceExt, 0x0503);
+        }
         DPRINT1("Write failure!\n");
         ReleaseAttributeContext(DataContext);
         ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
@@ -502,6 +563,10 @@ NTSTATUS NtfsWriteFile(PDEVICE_EXTENSION DeviceExt,
     {
         DPRINT1("\a\tNTFS DRIVER ERROR: length written (%lu) differs from requested (%lu), but no error was indicated!\n",
             *LengthWritten, Length);
+        if (JournalPrepared)
+        {
+            NtfsMarkJournalFailure(DeviceExt, 0x0504);
+        }
         Status = STATUS_UNEXPECTED_IO_ERROR;
     }
 
@@ -548,6 +613,7 @@ NtfsWrite(PNTFS_IRP_CONTEXT IrpContext)
     PFILE_OBJECT FileObject = NULL;
     PIRP Irp = NULL;
     ULONG BytesPerSector;
+    BOOLEAN DirResourceAcquired = FALSE;
 
     DPRINT("NtfsWrite(IrpContext %p)\n", IrpContext);
     ASSERT(IrpContext);
@@ -589,10 +655,14 @@ NtfsWrite(PNTFS_IRP_CONTEXT IrpContext)
     DPRINT("ByteOffset: %I64u\tLength: %lu\tBytes per sector: %lu\n", ByteOffset.QuadPart,
         Length, BytesPerSector);
 
-    if (ByteOffset.u.HighPart && !(Fcb->Flags & FCB_IS_VOLUME))
+    if (ByteOffset.u.HighPart)
     {
-        // TODO: Support large files
         DPRINT1("FIXME: Writing to large files is not yet supported at this time.\n");
+        return STATUS_INVALID_PARAMETER;
+    }
+    if (!(Fcb->Flags & FCB_IS_VOLUME) &&
+        (ULONGLONG)ByteOffset.u.LowPart + Length > MAXULONG)
+    {
         return STATUS_INVALID_PARAMETER;
     }
 
@@ -638,9 +708,21 @@ NtfsWrite(PNTFS_IRP_CONTEXT IrpContext)
         Resource = &Fcb->MainResource;
     }
 
+    // Serialize metadata writers with volume flush/checkpoint before taking
+    // the per-FCB resource. Flush uses the same order.
+    if (!(Fcb->Flags & FCB_IS_VOLUME))
+    {
+        ExAcquireResourceExclusiveLite(&DeviceExt->DirResource, TRUE);
+        DirResourceAcquired = TRUE;
+    }
+
     // acquire exclusive access to the Resource
     if (!ExAcquireResourceExclusiveLite(Resource, BooleanFlagOn(IrpContext->Flags, IRPCONTEXT_CANWAIT)))
     {
+        if (DirResourceAcquired)
+        {
+            ExReleaseResourceLite(&DeviceExt->DirResource);
+        }
         return STATUS_CANT_WAIT;
     }
 
@@ -661,6 +743,10 @@ NtfsWrite(PNTFS_IRP_CONTEXT IrpContext)
         DPRINT1("FIXME: Async writes not supported in NTFS!\n");
 
         ExReleaseResourceLite(Resource);
+        if (DirResourceAcquired)
+        {
+            ExReleaseResourceLite(&DeviceExt->DirResource);
+        }
         return STATUS_NOT_IMPLEMENTED;
     }
 
@@ -677,6 +763,10 @@ NtfsWrite(PNTFS_IRP_CONTEXT IrpContext)
         DPRINT1("Unable to lock user buffer!\n");
 
         ExReleaseResourceLite(Resource);
+        if (DirResourceAcquired)
+        {
+            ExReleaseResourceLite(&DeviceExt->DirResource);
+        }
         return Status;
     }
 
@@ -720,6 +810,10 @@ NtfsWrite(PNTFS_IRP_CONTEXT IrpContext)
     // Note: We leave the user buffer that we locked alone, it's up to the I/O manager to unlock and free it
 
     ExReleaseResourceLite(Resource);
+    if (DirResourceAcquired)
+    {
+        ExReleaseResourceLite(&DeviceExt->DirResource);
+    }
 
     return Status;
 }

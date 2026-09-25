@@ -228,6 +228,13 @@ StartShell(
     _In_opt_ PVOID pEnvironment)
 {
     DWORD Type, Size;
+#ifdef NTFS_REGRESSION_AUTORUN
+    /* This path exists only in a bootcd configured with
+     * NTFS_REGRESSION_AUTORUN=ON. The payload owns the whole guest session so
+     * it can reboot between remount and interrupted-write phases. */
+    if (StartProcess(L"%SystemRoot%\\system32\\ntfs-regression.exe", pEnvironment))
+        return TRUE;
+#endif
     DWORD Value = 0;
     LONG rc;
     HKEY hKey;
@@ -550,6 +557,10 @@ wWinMain(IN HINSTANCE hInst,
     hInstance = hInst;
 
     bIsLiveCD = IsMiniNT();
+#ifdef NTFS_REGRESSION_AUTORUN
+    /* Skip the interactive LiveCD language page in the disposable test image. */
+    bIsLiveCD = FALSE;
+#endif
 
 Restart:
     SetUserSettings();
@@ -583,6 +594,9 @@ Restart:
                 WARN("CreateEnvironmentBlock() failed, fall back to default (error %lu)\n",
                      GetLastError());
             }
+            /* WinDosDX boots the normal Windows shell.  The DOS machine is
+             * deliberately not part of userinit; it can be shipped later as
+             * a separate application. */
             Success = StartShell(pEnvironment);
             if (pEnvironment)
                 DestroyEnvironmentBlock(pEnvironment);

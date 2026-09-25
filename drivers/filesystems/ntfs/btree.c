@@ -80,38 +80,76 @@ PrintAllVCNs(PDEVICE_EXTENSION Vcb,
     ExFreePoolWithTag(Buffer, TAG_NTFS);
 }
 
+static
+NTSTATUS
+NtfsWriteEmptyIndexNode(PDEVICE_EXTENSION DeviceExt,
+                        PNTFS_ATTR_CONTEXT IndexAllocationCtx,
+                        PFILE_RECORD_HEADER FileRecord,
+                        ULONG IndexBufferSize,
+                        ULONGLONG Vcn)
+{
+    PINDEX_BUFFER IndexBuffer;
+    PINDEX_ENTRY_ATTRIBUTE EndEntry;
+    ULONG FirstEntryOffset;
+    NTSTATUS Status;
+
+    FirstEntryOffset = ALIGN_UP(FIELD_OFFSET(INDEX_BUFFER, Header) +
+                                sizeof(INDEX_HEADER_ATTRIBUTE) +
+                                (IndexBufferSize / DeviceExt->NtfsInfo.BytesPerSector + 1) *
+                                sizeof(USHORT),
+                                sizeof(ULONG));
+    if (IndexBufferSize < FirstEntryOffset + FIELD_OFFSET(INDEX_ENTRY_ATTRIBUTE, FileName) ||
+        IndexBufferSize < DeviceExt->NtfsInfo.BytesPerSector ||
+        (IndexBufferSize % DeviceExt->NtfsInfo.BytesPerSector) != 0)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    IndexBuffer = ExAllocatePoolWithTag(NonPagedPool, IndexBufferSize, TAG_NTFS);
+    if (!IndexBuffer)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    RtlZeroMemory(IndexBuffer, IndexBufferSize);
+    IndexBuffer->Ntfs.Type = NRH_INDX_TYPE;
+    IndexBuffer->Ntfs.UsaOffset = FIELD_OFFSET(INDEX_BUFFER, Header) +
+                                  sizeof(INDEX_HEADER_ATTRIBUTE);
+    IndexBuffer->Ntfs.UsaCount = IndexBufferSize / DeviceExt->NtfsInfo.BytesPerSector + 1;
+    IndexBuffer->VCN = Vcn;
+    IndexBuffer->Header.FirstEntryOffset = FirstEntryOffset;
+    IndexBuffer->Header.AllocatedSize = IndexBufferSize - FirstEntryOffset;
+    IndexBuffer->Header.TotalSizeOfEntries = FirstEntryOffset;
+
+    EndEntry = (PINDEX_ENTRY_ATTRIBUTE)((PUCHAR)IndexBuffer + FirstEntryOffset);
+    EndEntry->Length = FIELD_OFFSET(INDEX_ENTRY_ATTRIBUTE, FileName);
+    EndEntry->Flags = NTFS_INDEX_ENTRY_END;
+    IndexBuffer->Header.TotalSizeOfEntries += EndEntry->Length;
+
+    Status = AddFixupArray(DeviceExt, &IndexBuffer->Ntfs);
+    if (NT_SUCCESS(Status))
+    {
+        ULONG LengthWritten;
+        ULONGLONG NodeOffset = GetAllocationOffsetFromVCN(DeviceExt,
+                                                           IndexBufferSize,
+                                                           Vcn);
+
+        Status = WriteAttribute(DeviceExt, IndexAllocationCtx, NodeOffset,
+                                (PUCHAR)IndexBuffer, IndexBufferSize,
+                                &LengthWritten, FileRecord);
+        if (NT_SUCCESS(Status) && LengthWritten != IndexBufferSize)
+        {
+            Status = STATUS_END_OF_FILE;
+        }
+    }
+
+    ExFreePoolWithTag(IndexBuffer, TAG_NTFS);
+    return Status;
+}
+
+
 /**
-* @name AllocateIndexNode
-* @implemented
-*
-* Allocates a new index record in an index allocation.
-*
-* @param DeviceExt
-* Pointer to the target DEVICE_EXTENSION describing the volume the node will be created on.
-*
-* @param FileRecord
-* Pointer to a copy of the file record containing the index.
-*
-* @param IndexBufferSize
-* Size of an index record for this index, in bytes. Commonly defined as 4096.
-*
-* @param IndexAllocationCtx
-* Pointer to an NTFS_ATTR_CONTEXT describing the index allocation attribute the node will be assigned to.
-*
-* @param IndexAllocationOffset
-* Offset of the index allocation attribute relative to the file record.
-*
-* @param NewVCN
-* Pointer to a ULONGLONG which will receive the VCN of the newly-assigned index record
-*
-* @returns
-* STATUS_SUCCESS in case of success.
-* STATUS_NOT_IMPLEMENTED if there's no $I30 bitmap attribute in the file record.
-*
-* @remarks
-* AllocateIndexNode() doesn't write any data to the index record it creates. Called by UpdateIndexNode().
-* Don't call PrintAllVCNs() or NtfsDumpFileRecord() after calling AllocateIndexNode() before UpdateIndexNode() finishes.
-* Possible TODO: Create an empty node and write it to the allocated index node, so the index allocation is always valid.
+* Allocate a valid empty node before publishing its $I30 bitmap bit.
 */
 NTSTATUS
 AllocateIndexNode(PDEVICE_EXTENSION DeviceExt,
@@ -122,154 +160,151 @@ AllocateIndexNode(PDEVICE_EXTENSION DeviceExt,
                   PULONGLONG NewVCN)
 {
     NTSTATUS Status;
-    PNTFS_ATTR_CONTEXT BitmapCtx;
-    ULONGLONG IndexAllocationLength, BitmapLength;
+    PNTFS_ATTR_CONTEXT BitmapCtx = NULL;
+    ULONGLONG IndexAllocationLength;
+    ULONGLONG BitmapLength;
+    ULONGLONG BytesRead;
     ULONG BitmapOffset;
     ULONGLONG NextNodeNumber;
-    PCHAR *BitmapMem;
-    ULONG *BitmapPtr;
+    PCHAR BitmapMem = NULL;
+    PULONG BitmapPtr = NULL;
     RTL_BITMAP Bitmap;
     ULONG BytesWritten;
     ULONG BytesNeeded;
     LARGE_INTEGER DataSize;
 
     DPRINT1("AllocateIndexNode(%p, %p, %lu, %p, %lu, %p) called.\n", DeviceExt,
-            FileRecord,
-            IndexBufferSize,
-            IndexAllocationCtx,
-            IndexAllocationOffset,
-            NewVCN);
+            FileRecord, IndexBufferSize, IndexAllocationCtx,
+            IndexAllocationOffset, NewVCN);
 
-    // Get the length of the attribute allocation
+    if (IndexBufferSize != DeviceExt->NtfsInfo.BytesPerIndexRecord ||
+        IndexBufferSize < DeviceExt->NtfsInfo.BytesPerSector ||
+        (IndexBufferSize % DeviceExt->NtfsInfo.BytesPerSector) != 0)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
     IndexAllocationLength = AttributeDataLength(IndexAllocationCtx->pRecord);
+    if ((IndexAllocationLength % IndexBufferSize) != 0)
+    {
+        return STATUS_DATA_ERROR;
+    }
+    NextNodeNumber = IndexAllocationLength / IndexBufferSize;
 
-    // Find the bitmap attribute for the index
-    Status = FindAttribute(DeviceExt,
-                           FileRecord,
-                           AttributeBitmap,
-                           L"$I30",
-                           4,
-                           &BitmapCtx,
-                           &BitmapOffset);
+    Status = FindAttribute(DeviceExt, FileRecord, AttributeBitmap, L"$I30", 4,
+                           &BitmapCtx, &BitmapOffset);
     if (!NT_SUCCESS(Status))
     {
-        DPRINT1("FIXME: Need to add bitmap attribute!\n");
         return STATUS_NOT_IMPLEMENTED;
     }
 
-    // Get the length of the bitmap attribute
     BitmapLength = AttributeDataLength(BitmapCtx->pRecord);
-
-    NextNodeNumber = IndexAllocationLength / DeviceExt->NtfsInfo.BytesPerIndexRecord;
-
-    // TODO: Find unused allocation in bitmap and use that space first
-
-    // Add another bit to bitmap
-
-    // See how many bytes we need to store the amount of bits we'll have
-    BytesNeeded = NextNodeNumber / 8;
-    BytesNeeded++;
-
-    // Windows seems to allocate the bitmap in 8-byte chunks to keep any bytes from being wasted on padding
+    BytesNeeded = (ULONG)(((NextNodeNumber + 1) / 8) + 1);
     BytesNeeded = ALIGN_UP(BytesNeeded, ATTR_RECORD_ALIGNMENT);
+    if (BitmapLength > BytesNeeded)
+    {
+        Status = STATUS_DATA_ERROR;
+        goto Cleanup;
+    }
 
-    // Allocate memory for the bitmap, including some padding; RtlInitializeBitmap() wants a pointer
-    // that's ULONG-aligned, and it wants the size of the memory allocated for it to be a ULONG-multiple.
-    BitmapMem = ExAllocatePoolWithTag(NonPagedPool, BytesNeeded + sizeof(ULONG), TAG_NTFS);
+    BitmapMem = ExAllocatePoolWithTag(NonPagedPool, BytesNeeded + sizeof(ULONG),
+                                       TAG_NTFS);
     if (!BitmapMem)
     {
-        DPRINT1("Error: failed to allocate bitmap!");
-        ReleaseAttributeContext(BitmapCtx);
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
     }
-    // RtlInitializeBitmap() wants a pointer that's ULONG-aligned.
     BitmapPtr = (PULONG)ALIGN_UP_BY((ULONG_PTR)BitmapMem, sizeof(ULONG));
-
     RtlZeroMemory(BitmapPtr, BytesNeeded);
 
-    // Read the existing bitmap data
-    Status = ReadAttribute(DeviceExt, BitmapCtx, 0, (PCHAR)BitmapPtr, BitmapLength);
+    BytesRead = ReadAttribute(DeviceExt, BitmapCtx, 0, (PCHAR)BitmapPtr,
+                              BitmapLength);
+    if (BytesRead != BitmapLength)
+    {
+        Status = STATUS_UNSUCCESSFUL;
+        goto Cleanup;
+    }
 
-    // Initialize bitmap
-    RtlInitializeBitMap(&Bitmap, BitmapPtr, NextNodeNumber);
+    RtlInitializeBitMap(&Bitmap, BitmapPtr, (ULONG)(NextNodeNumber + 1));
 
-    // Do we need to enlarge the bitmap?
     if (BytesNeeded > BitmapLength)
     {
-        // TODO: handle synchronization issues that could occur from changing the directory's file record
-        // Change bitmap size
         DataSize.QuadPart = BytesNeeded;
         if (BitmapCtx->pRecord->IsNonResident)
         {
-            Status = SetNonResidentAttributeDataLength(DeviceExt,
-                                                       BitmapCtx,
-                                                       BitmapOffset,
-                                                       FileRecord,
+            Status = SetNonResidentAttributeDataLength(DeviceExt, BitmapCtx,
+                                                       BitmapOffset, FileRecord,
                                                        &DataSize);
         }
         else
         {
-            Status = SetResidentAttributeDataLength(DeviceExt,
-                                                    BitmapCtx,
-                                                    BitmapOffset,
-                                                    FileRecord,
+            Status = SetResidentAttributeDataLength(DeviceExt, BitmapCtx,
+                                                    BitmapOffset, FileRecord,
                                                     &DataSize);
         }
         if (!NT_SUCCESS(Status))
         {
-            DPRINT1("ERROR: Failed to set length of bitmap attribute!\n");
-            ReleaseAttributeContext(BitmapCtx);
-            return Status;
+            goto Cleanup;
         }
     }
 
-    // Enlarge Index Allocation attribute
     DataSize.QuadPart = IndexAllocationLength + IndexBufferSize;
-    Status = SetNonResidentAttributeDataLength(DeviceExt,
-                                               IndexAllocationCtx,
-                                               IndexAllocationOffset,
-                                               FileRecord,
+    Status = SetNonResidentAttributeDataLength(DeviceExt, IndexAllocationCtx,
+                                               IndexAllocationOffset, FileRecord,
                                                &DataSize);
     if (!NT_SUCCESS(Status))
     {
-        DPRINT1("ERROR: Failed to set length of index allocation!\n");
-        ReleaseAttributeContext(BitmapCtx);
-        return Status;
+        goto Cleanup;
     }
 
-    // Update file record on disk
-    Status = UpdateFileRecord(DeviceExt, IndexAllocationCtx->FileMFTIndex, FileRecord);
+    Status = UpdateFileRecord(DeviceExt, IndexAllocationCtx->FileMFTIndex,
+                              FileRecord);
     if (!NT_SUCCESS(Status))
     {
-        DPRINT1("ERROR: Failed to update file record!\n");
-        ReleaseAttributeContext(BitmapCtx);
-        return Status;
+        goto Cleanup;
     }
 
-    // Set the bit for the new index record
-    RtlSetBits(&Bitmap, NextNodeNumber, 1);
+    if (IndexBufferSize < DeviceExt->NtfsInfo.BytesPerCluster)
+    {
+        *NewVCN = NextNodeNumber *
+                  (IndexBufferSize / DeviceExt->NtfsInfo.BytesPerSector);
+    }
+    else
+    {
+        *NewVCN = NextNodeNumber *
+                  (IndexBufferSize / DeviceExt->NtfsInfo.BytesPerCluster);
+    }
 
-    // Write the new bitmap attribute
-    Status = WriteAttribute(DeviceExt,
-                            BitmapCtx,
-                            0,
-                            (const PUCHAR)BitmapPtr,
-                            BytesNeeded,
-                            &BytesWritten,
-                            FileRecord);
+    /* The slot must contain a valid empty node before its bitmap bit is set. */
+    Status = NtfsWriteEmptyIndexNode(DeviceExt, IndexAllocationCtx, FileRecord,
+                                     IndexBufferSize, *NewVCN);
     if (!NT_SUCCESS(Status))
     {
-        DPRINT1("ERROR: Unable to write to $I30 bitmap attribute!\n");
+        NtfsMarkJournalFailure(DeviceExt, 0x0201);
+        goto Cleanup;
     }
 
-    // Calculate VCN of new node number
-    *NewVCN = NextNodeNumber * (IndexBufferSize / DeviceExt->NtfsInfo.BytesPerCluster);
+    RtlSetBits(&Bitmap, (ULONG)NextNodeNumber, 1);
+    Status = WriteAttribute(DeviceExt, BitmapCtx, 0, (PUCHAR)BitmapPtr,
+                            BytesNeeded, &BytesWritten, FileRecord);
+    if (!NT_SUCCESS(Status) || BytesWritten != BytesNeeded)
+    {
+        if (NT_SUCCESS(Status))
+        {
+            Status = STATUS_END_OF_FILE;
+        }
+        NtfsMarkJournalFailure(DeviceExt, 0x0202);
+    }
 
-    DPRINT("New VCN: %I64u\n", *NewVCN);
-
-    ExFreePoolWithTag(BitmapMem, TAG_NTFS);
-    ReleaseAttributeContext(BitmapCtx);
-
+Cleanup:
+    if (BitmapMem)
+    {
+        ExFreePoolWithTag(BitmapMem, TAG_NTFS);
+    }
+    if (BitmapCtx)
+    {
+        ReleaseAttributeContext(BitmapCtx);
+    }
     return Status;
 }
 
@@ -1009,20 +1044,28 @@ CreateIndexBufferFromBTreeNode(PDEVICE_EXTENSION DeviceExt,
     PINDEX_ENTRY_ATTRIBUTE CurrentNodeEntry;
     NTSTATUS Status;
 
+    ULONG FirstEntryOffset;
+
     // TODO: Fix magic, do math
     RtlZeroMemory(IndexBuffer, BufferSize);
     IndexBuffer->Ntfs.Type = NRH_INDX_TYPE;
-    IndexBuffer->Ntfs.UsaOffset = 0x28;
-    IndexBuffer->Ntfs.UsaCount = 9;
+    IndexBuffer->Ntfs.UsaOffset = FIELD_OFFSET(INDEX_BUFFER, Header) +
+                                  sizeof(INDEX_HEADER_ATTRIBUTE);
+    IndexBuffer->Ntfs.UsaCount = BufferSize / DeviceExt->NtfsInfo.BytesPerSector + 1;
+    FirstEntryOffset = ALIGN_UP(IndexBuffer->Ntfs.UsaOffset +
+                                IndexBuffer->Ntfs.UsaCount * sizeof(USHORT),
+                                sizeof(ULONG));
+    if (BufferSize < FirstEntryOffset + FIELD_OFFSET(INDEX_ENTRY_ATTRIBUTE, FileName))
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
 
     // TODO: Check bitmap for VCN
     ASSERT(Node->HasValidVCN);
     IndexBuffer->VCN = Node->VCN;
 
-    // Windows seems to alternate between using 0x28 and 0x40 for the first entry offset of each index buffer.
-    // Interestingly, neither Windows nor chkdsk seem to mind if we just use 0x28 for every index record.
-    IndexBuffer->Header.FirstEntryOffset = 0x28;
-    IndexBuffer->Header.AllocatedSize = BufferSize - FIELD_OFFSET(INDEX_BUFFER, Header);
+    IndexBuffer->Header.FirstEntryOffset = FirstEntryOffset;
+    IndexBuffer->Header.AllocatedSize = BufferSize - FirstEntryOffset;
 
     // Start summing the total size of this node's entries
     IndexBuffer->Header.TotalSizeOfEntries = IndexBuffer->Header.FirstEntryOffset;
@@ -1033,9 +1076,8 @@ CreateIndexBufferFromBTreeNode(PDEVICE_EXTENSION DeviceExt,
     for (i = 0; i < Node->KeyCount; i++)
     {
         // Would adding the current entry to the index increase the node size beyond the allocation size?
-        ULONG IndexSize = FIELD_OFFSET(INDEX_BUFFER, Header)
-            + IndexBuffer->Header.TotalSizeOfEntries
-            + CurrentNodeEntry->Length;
+        ULONG IndexSize = IndexBuffer->Header.TotalSizeOfEntries
+            + CurrentKey->IndexEntry->Length;
         if (IndexSize > BufferSize)
         {
             DPRINT1("TODO: Adding file would require creating a new node!\n");

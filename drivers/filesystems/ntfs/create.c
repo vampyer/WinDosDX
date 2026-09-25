@@ -403,8 +403,15 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
             return STATUS_NOT_A_DIRECTORY;
         }
 
-        NtfsAttachFCBToFileObject(DeviceExt, DeviceExt->VolumeFcb, FileObject);
-        DeviceExt->VolumeFcb->RefCount++;
+        Status = NtfsAttachFCBToFileObject(DeviceExt, DeviceExt->VolumeFcb, FileObject);
+        if (!NT_SUCCESS(Status))
+        {
+            return Status;
+        }
+
+        DeviceExt->VolumeFcb->OpenHandleCount++;
+        DeviceExt->OpenHandleCount++;
+        ((PNTFS_CCB)FileObject->FsContext2)->VcbHandleCounted = TRUE;
 
         Irp->IoStatus.Information = FILE_OPENED;
         return STATUS_SUCCESS;
@@ -487,6 +494,7 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
         {
             PFILE_RECORD_HEADER fileRecord = NULL;
             PNTFS_ATTR_CONTEXT dataContext = NULL;
+            PNTFS_ATTR_CONTEXT attributeListContext = NULL;
             ULONG DataAttributeOffset;
             LARGE_INTEGER Zero;
             Zero.QuadPart = 0;
@@ -496,6 +504,11 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
                 DPRINT1("NTFS write-support is EXPERIMENTAL and is disabled by default!\n");
                 NtfsCloseFile(DeviceExt, FileObject);
                 return STATUS_ACCESS_DENIED;
+            }
+            if (DeviceExt->Flags & VCB_VOLUME_DIRTY)
+            {
+                NtfsCloseFile(DeviceExt, FileObject);
+                return STATUS_VOLUME_DIRTY;
             }
 
             // TODO: check for appropriate access
@@ -512,8 +525,21 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
                 if (!NT_SUCCESS(Status))
                     goto DoneOverwriting;
 
+                Status = FindAttribute(Fcb->Vcb, fileRecord,
+                                       AttributeAttributeList, L"", 0,
+                                       &attributeListContext, NULL);
+                if (NT_SUCCESS(Status))
+                {
+                    Status = STATUS_NOT_IMPLEMENTED;
+                    goto DoneOverwriting;
+                }
+
                 // find the data attribute and set it's length to 0 (TODO: Handle Alternate Data Streams)
                 Status = FindAttribute(Fcb->Vcb, fileRecord, AttributeData, L"", 0, &dataContext, &DataAttributeOffset);
+                if (!NT_SUCCESS(Status))
+                    goto DoneOverwriting;
+
+                Status = NtfsPrepareForMetadataUpdate(Fcb->Vcb);
                 if (!NT_SUCCESS(Status))
                     goto DoneOverwriting;
 
@@ -529,11 +555,14 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
                 ExFreeToNPagedLookasideList(&Fcb->Vcb->FileRecLookasideList, fileRecord);
             if (dataContext)
                 ReleaseAttributeContext(dataContext);
+            if (attributeListContext)
+                ReleaseAttributeContext(attributeListContext);
 
             ExReleaseResourceLite(&(Fcb->MainResource));
 
             if (!NT_SUCCESS(Status))
             {
+                NtfsMarkJournalFailure(DeviceExt, 0x0101);
                 NtfsCloseFile(DeviceExt, FileObject);
                 return Status;
             }
@@ -562,6 +591,11 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
                 NtfsCloseFile(DeviceExt, FileObject);
                 return STATUS_ACCESS_DENIED;
             }
+            if (DeviceExt->Flags & VCB_VOLUME_DIRTY)
+            {
+                NtfsCloseFile(DeviceExt, FileObject);
+                return STATUS_VOLUME_DIRTY;
+            }
 
             // Was the user trying to create a directory?
             if (RequestedOptions & FILE_DIRECTORY_FILE)
@@ -571,6 +605,10 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
                                              FileObject,
                                              BooleanFlagOn(Stack->Flags, SL_CASE_SENSITIVE),
                                              BooleanFlagOn(IrpContext->Flags, IRPCONTEXT_CANWAIT));
+                if (!NT_SUCCESS(Status))
+                {
+                    DPRINT1("NtfsCreateDirectory failed: 0x%08lx\\n", Status);
+                }
             }
             else
             {
@@ -604,8 +642,14 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
 
     if (NT_SUCCESS(Status))
     {
+        PNTFS_CCB Ccb = (PNTFS_CCB)FileObject->FsContext2;
+
         Fcb->OpenHandleCount++;
         DeviceExt->OpenHandleCount++;
+        if (Ccb)
+        {
+            Ccb->VcbHandleCounted = TRUE;
+        }
     }
 
     /*
@@ -776,9 +820,24 @@ NtfsCreateDirectory(PDEVICE_EXTENSION DeviceExt,
     NtfsDumpFileRecord(DeviceExt, FileRecord);
 #endif
 
-    // Now that we've built the file record in memory, we need to store it in the MFT.
+    Status = NtfsPrepareForMetadataUpdate(DeviceExt);
+    if (!NT_SUCCESS(Status))
+    {
+        NtfsMarkJournalFailure(DeviceExt,
+                               (((ULONG)Status & 0xFF) << 8) | 0x01);
+        ExFreePoolWithTag(NewIndexRoot, TAG_NTFS);
+        ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+        return Status;
+    }
+
+    // Now that we've built the directory record in memory, store it in the MFT.
     Status = AddNewMftEntry(FileRecord, DeviceExt, &FileMftIndex, CanWait);
-    if (NT_SUCCESS(Status))
+    if (!NT_SUCCESS(Status))
+    {
+        NtfsMarkJournalFailure(DeviceExt,
+                               (((ULONG)Status & 0xFF) << 8) | 0x02);
+    }
+    else
     {
         // The highest 2 bytes should be the sequence number, unless the parent happens to be root
         if (FileMftIndex == NTFS_FILE_ROOT)
@@ -794,6 +853,20 @@ NtfsCreateDirectory(PDEVICE_EXTENSION DeviceExt,
                                             FileMftIndex,
                                             FilenameAttribute,
                                             CaseSensitive);
+        if (!NT_SUCCESS(Status))
+        {
+            NTSTATUS RollbackStatus;
+
+            /* The parent update may already have reached disk before failing. */
+            NtfsMarkJournalFailure(DeviceExt,
+                                   (((ULONG)Status & 0xFF) << 8) | 0x05);
+            RollbackStatus = RemoveNewMftEntry(DeviceExt,
+                                               FileMftIndex & NTFS_MFT_MASK);
+            if (!NT_SUCCESS(RollbackStatus))
+            {
+                Status = RollbackStatus;
+            }
+        }
     }
 
     ExFreePoolWithTag(NewIndexRoot, TAG_NTFS);
@@ -935,9 +1008,21 @@ NtfsCreateFileRecord(PDEVICE_EXTENSION DeviceExt,
     NtfsDumpFileRecord(DeviceExt, FileRecord);
 #endif
 
+    Status = NtfsPrepareForMetadataUpdate(DeviceExt);
+    if (!NT_SUCCESS(Status))
+    {
+        ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+        return Status;
+    }
+
     // Now that we've built the file record in memory, we need to store it in the MFT.
     Status = AddNewMftEntry(FileRecord, DeviceExt, &FileMftIndex, CanWait);
-    if (NT_SUCCESS(Status))
+    if (!NT_SUCCESS(Status))
+    {
+        NtfsMarkJournalFailure(DeviceExt,
+                               ((ULONG)Status & 0xFF) << 8 | 0x04);
+    }
+    else
     {
         // The highest 2 bytes should be the sequence number, unless the parent happens to be root
         if (FileMftIndex == NTFS_FILE_ROOT)
@@ -953,6 +1038,20 @@ NtfsCreateFileRecord(PDEVICE_EXTENSION DeviceExt,
                                             FileMftIndex,
                                             FilenameAttribute,
                                             CaseSensitive);
+        if (!NT_SUCCESS(Status))
+        {
+            NTSTATUS RollbackStatus;
+
+            /* The parent update may already have reached disk before failing. */
+            NtfsMarkJournalFailure(DeviceExt,
+                                   (((ULONG)Status & 0xFF) << 8) | 0x05);
+            RollbackStatus = RemoveNewMftEntry(DeviceExt,
+                                               FileMftIndex & NTFS_MFT_MASK);
+            if (!NT_SUCCESS(RollbackStatus))
+            {
+                Status = RollbackStatus;
+            }
+        }
     }
 
     ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);

@@ -31,10 +31,11 @@ endif()
 # arbitrary empty directories to the ISO image using mkisofs.
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/empty)
 
-# Retrieve the full paths to the generated files of the 'isombr', 'isoboot', 'isobtrt' and 'efisys' targets
+# Retrieve the full paths to the generated files of the 'isombr', 'isoboot', 'isobootntfs', 'isobtrt' and 'efisys' targets
 set(_isombr_file  ${CMAKE_CURRENT_BINARY_DIR}/freeldr/bootsect/isombr.bin)  # get_target_property(_isombr_file  isombr  LOCATION)
-set(_isoboot_file ${CMAKE_CURRENT_BINARY_DIR}/freeldr/bootsect/isoboot.bin) # get_target_property(_isoboot_file isoboot LOCATION)
-set(_isobtrt_file ${CMAKE_CURRENT_BINARY_DIR}/freeldr/bootsect/isobtrt.bin) # get_target_property(_isobtrt_file isobtrt LOCATION)
+set(_isoboot_file ${CMAKE_CURRENT_BINARY_DIR}/freeldr/bootsect/isoboot.bin) # get_target_property(_isoboot_file  isoboot  LOCATION)
+set(_isobootntfs_file ${CMAKE_CURRENT_BINARY_DIR}/freeldr/bootsect/isobootntfs.bin)
+set(_isobtrt_file ${CMAKE_CURRENT_BINARY_DIR}/freeldr/bootsect/isobtrt.bin) # get_target_property(_isobtrt_file  isobtrt  LOCATION)
 if(DEFINED EFI_PLATFORM_ID)
     set(_efisys_file  ${CMAKE_CURRENT_BINARY_DIR}/efisys.bin) # get_target_property(_efisys_file  efisys  LOCATION)
 endif()
@@ -61,14 +62,17 @@ ${CMAKE_CURRENT_BINARY_DIR}/empty/boot.catalog 4
 ${_isoboot_file} 3
 ${_isobtrt_file} 2
 ")
+if(NTFS_REGRESSION_AUTORUN)
+    string(APPEND ISO_SORT_FILE_DATA "${_isobootntfs_file} 3\n")
+endif()
 if(DEFINED EFI_PLATFORM_ID)
     string(APPEND ISO_SORT_FILE_DATA "${_efisys_file} 1\n")
 endif()
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/bootfiles.sort ${ISO_SORT_FILE_DATA})
 
 # ISO image identifier names
-set(ISO_MANUFACTURER "ReactOS Project") # For both the publisher and the preparer
-set(ISO_VOLNAME      "ReactOS")         # For both the Volume ID and the Volume set ID
+set(ISO_MANUFACTURER "WinDosDX Project") # For both the publisher and the preparer
+set(ISO_VOLNAME      "WinDosDX")         # For both the Volume ID and the Volume set ID
 
 # ISO image options
 set(ISO_COMMON_OPTIONS
@@ -85,9 +89,16 @@ set(ISO_BOOT_FILES_OPTIONS
 # BIOS-based PC boot entry (x86/x64 only)
 if(ARCH STREQUAL "i386" OR ARCH STREQUAL "amd64")
     set(ISO_BOOT_OPTIONS
-        -eltorito-platform x86 -eltorito-boot loader/isoboot.bin -no-emul-boot -boot-load-size 4)
+        -eltorito-platform x86 -eltorito-boot loader/isoboot.bin -c boot.catalog -no-emul-boot -boot-load-size 4)
     set(ISO_BOOT_OPTIONS_REGTEST
-        -eltorito-platform x86 -eltorito-boot loader/isobtrt.bin -no-emul-boot -boot-load-size 4)
+        -eltorito-platform x86 -eltorito-boot loader/isobtrt.bin -c boot.catalog -no-emul-boot -boot-load-size 4)
+    if(NTFS_REGRESSION_AUTORUN)
+        # The normal image may chain to the hard-disk MBR after a key wait.
+        # Autorun must always boot its disposable medium, even when the test
+        # image has a valid partition-table signature.
+        set(ISO_BOOT_OPTIONS
+            -eltorito-platform x86 -eltorito-boot loader/isobootntfs.bin -c boot.catalog -no-emul-boot -boot-load-size 4)
+    endif()
 endif()
 
 # EFI boot entry

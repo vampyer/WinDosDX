@@ -51,15 +51,22 @@ NtfsCleanupFile(PDEVICE_EXTENSION DeviceExt,
     Fcb = (PNTFS_FCB)(FileObject->FsContext);
     if (!Fcb)
         return STATUS_SUCCESS;
+    if (FileObject->Flags & FO_CLEANUP_COMPLETE)
+        return STATUS_SUCCESS;
 
     if (Fcb->Flags & FCB_IS_VOLUME)
     {
-        Fcb->OpenHandleCount--;
+        ASSERT(Fcb->OpenHandleCount > 0);
+        if (Fcb->OpenHandleCount > 0)
+        {
+            Fcb->OpenHandleCount--;
+        }
 
         if (Fcb->OpenHandleCount != 0)
         {
             // Remove share access when handled
         }
+        FileObject->Flags |= FO_CLEANUP_COMPLETE;
     }
     else
     {
@@ -68,7 +75,11 @@ NtfsCleanupFile(PDEVICE_EXTENSION DeviceExt,
             return STATUS_PENDING;
         }
 
-        Fcb->OpenHandleCount--;
+        ASSERT(Fcb->OpenHandleCount > 0);
+        if (Fcb->OpenHandleCount > 0)
+        {
+            Fcb->OpenHandleCount--;
+        }
 
         CcUninitializeCacheMap(FileObject, &Fcb->RFCB.FileSize, NULL);
 

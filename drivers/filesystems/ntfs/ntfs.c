@@ -35,6 +35,18 @@
 
 PNTFS_GLOBAL_DATA NtfsGlobalData = NULL;
 
+VOID
+NtfsCrashInjectPoint(ULONG InjectionPoint)
+{
+    if (NtfsGlobalData != NULL &&
+        NtfsGlobalData->EnableWriteSupport &&
+        (NtfsGlobalData->CrashInjectionMask & InjectionPoint) != 0)
+    {
+        DPRINT1("NTFS test crash injection: point %x\n", InjectionPoint);
+        KeBugCheckEx(MANUALLY_INITIATED_CRASH, InjectionPoint, 0, 0, 0);
+    }
+}
+
 /* FUNCTIONS ****************************************************************/
 
 /*
@@ -114,6 +126,24 @@ DriverEntry(PDRIVER_OBJECT DriverObject,
             NtfsGlobalData->EnableWriteSupport = TRUE;
         }
 
+        RtlInitUnicodeString(&ValueName, L"CrashInjectionMask");
+        ValueLength = sizeof(Buffer);
+        Status = ZwQueryValueKey(DriverKey,
+                                 &ValueName,
+                                 KeyValuePartialInformation,
+                                 Value,
+                                 ValueLength,
+                                 &ResultLength);
+        if (NT_SUCCESS(Status) && Value->DataLength == sizeof(ULONG))
+        {
+            NtfsGlobalData->CrashInjectionMask = *(PULONG)Value->Data;
+            if (NtfsGlobalData->CrashInjectionMask != 0)
+            {
+                DPRINT1("\tNTFS crash injection mask: %x\n",
+                        NtfsGlobalData->CrashInjectionMask);
+            }
+        }
+
         ZwClose(DriverKey);
     }
 
@@ -174,6 +204,8 @@ NtfsInitializeFunctionPointers(PDRIVER_OBJECT DriverObject)
     DriverObject->MajorFunction[IRP_MJ_CLEANUP]                  = NtfsFsdDispatch;
     DriverObject->MajorFunction[IRP_MJ_READ]                     = NtfsFsdDispatch;
     DriverObject->MajorFunction[IRP_MJ_WRITE]                    = NtfsFsdDispatch;
+    DriverObject->MajorFunction[IRP_MJ_FLUSH_BUFFERS]            = NtfsFsdDispatch;
+    DriverObject->MajorFunction[IRP_MJ_LOCK_CONTROL]             = NtfsFsdDispatch;
     DriverObject->MajorFunction[IRP_MJ_QUERY_INFORMATION]        = NtfsFsdDispatch;
     DriverObject->MajorFunction[IRP_MJ_SET_INFORMATION]          = NtfsFsdDispatch;
     DriverObject->MajorFunction[IRP_MJ_QUERY_VOLUME_INFORMATION] = NtfsFsdDispatch;

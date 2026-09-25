@@ -59,7 +59,21 @@ NtfsCloseFile(PDEVICE_EXTENSION DeviceExt,
     FileObject->FsContext2 = NULL;
     FileObject->FsContext = NULL;
     FileObject->SectionObjectPointer = NULL;
-    DeviceExt->OpenHandleCount--;
+
+    if (Ccb->VcbHandleCounted)
+    {
+        ASSERT(DeviceExt->OpenHandleCount > 0);
+        if (DeviceExt->OpenHandleCount > 0)
+        {
+            DeviceExt->OpenHandleCount--;
+        }
+
+        if (DeviceExt->VolumeLockOwner == FileObject)
+        {
+            DeviceExt->VolumeLockOwner = NULL;
+            DeviceExt->Flags &= ~VCB_VOLUME_LOCKED;
+        }
+    }
 
     if (FileObject->FileName.Buffer)
     {

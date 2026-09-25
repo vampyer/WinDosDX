@@ -60,8 +60,11 @@ NtfsDispatch(PNTFS_IRP_CONTEXT IrpContext)
 {
     PIRP Irp = IrpContext->Irp;
     NTSTATUS Status = STATUS_UNSUCCESSFUL;
+    PDEVICE_EXTENSION DeviceExt;
 
     TRACE_(NTFS, "NtfsDispatch()\n");
+
+    DeviceExt = IrpContext->DeviceObject->DeviceExtension;
 
     FsRtlEnterFileSystem();
 
@@ -74,7 +77,18 @@ NtfsDispatch(PNTFS_IRP_CONTEXT IrpContext)
             break;
 
         case IRP_MJ_SET_VOLUME_INFORMATION:
-            Status = NtfsSetVolumeInformation(IrpContext);
+            if (!NtfsGlobalData->EnableWriteSupport)
+            {
+                Status = STATUS_ACCESS_DENIED;
+            }
+            else if (DeviceExt->Flags & VCB_VOLUME_DIRTY)
+            {
+                Status = STATUS_VOLUME_DIRTY;
+            }
+            else
+            {
+                Status = NtfsSetVolumeInformation(IrpContext);
+            }
             break;
 
         case IRP_MJ_QUERY_INFORMATION:
@@ -86,6 +100,10 @@ NtfsDispatch(PNTFS_IRP_CONTEXT IrpContext)
             {
                 DPRINT1("NTFS write-support is EXPERIMENTAL and is disabled by default!\n");
                 Status = STATUS_ACCESS_DENIED;
+            }
+            else if (DeviceExt->Flags & VCB_VOLUME_DIRTY)
+            {
+                Status = STATUS_VOLUME_DIRTY;
             }
             else
             {
@@ -111,10 +129,24 @@ NtfsDispatch(PNTFS_IRP_CONTEXT IrpContext)
                 DPRINT1("NTFS write-support is EXPERIMENTAL and is disabled by default!\n");
                 Status = STATUS_ACCESS_DENIED;
             }
+            else if (DeviceExt->Flags & VCB_VOLUME_DIRTY)
+            {
+                Status = STATUS_VOLUME_DIRTY;
+            }
             else
             {
                 Status = NtfsWrite(IrpContext);
             }
+            break;
+
+        case IRP_MJ_FLUSH_BUFFERS:
+            Status = NtfsFlushBuffers(IrpContext);
+            break;
+
+        case IRP_MJ_LOCK_CONTROL:
+            /* Byte-range locking is not implemented; fail explicitly instead of
+               allowing callers to believe conflicting locks were established. */
+            Status = STATUS_NOT_IMPLEMENTED;
             break;
 
         case IRP_MJ_CLOSE:

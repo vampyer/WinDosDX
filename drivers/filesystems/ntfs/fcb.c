@@ -155,6 +155,13 @@ NtfsFCBIsEncrypted(PNTFS_FCB Fcb)
 }
 
 BOOLEAN
+NtfsFCBIsSparse(PNTFS_FCB Fcb)
+{
+    return ((Fcb->Entry.FileAttributes & NTFS_FILE_TYPE_SPARSE) == NTFS_FILE_TYPE_SPARSE);
+}
+
+
+BOOLEAN
 NtfsFCBIsRoot(PNTFS_FCB Fcb)
 {
     return (wcscmp(Fcb->PathName, L"\\") == 0);
@@ -728,6 +735,153 @@ NtfsGetFCBForFile(PNTFS_VCB Vcb,
 #endif
 
     return STATUS_SUCCESS;
+}
+
+
+static
+NTSTATUS
+NtfsFlushFCBCache(PNTFS_FCB Fcb)
+{
+    IO_STATUS_BLOCK IoStatus;
+
+    if (!Fcb || !Fcb->FileObject)
+    {
+        return STATUS_INVALID_DEVICE_REQUEST;
+    }
+
+    CcFlushCache(&Fcb->SectionObjectPointers, NULL, 0, &IoStatus);
+    if (IoStatus.Status == STATUS_INVALID_PARAMETER)
+    {
+        /* Direct I/O volumes do not have a writable data cache. */
+        return STATUS_SUCCESS;
+    }
+
+    return IoStatus.Status;
+}
+
+
+static
+NTSTATUS
+NtfsFlushStorageDevice(PDEVICE_EXTENSION Vcb)
+{
+    PIRP Irp;
+    KEVENT Event;
+    IO_STATUS_BLOCK IoStatus;
+    NTSTATUS Status;
+
+    KeInitializeEvent(&Event, NotificationEvent, FALSE);
+    Irp = IoBuildSynchronousFsdRequest(IRP_MJ_FLUSH_BUFFERS,
+                                       Vcb->StorageDevice,
+                                       NULL,
+                                       0,
+                                       NULL,
+                                       &Event,
+                                       &IoStatus);
+    if (!Irp)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    Status = IoCallDriver(Vcb->StorageDevice, Irp);
+    if (Status == STATUS_PENDING)
+    {
+        KeWaitForSingleObject(&Event, Executive, KernelMode, FALSE, NULL);
+        Status = IoStatus.Status;
+    }
+
+    return Status;
+}
+
+
+static
+NTSTATUS
+NtfsFlushVolume(PNTFS_VCB Vcb)
+{
+    PLIST_ENTRY ListEntry;
+    PNTFS_FCB Fcb;
+    NTSTATUS Status;
+    NTSTATUS ReturnStatus = STATUS_SUCCESS;
+
+    ListEntry = Vcb->FcbListHead.Flink;
+    while (ListEntry != &Vcb->FcbListHead)
+    {
+        Fcb = CONTAINING_RECORD(ListEntry, NTFS_FCB, FcbListEntry);
+        ListEntry = ListEntry->Flink;
+
+        if (!(Fcb->Flags & FCB_CACHE_INITIALIZED))
+        {
+            continue;
+        }
+
+        ExAcquireResourceExclusiveLite(&Fcb->MainResource, TRUE);
+        Status = NtfsFlushFCBCache(Fcb);
+        ExReleaseResourceLite(&Fcb->MainResource);
+        if (!NT_SUCCESS(Status) && NT_SUCCESS(ReturnStatus))
+        {
+            ReturnStatus = Status;
+        }
+    }
+
+    Status = NtfsFlushStorageDevice(Vcb);
+    if (!NT_SUCCESS(Status) && NT_SUCCESS(ReturnStatus))
+    {
+        ReturnStatus = Status;
+    }
+
+    if (NT_SUCCESS(ReturnStatus) && (Vcb->Flags & VCB_JOURNAL_DIRTY))
+    {
+        Status = NtfsCheckpointJournal(Vcb);
+        if (!NT_SUCCESS(Status))
+        {
+            ReturnStatus = Status;
+        }
+    }
+
+    return ReturnStatus;
+}
+
+
+NTSTATUS
+NtfsFlushBuffers(PNTFS_IRP_CONTEXT IrpContext)
+{
+    PDEVICE_EXTENSION Vcb;
+    PNTFS_FCB Fcb;
+    NTSTATUS Status;
+
+    if (IrpContext->DeviceObject == NtfsGlobalData->DeviceObject)
+    {
+        IrpContext->Irp->IoStatus.Information = 0;
+        return STATUS_INVALID_DEVICE_REQUEST;
+    }
+
+    Vcb = IrpContext->DeviceObject->DeviceExtension;
+    Fcb = IrpContext->FileObject->FsContext;
+    if (!Fcb)
+    {
+        IrpContext->Irp->IoStatus.Information = 0;
+        return STATUS_INVALID_HANDLE;
+    }
+
+    if (Fcb->Flags & FCB_IS_VOLUME)
+    {
+        ExAcquireResourceExclusiveLite(&Vcb->DirResource, TRUE);
+        Status = NtfsFlushVolume(Vcb);
+        ExReleaseResourceLite(&Vcb->DirResource);
+    }
+    else
+    {
+        ExAcquireResourceExclusiveLite(&Fcb->MainResource, TRUE);
+        Status = NtfsFlushFCBCache(Fcb);
+        ExReleaseResourceLite(&Fcb->MainResource);
+
+        if (NT_SUCCESS(Status))
+        {
+            Status = NtfsFlushStorageDevice(Vcb);
+        }
+    }
+
+    IrpContext->Irp->IoStatus.Information = 0;
+    return Status;
 }
 
 

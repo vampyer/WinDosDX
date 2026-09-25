@@ -5,8 +5,11 @@ list(APPEND SOURCE
     userinit.h)
 
 add_executable(userinit ${SOURCE} userinit.rc)
+if(NTFS_REGRESSION_AUTORUN)
+    target_compile_definitions(userinit PRIVATE NTFS_REGRESSION_AUTORUN=1)
+endif()
 target_link_libraries(userinit wine)
 set_module_type(userinit win32gui UNICODE)
-add_importlibs(userinit advapi32 userenv gdi32 user32 msvcrt kernel32 ntdll)
+add_importlibs(userinit advapi32 userenv gdi32 user32 winmm msvcrt kernel32 ntdll)
 add_pch(userinit userinit.h SOURCE)
 add_cd_file(TARGET userinit DESTINATION reactos/system32 FOR all)

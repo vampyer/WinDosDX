@@ -66,7 +66,7 @@ FatalError(char *pszFmt,...)
     strcat(szBuffer, "\nRebooting now!");
     MessageBoxA(NULL,
                 szBuffer,
-                "ReactOS Setup",
+                "WinDosDX Setup",
                 MB_OK);
 }
 
@@ -1093,18 +1093,22 @@ CommonInstall(VOID)
         return FALSE;
     }
 
+    DPRINT("CommonInstall: installing boot-configured devices\n");
     if (!InstallSysSetupInfDevices())
     {
         FatalError("InstallSysSetupInfDevices() failed!\n");
         goto Exit;
     }
+    DPRINT("CommonInstall: boot-configured devices queued\n");
 
+    DPRINT("CommonInstall: installing always components\n");
     if (!InstallSysSetupInfComponents())
     {
         FatalError("InstallSysSetupInfComponents() failed!\n");
         goto Exit;
     }
 
+    DPRINT("CommonInstall: showing device-install progress\n");
     if (!IsConsoleBoot())
     {
         hThread = CreateThread(NULL,
@@ -1115,17 +1119,21 @@ CommonInstall(VOID)
                                &dwThreadId);
     }
 
+    DPRINT("CommonInstall: enabling user-mode PlugPlay\n");
     if (!EnableUserModePnpManager())
     {
         FatalError("EnableUserModePnpManager() failed!\n");
         goto Exit;
     }
 
+    DPRINT("CommonInstall: waiting for pending install events\n");
     if (CMP_WaitNoPendingInstallEvents(INFINITE) != WAIT_OBJECT_0)
     {
+        DPRINT("CommonInstall: pending install wait failed\n");
         FatalError("CMP_WaitNoPendingInstallEvents() failed!\n");
         goto Exit;
     }
+    DPRINT("CommonInstall: pending install wait complete\n");
 
     bResult = TRUE;
 
@@ -1153,9 +1161,11 @@ InstallLiveCD(VOID)
     PROCESS_INFORMATION ProcessInformation;
     BOOL bRes;
 
+    DPRINT("InstallLiveCD: begin\n");
     PreprocessUnattend(FALSE);
     if (!CommonInstall())
         goto error;
+    DPRINT("InstallLiveCD: common install complete\n");
 
     /* Install the TCP/IP protocol driver */
     bRes = InstallNetworkComponent(L"MS_TCPIP");
@@ -1193,6 +1203,7 @@ InstallLiveCD(VOID)
     SetupCloseInfFile(hSysSetupInf);
 
     /* Run the shell */
+    DPRINT("InstallLiveCD: launching userinit.exe\n");
     ZeroMemory(&StartupInfo, sizeof(StartupInfo));
     StartupInfo.cb = sizeof(StartupInfo);
     bRes = CreateProcessW(L"userinit.exe",
@@ -1210,13 +1221,14 @@ InstallLiveCD(VOID)
 
     CloseHandle(ProcessInformation.hThread);
     CloseHandle(ProcessInformation.hProcess);
+    DPRINT("InstallLiveCD: userinit.exe launched\n");
 
     return 0;
 
 error:
     MessageBoxW(NULL,
                 L"Failed to load LiveCD! You can shutdown your computer, or press ENTER to reboot.",
-                L"ReactOS LiveCD",
+                L"WinDosDX LiveCD",
                 MB_OK);
     // HACK: This shouldn't be done here, but by the caller of InstallWindowsNt()
     /* Enable the shutdown privilege and reboot the machine */
@@ -1611,7 +1623,7 @@ InstallReactOS(VOID)
     WCHAR szBuffer[MAX_PATH];
 
     InitializeSetupActionLog(FALSE);
-    LogItem(NULL, L"Installing ReactOS");
+    LogItem(NULL, L"Installing WinDosDX");
 
     CreateTempDir(L"TEMP");
     CreateTempDir(L"TMP");
@@ -1705,7 +1717,7 @@ InstallReactOS(VOID)
     if (dwHotkeyThreadId)
         PostThreadMessage(dwHotkeyThreadId, WM_QUIT, 0, 0);
 
-    LogItem(NULL, L"Installing ReactOS done");
+    LogItem(NULL, L"Installing WinDosDX done");
     TerminateSetupActionLog();
 
     if (AdminInfo.Name != NULL)
