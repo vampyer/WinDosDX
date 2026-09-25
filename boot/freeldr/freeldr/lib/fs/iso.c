@@ -68,7 +68,11 @@ static BOOLEAN IsoSearchDirectoryBufferForFile(PVOID DirectoryBuffer, ULONG Dire
     PDIR_RECORD    Record;
     ULONG        Offset;
     ULONG i;
-    CHAR Name[32];
+    /* FileIdLength is a UCHAR and ISO 9660 level 4 allows identifiers up to
+     * its maximum, so this holds any name plus the terminator. (It used to be
+     * 32 bytes: a longer name such as "api-ms-win-core-console-l1-1-0.dll"
+     * overflowed the stack and hung the loader while scanning system32.) */
+    CHAR Name[256];
 
     TRACE("IsoSearchDirectoryBufferForFile() DirectoryBuffer = 0x%x DirectoryLength = %d FileName = %s\n", DirectoryBuffer, DirectoryLength, FileName);
 
@@ -98,7 +102,7 @@ static BOOLEAN IsoSearchDirectoryBufferForFile(PVOID DirectoryBuffer, ULONG Dire
         }
         else
         {
-            for (i = 0; i < Record->FileIdLength && Record->FileId[i] != ';'; i++)
+            for (i = 0; i < Record->FileIdLength && i < sizeof(Name) - 1 && Record->FileId[i] != ';'; i++)
                 Name[i] = Record->FileId[i];
             Name[i] = ANSI_NULL;
             TRACE("Name '%s'\n", Name);
