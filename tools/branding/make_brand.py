@@ -8,9 +8,12 @@ Outputs:
   rosbitmap.bmp, rosbitmap_mask.bmp -> base/system/userinit/res/  (LiveCD logo)
   158.bmp                           -> base/shell/explorer/res/bmp/ (Start menu banner)
   143.bmp                           -> base/shell/explorer/res/bmp/ (Start button)
-  146-153.bmp, 170.bmp, 171.bmp     -> base/shell/explorer/res/bmp/ (Taskbar and
+  146-153.bmp, 171.bmp              -> base/shell/explorer/res/bmp/ (Taskbar and
                                        Start Menu Properties previews, patched
                                        in place: Start flag and side banner)
+  170.bmp                           -> base/shell/explorer/res/bmp/ ("Start menu"
+                                       preview, from start7_capture.png: a QEMU
+                                       screendump of the Windows 7-style menu)
 
 Usage (needs Pillow and Segoe UI Bold, i.e. a Windows host):
   python tools/branding/make_brand.py [OUTDIR]     # write bitmaps + previews to OUTDIR
@@ -224,6 +227,24 @@ def patch_previews():
         INSTALL[f"{n}.bmp"] = "base/shell/explorer/res/bmp"
     for n in range(146, 154):
         INSTALL[f"{n}.bmp"] = "base/shell/explorer/res/bmp"
+    modern_preview()
+
+
+def modern_preview():
+    """170.bmp (300x180): the "Start menu" preview, built from a QEMU capture
+    of the Windows 7-style menu (start7_capture.png, 800x600). Scaled to
+    240x180, then widened to 300 by repeating a plain desktop/taskbar column
+    from between the menu and the tray."""
+    cap = Image.open(os.path.join(REPO, "tools/branding/start7_capture.png")).convert("RGB")
+    small = cap.resize((240, 180), Image.LANCZOS)
+    split = 150  # scaled x of a column with nothing but desktop and taskbar
+    out = Image.new("RGB", (300, 180))
+    out.paste(small.crop((0, 0, split, 180)), (0, 0))
+    column = small.crop((split - 1, 0, split, 180))
+    for x in range(split, split + 60):
+        out.paste(column, (x, 0))
+    out.paste(small.crop((split, 0, 240, 180)), (split + 60, 0))
+    out.save(f"{OUT}/170.bmp")
 
 
 livecd_logo()
