@@ -2,10 +2,10 @@
  * DOS checks, run after the exFAT suites on the test disk
  *
  * The test programs are written onto the disk from the bytes below, then run
- * two ways: through NTVDM (CreateProcess on a .COM) and, when the CD carries
- * it, through windos.exe, the DOSBox-derived DOS machine. Results go out as
- * DOSREG lines and do not change the overall result: they report how far
- * DOS support has come rather than gate the file system tests.
+ * two ways: started like any Windows program (CreateProcess on a .COM, which
+ * kernel32 hands to windos.exe, or to NTVDM when windos is absent or turned
+ * off) and through windos.exe directly. Results go out as DOSREG lines and
+ * do not change the overall result.
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -117,6 +117,8 @@ RunAndWait(PWSTR CommandLine, PCWSTR Directory, DWORD Seconds, BOOL WaitForResul
         Emit("DOSREG FAIL %s start gle=%lu", Name, GetLastError());
         return FALSE;
     }
+    /* The harness takes a screenshot of the guest 20 s after this line. */
+    Emit("DOSREG WAIT %s", Name);
 
     for (Waited = 0; Waited < Seconds * 10 && !Done; Waited++)
     {
@@ -173,16 +175,16 @@ CheckVersionResult(PCWSTR Directory, const char *Name)
 
 static
 VOID
-TestNtvdm(void)
+TestLaunch(void)
 {
     WCHAR Directory[MAX_PATH];
     WCHAR Program[MAX_PATH];
     WCHAR CommandLine[MAX_PATH];
     DWORD ExitCode = 0;
 
-    if (!MakeDirectory(L"dosreg-ntvdm", Directory))
+    if (!MakeDirectory(L"dosreg-launch", Directory))
     {
-        Emit("DOSREG FAIL ntvdm mkdir gle=%lu", GetLastError());
+        Emit("DOSREG FAIL launch mkdir gle=%lu", GetLastError());
         return;
     }
 
@@ -190,35 +192,35 @@ TestNtvdm(void)
     _snwprintf(Program, MAX_PATH, L"%s\\VERTEST.COM", Directory);
     if (!WriteBytes(Program, VerTestCom, sizeof(VerTestCom)))
     {
-        Emit("DOSREG FAIL ntvdm-version write gle=%lu", GetLastError());
+        Emit("DOSREG FAIL launch-version write gle=%lu", GetLastError());
         return;
     }
     _snwprintf(CommandLine, MAX_PATH, L"\"%s\"", Program);
-    if (RunAndWait(CommandLine, Directory, 60, FALSE, &ExitCode, "ntvdm-version"))
+    if (RunAndWait(CommandLine, Directory, 60, FALSE, &ExitCode, "launch-version"))
     {
         if (ExitCode != 0)
-            Emit("DOSREG FAIL ntvdm-version exit code %lu", ExitCode);
-        CheckVersionResult(Directory, "ntvdm-version");
+            Emit("DOSREG FAIL launch-version exit code %lu", ExitCode);
+        CheckVersionResult(Directory, "launch-version");
     }
     else
     {
-        Emit("DOSREG FAIL ntvdm-version did not finish");
+        Emit("DOSREG FAIL launch-version did not finish");
     }
 
     /* A DOS program's exit code reaches the Win32 parent. */
     _snwprintf(Program, MAX_PATH, L"%s\\EXIT42.COM", Directory);
     if (!WriteBytes(Program, Exit42Com, sizeof(Exit42Com)))
     {
-        Emit("DOSREG FAIL ntvdm-exitcode write gle=%lu", GetLastError());
+        Emit("DOSREG FAIL launch-exitcode write gle=%lu", GetLastError());
         return;
     }
     _snwprintf(CommandLine, MAX_PATH, L"\"%s\"", Program);
-    if (!RunAndWait(CommandLine, Directory, 60, FALSE, &ExitCode, "ntvdm-exitcode"))
-        Emit("DOSREG FAIL ntvdm-exitcode did not finish");
+    if (!RunAndWait(CommandLine, Directory, 60, FALSE, &ExitCode, "launch-exitcode"))
+        Emit("DOSREG FAIL launch-exitcode did not finish");
     else if (ExitCode != 42)
-        Emit("DOSREG FAIL ntvdm-exitcode got %lu, expected 42", ExitCode);
+        Emit("DOSREG FAIL launch-exitcode got %lu, expected 42", ExitCode);
     else
-        Emit("DOSREG PASS ntvdm-exitcode");
+        Emit("DOSREG PASS launch-exitcode");
 }
 
 static
@@ -267,7 +269,7 @@ VOID
 DosRunTests(void)
 {
     Emit("DOSREG BEGIN");
-    TestNtvdm();
+    TestLaunch();
     TestWindos();
     Emit("DOSREG END");
 }

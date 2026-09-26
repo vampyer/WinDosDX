@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -941,6 +942,33 @@ def run_autorun_first_boot(qemu: Path, qemu_img: Path, image: Path, bootcd: Path
     return output
 
 
+def wait_with_dos_screenshots(boot: "Boot", work: Path, marker: str, timeout: float) -> bool:
+    """Wait for marker; 20 s after each "DOSREG WAIT <name>", save the guest
+    screen as <work>/<name>.ppm, to show what a DOS program is doing."""
+    deadline = time.monotonic() + timeout
+    pending: dict[str, float] = {}
+    taken: set[str] = set()
+    while time.monotonic() < deadline:
+        text = boot.serial_text()
+        for match in re.finditer(r"DOSREG WAIT (\S+)", text):
+            name = match.group(1)
+            if name not in taken and name not in pending:
+                pending[name] = time.monotonic() + 20
+        for name, due in list(pending.items()):
+            if time.monotonic() >= due and boot.monitor is not None:
+                boot.monitor.command(f"screendump {work / (name + '.ppm')}")
+                taken.add(name)
+                del pending[name]
+        if marker in text:
+            return True
+        if "NTFSREG END FAIL" in text[text.rfind("NTFSREG BEGIN"):]:
+            return False
+        if boot.process is not None and boot.process.poll() is not None:
+            return marker in boot.serial_text()
+        time.sleep(0.5)
+    return False
+
+
 def run_exfat_read(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
                    work: Path, port: int, timeout: float) -> str:
     """Boot the autorun image on an exFAT template and run the read suite."""
@@ -948,7 +976,7 @@ def run_exfat_read(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
                 work / "exfat-read.com2.log", work / "exfat-read.qemu.err.log", port)
     boot.start()
     try:
-        if not boot.wait_for("NTFSREG END PASS", timeout):
+        if not wait_with_dos_screenshots(boot, work, "NTFSREG END PASS", timeout):
             fail(f"The exFAT suite did not pass.\n{boot.diagnostic_text()}")
         output = boot.serial_text()
         # The payload reboots to dismount the volume cleanly; with -no-reboot
