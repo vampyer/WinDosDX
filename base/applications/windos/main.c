@@ -24,12 +24,18 @@
  *   windos.exe DIR /W               any other text is a DOS command
  */
 
-/* DOS names are 8-bit and 8.3: the OEM code page, and the short name when the
-   file system has one. */
+/* Text the DOS program sees (its arguments) is in the OEM code page. */
 static BOOL
 ToDos(LPCWSTR Text, char *Out, int Size)
 {
     return WideCharToMultiByte(CP_OEMCP, 0, Text, -1, Out, Size, NULL, NULL) > 0;
+}
+
+/* Windows paths the DOS machine opens on the host use the ANSI code page. */
+static BOOL
+ToHost(LPCWSTR Text, char *Out, int Size)
+{
+    return WideCharToMultiByte(CP_ACP, 0, Text, -1, Out, Size, NULL, NULL) > 0;
 }
 
 /* Splits the first (possibly quoted) token off CmdLine. */
@@ -66,7 +72,8 @@ wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     WD_MachineConfig *Config = NULL;
     WCHAR Token[MAX_PATH];
     WCHAR FullPath[MAX_PATH];
-    WCHAR ShortPath[MAX_PATH];
+    WIN32_FIND_DATAW Found;
+    HANDLE Find;
     LPCWSTR Arguments;
     LPWSTR FilePart = NULL;
     DWORD Attributes;
@@ -90,14 +97,18 @@ wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         char Name[MAX_PATH];
         char DosArguments[256];
 
-        if (GetShortPathNameW(FullPath, ShortPath, ARRAYSIZE(ShortPath)))
+        /* The name as stored on disk; WDRUN finds the DOS name DOSBox gives
+           it, which is not the Windows 8.3 alias and exists even where the
+           drive has no short names. */
+        Find = FindFirstFileW(FullPath, &Found);
+        if (Find != INVALID_HANDLE_VALUE)
         {
-            LPWSTR ShortName = wcsrchr(ShortPath, L'\\');
-            ToDos(ShortName ? ShortName + 1 : ShortPath, Name, sizeof(Name));
+            FindClose(Find);
+            ToHost(Found.cFileName, Name, sizeof(Name));
         }
         else
         {
-            ToDos(FilePart, Name, sizeof(Name));
+            ToHost(FilePart, Name, sizeof(Name));
         }
         if (!ToDos(Arguments, DosArguments, sizeof(DosArguments)))
             DosArguments[0] = '\0';
@@ -107,10 +118,11 @@ wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             FilePart[0] = L'\0';
         else
             FilePart[-1] = L'\0';
-        ToDos(FullPath, ProgramDrive, sizeof(ProgramDrive));
+        ToHost(FullPath, ProgramDrive, sizeof(ProgramDrive));
         WD_DosSetProgram(ProgramDrive, Name);
 
-        wsprintfA(InitialCommand, "%s%s%s\nEXIT", Name, DosArguments[0] ? " " : "", DosArguments);
+        wsprintfA(InitialCommand, "WDRUN \"%s\"%s%s\nEXIT", Name,
+                  DosArguments[0] ? " " : "", DosArguments);
     }
     else
     {

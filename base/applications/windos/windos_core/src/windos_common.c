@@ -50,6 +50,14 @@ void WD_DataPath(char *out, size_t max, const char *file)
     char dir[MAX_PATH];
     DWORD n = GetEnvironmentVariableA("APPDATA", dir, MAX_PATH);
 
+    /* Without APPDATA (a session with no user profile), the TEMP folder:
+       the program's own folder is often read-only. */
+    if (n == 0 || n + 10 >= MAX_PATH)
+    {
+        n = GetTempPathA(MAX_PATH, dir);
+        if (n > 0 && n < MAX_PATH && dir[n - 1] == '\\')
+            dir[--n] = '\0';
+    }
     if (n > 0 && n + 10 < MAX_PATH)
     {
         lstrcatA(dir, "\\WinDosDX");

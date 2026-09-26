@@ -140,6 +140,9 @@ public:
 	void		ExpandName			(char* path);
 	char*		GetExpandName		(const char* path);
 	bool		GetShortName		(const char* fullname, char* shortname);
+	/* WinDosDX: the DOS name of file longname in host directory dirpath
+	   (read from disk if not cached yet). */
+	bool		FindDosName			(const char* dirpath, const char* longname, char* shortname);
 
 	bool		FindFirst			(char* path, Bit16u& id);
 	bool		FindNext			(Bit16u id, char* &result);

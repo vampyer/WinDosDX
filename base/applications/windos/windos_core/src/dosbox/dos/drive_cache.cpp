@@ -275,6 +275,25 @@ bool DOS_Drive_Cache::IsCachedIn(CFileInfo* curDir) {
 }
 
 
+bool DOS_Drive_Cache::FindDosName(const char* dirpath, const char* longname, char* shortname) {
+	Bit16u id;
+	char* result;
+	bool found = false;
+
+	if (!OpenDir(dirpath, id)) return false;
+	CFileInfo* dir = dirSearch[id];
+	/* Reading to the end caches the directory in and frees the slot. */
+	while (ReadDir(id, result)) {}
+	for (Bitu i = 0; dir && i < dir->fileList.size(); i++) {
+		if (!strcasecmp(dir->fileList[i]->orgname, longname)) {
+			strcpy(shortname, dir->fileList[i]->shortname);
+			found = true;
+			break;
+		}
+	}
+	return found;
+}
+
 bool DOS_Drive_Cache::GetShortName(const char* fullname, char* shortname) {
 	// Get Dir Info
 	char expand[CROSS_LEN] = {0};

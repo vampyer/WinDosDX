@@ -66,6 +66,7 @@ static SHELL_Cmd cmd_list[]={
 {	"TYPE",		0,			&DOS_Shell::CMD_TYPE,		"SHELL_CMD_TYPE_HELP"},
 {	"VER",		0,			&DOS_Shell::CMD_VER,		"SHELL_CMD_VER_HELP"},
 {	"WINDEX",	0,			&DOS_Shell::CMD_WINDEX,		"SHELL_CMD_WINDEX_HELP"},
+{	"WDRUN",	1,			&DOS_Shell::CMD_WDRUN,		"SHELL_CMD_WDRUN_HELP"},
 {0,0,0,0}
 }; 
 
@@ -296,8 +297,16 @@ void DOS_Shell::CMD_ECHO(char * args){
 /* WinDosDX: the DOS exit code windos.exe returns (see WD_CoreRun). */
 extern "C" int wd_dos_exit_code;
 
+/* Set by WDRUN when the program was not found: the next EXIT is skipped so
+   the message stays on screen. */
+static bool wd_keep_open = false;
+
 void DOS_Shell::CMD_EXIT(char * args) {
 	HELP("EXIT");
+	if (wd_keep_open) {
+		wd_keep_open = false;
+		return;
+	}
 	/* Leaving the shell: the errorlevel of the last program becomes the
 	   exit code of windos.exe, so Windows sees what the DOS program returned. */
 	wd_dos_exit_code = dos.return_code;
@@ -1098,6 +1107,71 @@ void DOS_Shell::CMD_VER(char *args) {
 		dos.version.major = (Bit8u)(atoi(word));
 		dos.version.minor = (Bit8u)(atoi(args));
 	} else WriteOut(MSG_Get("SHELL_CMD_VER_VER"),VERSION,dos.version.major,dos.version.minor);
+}
+
+/*
+ * WinDosDX: WDRUN "<Windows file name>" [arguments] runs a program in the
+ * current directory by its Windows name, which need not be 8.3. On drives
+ * without short names (exFAT, most NTFS data drives) only DOSBox knows the
+ * name it made up, such as VERSIO~1.COM, so the directory is listed through
+ * DOSBox and each DOS name expanded back to its Windows name to find it.
+ * windos.exe starts every program it is given this way.
+ */
+void DOS_Shell::CMD_WDRUN(char *args)
+{
+	char name[CROSS_LEN];
+	char dosname[DOS_NAMELENGTH_ASCII] = "";
+	char dir[CROSS_LEN] = "";
+	char line[CMD_MAXLINE];
+	size_t used = 0;
+	Bit8u drive_number = DOS_GetDefaultDrive();
+	DOS_Drive *drive = Drives[drive_number];
+
+	while (*args == ' ') args++;
+	if (*args == '"') {
+		args++;
+		while (*args && *args != '"' && used + 1 < sizeof(name)) name[used++] = *args++;
+		if (*args == '"') args++;
+	} else {
+		while (*args && *args != ' ' && used + 1 < sizeof(name)) name[used++] = *args++;
+	}
+	name[used] = 0;
+	while (*args == ' ') args++;
+	if (!name[0]) return;
+
+	localDrive *local = drive ? dynamic_cast<localDrive *>(drive) : 0;
+	char curdir[DOS_PATHLENGTH];
+	if (local && DOS_GetCurrentDir(drive_number + 1, curdir)) {
+		local->GetSystemFilename(dir, curdir);
+		size_t len = strlen(dir);
+		if (len && dir[len - 1] != CROSS_FILESPLIT && len + 1 < sizeof(dir)) {
+			dir[len] = CROSS_FILESPLIT;
+			dir[len + 1] = 0;
+		}
+		char found[CROSS_LEN];
+		if (drive->dirCache.FindDosName(dir, name, found) && strlen(found) < sizeof(dosname))
+			strcpy(dosname, found);
+	}
+
+	/* Not found: say so, and keep the window open instead of letting the
+	   EXIT that follows close it before anyone can read why. A name with a
+	   space can only be run by its DOS name. */
+	if (!dosname[0] && (strchr(name, ' ') || !DOS_FileExists(name))) {
+		WriteOut("WinDosDX could not find \"%s\" in %s.\n"
+		         "Close this window when you are done.\n",
+		         name, dir[0] ? dir : "the current directory");
+		wd_keep_open = true;
+		return;
+	}
+
+	/* A batch file started from a batch file never returns without CALL,
+	   and windos.exe needs the EXIT that follows WDRUN to run. */
+	const char *run = dosname[0] ? dosname : name;
+	const char *ext = strrchr(run, '.');
+	bool batch = ext && !strcasecmp(ext, ".bat");
+	snprintf(line, sizeof(line), "%s%s%s%s", batch ? "CALL " : "", run, *args ? " " : "", args);
+	line[sizeof(line) - 1] = 0;
+	ParseLine(line);
 }
 
 void DOS_Shell::CMD_WINDEX(char *args)
