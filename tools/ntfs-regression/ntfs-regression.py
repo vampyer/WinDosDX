@@ -943,17 +943,18 @@ def run_autorun_first_boot(qemu: Path, qemu_img: Path, image: Path, bootcd: Path
 
 
 def wait_with_dos_screenshots(boot: "Boot", work: Path, marker: str, timeout: float) -> bool:
-    """Wait for marker; 20 s after each "DOSREG WAIT <name>", save the guest
-    screen as <work>/<name>.ppm, to show what a DOS program is doing."""
+    """Wait for marker; after each "DOSREG WAIT <name> [seconds]" (20 s by
+    default), save the guest screen as <work>/<name>.ppm, to show what a DOS
+    program is doing."""
     deadline = time.monotonic() + timeout
     pending: dict[str, float] = {}
     taken: set[str] = set()
     while time.monotonic() < deadline:
         text = boot.serial_text()
-        for match in re.finditer(r"DOSREG WAIT (\S+)", text):
+        for match in re.finditer(r"DOSREG WAIT (\S+)(?: (\d+))?", text):
             name = match.group(1)
             if name not in taken and name not in pending:
-                pending[name] = time.monotonic() + 20
+                pending[name] = time.monotonic() + int(match.group(2) or 20)
         for name, due in list(pending.items()):
             if time.monotonic() >= due and boot.monitor is not None:
                 boot.monitor.command(f"screendump {work / (name + '.ppm')}")
@@ -985,6 +986,10 @@ def run_exfat_read(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
         try:
             boot.process.wait(timeout=180)
         except subprocess.TimeoutExpired:
+            # Keep a picture of where the shutdown is stuck.
+            if boot.monitor is not None:
+                boot.monitor.command(f"screendump {work / 'shutdown-hang.ppm'}")
+                time.sleep(2)
             fail(f"The guest did not shut down after the exFAT suite.\n{boot.diagnostic_text()}")
     finally:
         boot.stop(force=True)

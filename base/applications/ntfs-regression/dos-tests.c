@@ -117,8 +117,9 @@ RunAndWait(PWSTR CommandLine, PCWSTR Directory, DWORD Seconds, BOOL WaitForResul
         Emit("DOSREG FAIL %s start gle=%lu", Name, GetLastError());
         return FALSE;
     }
-    /* The harness takes a screenshot of the guest 20 s after this line. */
-    Emit("DOSREG WAIT %s", Name);
+    /* The harness takes a screenshot of the guest after this line: 20 s
+       later, or 4 s for the long-name launches, which end quickly. */
+    Emit("DOSREG WAIT %s%s", Name, strstr(Name, "longname") ? " 4" : "");
 
     for (Waited = 0; Waited < Seconds * 10 && !Done; Waited++)
     {
@@ -173,6 +174,79 @@ CheckVersionResult(PCWSTR Directory, const char *Name)
         Emit("DOSREG PASS %s", Name);
 }
 
+/* Emits each line of a text file as "DOSREG LOG <tag>: <line>". */
+static
+VOID
+EmitFileLines(PCWSTR Path, const char *Tag)
+{
+    char Text[4096];
+    char *Line, *Next;
+
+    if (!ReadSmallFile(Path, Text, sizeof(Text)))
+    {
+        Emit("DOSREG LOG %s: (no file)", Tag);
+        return;
+    }
+    for (Line = Text; Line && *Line; Line = Next)
+    {
+        Next = strpbrk(Line, "\r\n");
+        if (Next)
+        {
+            *Next++ = '\0';
+            while (*Next == '\r' || *Next == '\n') Next++;
+        }
+        if (*Line)
+            Emit("DOSREG LOG %s: %s", Tag, Line);
+    }
+}
+
+/* windos.log: %APPDATA%\WinDosDX, or %TEMP%\WinDosDX without APPDATA. */
+static
+VOID
+EmitWindosLog(void)
+{
+    WCHAR Path[MAX_PATH];
+    DWORD n = GetEnvironmentVariableW(L"APPDATA", Path, MAX_PATH - 30);
+
+    if (n == 0 || n >= MAX_PATH - 30)
+    {
+        n = GetTempPathW(MAX_PATH - 30, Path);
+        if (n > 0 && Path[n - 1] == L'\\')
+            Path[n - 1] = L'\0';
+    }
+    wcscat(Path, L"\\WinDosDX\\windos.log");
+    EmitFileLines(Path, "windos.log");
+}
+
+/*
+ * What the DOS machine sees in Directory: its DIR listing (the names DOS
+ * gives the files) and windos.log, for when a program is not found.
+ */
+static
+VOID
+DumpDosView(PCWSTR Directory)
+{
+    WCHAR Windos[MAX_PATH];
+    WCHAR CommandLine[MAX_PATH * 2];
+    WCHAR Path[MAX_PATH];
+    DWORD ExitCode;
+
+    static const char ListDir[] = "DIR > DIRLIST.TXT\r\n";
+
+    /* A batch file in Directory, so windos.exe makes Directory C:. */
+    GetWindowsDirectoryW(Windos, MAX_PATH);
+    wcscat(Windos, L"\\windos.exe");
+    _snwprintf(Path, MAX_PATH, L"%s\\LISTDIR.BAT", Directory);
+    WriteBytes(Path, (const BYTE *)ListDir, sizeof(ListDir) - 1);
+    _snwprintf(CommandLine, ARRAYSIZE(CommandLine), L"\"%s\" \"%s\"", Windos, Path);
+    CommandLine[ARRAYSIZE(CommandLine) - 1] = L'\0';
+    RunAndWait(CommandLine, Directory, 30, FALSE, &ExitCode, "dos-dir-listing");
+    _snwprintf(Path, MAX_PATH, L"%s\\DIRLIST.TXT", Directory);
+    EmitFileLines(Path, "dir");
+
+    EmitWindosLog();
+}
+
 static
 VOID
 TestLaunch(void)
@@ -205,6 +279,35 @@ TestLaunch(void)
     else
     {
         Emit("DOSREG FAIL launch-version did not finish");
+    }
+
+    /* A long, non-8.3 name: exFAT has no short names, so the DOS machine
+       has to find the name it gives the file itself. */
+    _snwprintf(Program, MAX_PATH, L"%s\\Long Name Test.com", Directory);
+    {
+        WCHAR Result[MAX_PATH];
+        _snwprintf(Result, MAX_PATH, L"%s\\RESULT.TXT", Directory);
+        DeleteFileW(Result);
+    }
+    if (!WriteBytes(Program, VerTestCom, sizeof(VerTestCom)))
+    {
+        Emit("DOSREG FAIL launch-longname write gle=%lu", GetLastError());
+    }
+    else
+    {
+        _snwprintf(CommandLine, MAX_PATH, L"\"%s\"", Program);
+        if (RunAndWait(CommandLine, Directory, 60, FALSE, &ExitCode, "launch-longname"))
+        {
+            WCHAR Result[MAX_PATH];
+            _snwprintf(Result, MAX_PATH, L"%s\\RESULT.TXT", Directory);
+            if (GetFileAttributesW(Result) == INVALID_FILE_ATTRIBUTES)
+                DumpDosView(Directory);
+            CheckVersionResult(Directory, "launch-longname");
+        }
+        else
+        {
+            Emit("DOSREG FAIL launch-longname did not finish");
+        }
     }
 
     /* A DOS program's exit code reaches the Win32 parent. */
@@ -263,12 +366,49 @@ TestWindos(void)
         return;
     }
     CheckVersionResult(Directory, "windos-version");
+
+    /* The long name given to windos.exe directly, without kernel32. */
+    _snwprintf(Program, MAX_PATH, L"%s\\Long Name Test.com", Directory);
+    if (!WriteBytes(Program, VerTestCom, sizeof(VerTestCom)))
+    {
+        Emit("DOSREG FAIL windos-longname write gle=%lu", GetLastError());
+        return;
+    }
+    {
+        WCHAR Result[MAX_PATH];
+        _snwprintf(Result, MAX_PATH, L"%s\\RESULT.TXT", Directory);
+        DeleteFileW(Result);
+    }
+    _snwprintf(CommandLine, ARRAYSIZE(CommandLine), L"\"%s\" \"%s\"", Windos, Program);
+    CommandLine[ARRAYSIZE(CommandLine) - 1] = L'\0';
+    if (!RunAndWait(CommandLine, Directory, 120, TRUE, &ExitCode, "windos-longname"))
+    {
+        Emit("DOSREG FAIL windos-longname no result (exit code %lu)", ExitCode);
+        return;
+    }
+    {
+        WCHAR Result[MAX_PATH];
+        _snwprintf(Result, MAX_PATH, L"%s\\RESULT.TXT", Directory);
+        if (GetFileAttributesW(Result) == INVALID_FILE_ATTRIBUTES)
+            DumpDosView(Directory);
+    }
+    CheckVersionResult(Directory, "windos-longname");
 }
 
 VOID
 DosRunTests(void)
 {
+    WCHAR AppData[MAX_PATH];
+
     Emit("DOSREG BEGIN");
+    /* This session has no user profile: give windos.exe (which inherits the
+       environment) a writable APPDATA on the test disk for its log. */
+    if (!GetEnvironmentVariableW(L"APPDATA", AppData, MAX_PATH))
+    {
+        ExfatPath(AppData, L"dosreg-appdata");
+        CreateDirectoryW(AppData, NULL);
+        SetEnvironmentVariableW(L"APPDATA", AppData);
+    }
     TestLaunch();
     TestWindos();
     Emit("DOSREG END");
