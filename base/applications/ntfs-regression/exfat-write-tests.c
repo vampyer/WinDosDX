@@ -478,6 +478,67 @@ TestDelete(void)
     return Report(Ok, "delete");
 }
 
+/* Writes Text to Relative (Disposition CREATE_NEW or CREATE_ALWAYS). */
+static
+BOOL
+WriteSmallText(PCWSTR Relative, DWORD Disposition, const char *Text, const char *Step)
+{
+    WCHAR Path[MAX_PATH];
+    HANDLE File;
+    DWORD Written = 0;
+    BOOL Ok;
+
+    ExfatPath(Path, Relative);
+    File = CreateFileW(Path, GENERIC_READ | GENERIC_WRITE, 0, NULL, Disposition,
+                       FILE_ATTRIBUTE_NORMAL, NULL);
+    if (File == INVALID_HANDLE_VALUE)
+    {
+        Emit("EXFATREG FAIL delete-recreate %s create gle=%lu", Step, GetLastError());
+        return FALSE;
+    }
+    Ok = WriteFile(File, Text, (DWORD)strlen(Text), &Written, NULL) && Written == strlen(Text);
+    CloseHandle(File);
+    if (!Ok)
+        Emit("EXFATREG FAIL delete-recreate %s write gle=%lu", Step, GetLastError());
+    return Ok;
+}
+
+/*
+ * A file deleted and created again under the same name, as programs do when
+ * they save a result file: the new file must be creatable at once and hold
+ * only the new data.
+ */
+static
+BOOL
+TestDeleteRecreate(void)
+{
+    WCHAR Path[MAX_PATH];
+    BOOL Ok;
+
+    ExfatPath(Path, L"exfat-reg\\again.txt");
+    Ok = WriteSmallText(L"exfat-reg\\again.txt", CREATE_NEW, "first version\r\n", "first") &&
+         CheckTextFile(L"exfat-reg\\again.txt", "first version\r\n", "delete-recreate-first");
+    if (Ok && !DeleteFileW(Path))
+    {
+        Emit("EXFATREG FAIL delete-recreate delete gle=%lu", GetLastError());
+        Ok = FALSE;
+    }
+    Ok = Ok && WriteSmallText(L"exfat-reg\\again.txt", CREATE_NEW, "second\r\n", "create-new") &&
+         CheckTextFile(L"exfat-reg\\again.txt", "second\r\n", "delete-recreate-second");
+
+    /* The same with CREATE_ALWAYS, which is what fopen("wb") asks for. */
+    if (Ok && !DeleteFileW(Path))
+    {
+        Emit("EXFATREG FAIL delete-recreate delete2 gle=%lu", GetLastError());
+        Ok = FALSE;
+    }
+    Ok = Ok && WriteSmallText(L"exfat-reg\\again.txt", CREATE_ALWAYS, "third\r\n", "create-always") &&
+         CheckTextFile(L"exfat-reg\\again.txt", "third\r\n", "delete-recreate-third");
+    if (Ok)
+        DeleteFileW(Path);
+    return Report(Ok, "delete-recreate");
+}
+
 static
 BOOL
 TestAttributesAndTimesWrite(void)
@@ -691,6 +752,7 @@ ExfatRunWriteTests(void)
     Result = TestDirectoryGrowth() && Result;
     Result = TestRenameAndMove() && Result;
     Result = TestDelete() && Result;
+    Result = TestDeleteRecreate() && Result;
     Result = TestAttributesAndTimesWrite() && Result;
     Result = TestMappedWrite() && Result;
     Result = TestUnicodeAndCollisions() && Result;

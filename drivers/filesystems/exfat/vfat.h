@@ -382,6 +382,9 @@ extern PVFAT_GLOBAL_DATA VfatGlobalData;
 #define FCB_IS_VOLUME           0x0010
 #define FCB_IS_DIRTY            0x0020
 #define FCB_DELAYED_CLOSE       0x0040
+/* Deleted on disk and out of the name table: a new file may take the name
+   while this FCB waits for its last reference. */
+#define FCB_UNLINKED            0x0200
 #ifdef KDBG
 #define FCB_CLEANED_UP          0x0080
 #define FCB_CLOSED              0x0100
@@ -969,6 +972,11 @@ PVFATFCB
 vfatGrabFCBFromTable(
     PDEVICE_EXTENSION pDeviceExt,
     PUNICODE_STRING pFileNameU);
+
+VOID
+vfatUnlinkFCB(
+    PDEVICE_EXTENSION pVCB,
+    PVFATFCB pFCB);
 
 PVFATFCB
 vfatMakeRootFCB(

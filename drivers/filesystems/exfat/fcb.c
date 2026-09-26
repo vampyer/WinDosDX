@@ -160,8 +160,26 @@ vfatDelFCBFromTable(
     PDEVICE_EXTENSION pVCB,
     PVFATFCB pFCB)
 {
+    vfatUnlinkFCB(pVCB, pFCB);
+    RemoveEntryList(&pFCB->FcbListEntry);
+}
+
+/*
+ * Take a deleted file's FCB out of the name table, so that the name can be
+ * used again at once (delete, then create the same file) while the FCB
+ * itself lives on until its last reference goes, which for a cached file
+ * can be well after the handle is closed. It stays on the volume's FCB list.
+ */
+VOID
+vfatUnlinkFCB(
+    PDEVICE_EXTENSION pVCB,
+    PVFATFCB pFCB)
+{
     ULONG Index;
     HASHENTRY* entry;
+
+    if (BooleanFlagOn(pFCB->Flags, FCB_UNLINKED))
+        return;
 
     Index = pFCB->Hash.Hash % pVCB->HashTableSize;
     entry = pVCB->FcbHashTable[Index];
@@ -177,8 +195,7 @@ vfatDelFCBFromTable(
         }
         entry->next = pFCB->Hash.next;
     }
-
-    RemoveEntryList(&pFCB->FcbListEntry);
+    pFCB->Flags |= FCB_UNLINKED;
 }
 
 static
@@ -378,6 +395,7 @@ vfatAddFCBToTable(
 
     pFCB->Hash.next = pVCB->FcbHashTable[Index];
     pVCB->FcbHashTable[Index] = &pFCB->Hash;
+    pFCB->Flags &= ~FCB_UNLINKED;
     if (pFCB->parentFcb)
     {
         vfatGrabFCB(pVCB, pFCB->parentFcb);

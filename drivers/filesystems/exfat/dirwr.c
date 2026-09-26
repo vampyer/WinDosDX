@@ -683,6 +683,10 @@ VfatDelEntry(
     /* In case of moving, don't delete data */
     if (MoveContext == NULL)
     {
+        /* The name is free now: a new file may take it even while this FCB
+           waits for its last reference (the caller holds DirResource). */
+        vfatUnlinkFCB(DeviceExt, pFcb);
+
         /* The freed set goes to disk before the clusters are released. */
         Status = ExfatFlushFcbSet(pFcb);
         if (!NT_SUCCESS(Status))
