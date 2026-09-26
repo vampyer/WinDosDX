@@ -2121,6 +2121,81 @@ ProcessIdToSessionId(IN DWORD dwProcessId,
 }
 
 
+/*
+ * WinDosDX: DOS programs run in windos.exe, the DOSBox-derived DOS 6.22
+ * machine, instead of NTVDM. Returns the command line to start instead
+ * ("<windir>\windos.exe" "<program>" <arguments>), or NULL to keep the NTVDM
+ * path: windos.exe is not installed, or HKLM\SOFTWARE\WinDosDX\DOS has
+ * Engine = "ntvdm". The caller frees the result from the process heap.
+ */
+static
+PWSTR
+BasepWindosCommandLine(IN LPCWSTR ProgramPath,
+                       IN LPCWSTR CommandLine,
+                       IN BOOLEAN CommandLineIsProgram)
+{
+    WCHAR EngineBuffer[16];
+    UNICODE_STRING Engine;
+    RTL_QUERY_REGISTRY_TABLE QueryTable[2];
+    WCHAR Windos[MAX_PATH];
+    LPCWSTR Arguments = L"";
+    SIZE_T Length;
+    PWSTR Result;
+
+    if (!ProgramPath || !*ProgramPath)
+        return NULL;
+
+    /* An explicit opt-out keeps NTVDM. */
+    RtlInitEmptyUnicodeString(&Engine, EngineBuffer, sizeof(EngineBuffer));
+    RtlZeroMemory(QueryTable, sizeof(QueryTable));
+    QueryTable[0].Flags = RTL_QUERY_REGISTRY_DIRECT;
+    QueryTable[0].Name = L"Engine";
+    QueryTable[0].EntryContext = &Engine;
+    if (NT_SUCCESS(RtlQueryRegistryValues(RTL_REGISTRY_ABSOLUTE,
+                                          L"\\Registry\\Machine\\SOFTWARE\\WinDosDX\\DOS",
+                                          QueryTable, NULL, NULL)) &&
+        Engine.Length == 5 * sizeof(WCHAR) &&
+        _wcsnicmp(Engine.Buffer, L"ntvdm", 5) == 0)
+    {
+        return NULL;
+    }
+
+    if (BaseWindowsDirectory.Length / sizeof(WCHAR) + 12 >= MAX_PATH)
+        return NULL;
+    RtlCopyMemory(Windos, BaseWindowsDirectory.Buffer, BaseWindowsDirectory.Length);
+    Windos[BaseWindowsDirectory.Length / sizeof(WCHAR)] = UNICODE_NULL;
+    wcscat(Windos, L"\\windos.exe");
+    if (GetFileAttributesW(Windos) == INVALID_FILE_ATTRIBUTES)
+        return NULL;
+
+    /* The arguments are what follows the program name on the command line. */
+    if (CommandLine && !CommandLineIsProgram)
+    {
+        Arguments = CommandLine;
+        while (*Arguments == L' ' || *Arguments == L'\t') Arguments++;
+        if (*Arguments == L'"')
+        {
+            Arguments++;
+            while (*Arguments && *Arguments != L'"') Arguments++;
+            if (*Arguments == L'"') Arguments++;
+        }
+        else
+        {
+            while (*Arguments && *Arguments != L' ' && *Arguments != L'\t') Arguments++;
+        }
+        while (*Arguments == L' ' || *Arguments == L'\t') Arguments++;
+    }
+
+    Length = wcslen(Windos) + wcslen(ProgramPath) + wcslen(Arguments) + 8;
+    Result = RtlAllocateHeap(RtlGetProcessHeap(), 0, Length * sizeof(WCHAR));
+    if (!Result)
+        return NULL;
+    _snwprintf(Result, Length, L"\"%s\" \"%s\"%s%s", Windos, ProgramPath,
+               *Arguments ? L" " : L"", Arguments);
+    Result[Length - 1] = UNICODE_NULL;
+    return Result;
+}
+
 #define AddToHandle(x,y)       ((x) = (HANDLE)((ULONG_PTR)(x) | (y)))
 #define RemoveFromHandle(x,y)  ((x) = (HANDLE)((ULONG_PTR)(x) & ~(y)))
 C_ASSERT(PROCESS_PRIORITY_CLASS_REALTIME == (PROCESS_PRIORITY_CLASS_HIGH + 1));
@@ -2189,6 +2264,7 @@ CreateProcessInternalW(IN HANDLE hUserToken,
     SIZE_T EnvironmentLength, CmdLineLength;
     PWCHAR QuotedCmdLine, AnsiCmdCommand, ExtBuffer, CurrentDirectory;
     PWCHAR NullBuffer, ScanString, NameBuffer, SearchPath, DebuggerCmdLine;
+    PWSTR WindosCmdLine = NULL;
     ANSI_STRING AnsiEnv;
     UNICODE_STRING UnicodeEnv, PathName;
     BOOLEAN SearchRetry, QuotesNeeded, CmdLineIsAppName, HasQuotes;
@@ -3197,6 +3273,21 @@ StartScan:
                 (Status == STATUS_INVALID_IMAGE_NE_FORMAT) ||
                 (BinarySubType = BaseIsDosApplication(&PathName, Status)))
             {
+                /* WinDosDX: start the program in windos.exe when installed */
+                if (!WindosCmdLine && Status != STATUS_INVALID_IMAGE_NE_FORMAT)
+                {
+                    WindosCmdLine = BasepWindosCommandLine(lpApplicationName,
+                                                           lpCommandLine,
+                                                           CmdLineIsAppName);
+                    if (WindosCmdLine)
+                    {
+                        lpCommandLine = WindosCmdLine;
+                        lpApplicationName = NULL;
+                        SkipSaferAndAppCompat = TRUE;
+                        goto AppNameRetry;
+                    }
+                }
+
                 /* We're launching a DOS application */
                 VdmBinaryType = BINARY_TYPE_DOS;
 
@@ -4413,6 +4504,7 @@ Quickie:
     RtlFreeHeap(RtlGetProcessHeap(), 0, NameBuffer);
     RtlFreeHeap(RtlGetProcessHeap(), 0, CurrentDirectory);
     RtlFreeHeap(RtlGetProcessHeap(), 0, FreeBuffer);
+    if (WindosCmdLine) RtlFreeHeap(RtlGetProcessHeap(), 0, WindosCmdLine);
 
     /* Close open file/section handles */
     if (FileHandle) NtClose(FileHandle);
