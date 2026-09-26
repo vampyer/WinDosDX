@@ -90,7 +90,8 @@ static void WD_CoreTrace(const char *message)
     if (file == INVALID_HANDLE_VALUE)
         return;
     SetFilePointer(file, 0, NULL, FILE_END);
-    _snprintf(line, sizeof(line) - 2, "WinDosDX: %s\\r\\n", message);
+    _snprintf(line, sizeof(line) - 2, "WinDosDX: %s\r\n", message);
+    line[sizeof(line) - 1] = '\0';
     WriteFile(file, line, (DWORD)strlen(line), &written, NULL);
     CloseHandle(file);
 }
@@ -293,11 +294,24 @@ void GFX_ShowMsg(char const *format, ...)
     buffer[sizeof(buffer) - 1] = '\0';
     va_end(args);
 
+    /* LOG_MSG lands here for every DOSBox note ("MIXER:No Sound Mode
+     * Selected." and the like), so this only logs. Fatal errors reach the
+     * user through WD_CoreFatal from WD_CoreRun. */
     OutputDebugStringA(buffer);
     OutputDebugStringA("\n");
-    /* Do not silently lose a core initialization exception.  In the embedded
-     * LiveCD there is no console attached to userinit, so surface the same
-     * diagnostic that the standalone host would print. */
+    WD_CoreTrace(buffer);
+}
+
+/* A fatal error in the machine core: log it and tell the user. */
+static void WD_CoreFatal(const char *detail)
+{
+    char buffer[2048];
+
+    _snprintf(buffer, sizeof(buffer) - 1, "WinDosDX: %s", detail);
+    buffer[sizeof(buffer) - 1] = '\0';
+    OutputDebugStringA(buffer);
+    OutputDebugStringA("\n");
+    WD_CoreTrace(buffer);
     MessageBoxA(NULL, buffer, "WinDosDX DOS core", MB_OK | MB_ICONERROR);
 }
 
@@ -343,6 +357,11 @@ Bitu GFX_SetSize(Bitu width, Bitu height, Bitu flags, double scalex, double scal
 
     GFX_Stop();
 
+    /* Each mode change replaces the surface; keep only the current one. */
+    free(gfx.surface);
+    gfx.surface = NULL;
+    gfx.surface_valid = false;
+
     gfx.width  = width;
     gfx.height = height;
     gfx.pitch  = width * 4;
@@ -366,9 +385,10 @@ Bitu GFX_SetSize(Bitu width, Bitu height, Bitu flags, double scalex, double scal
 
     GFX_Start();
 
-    if (callback)
-        callback(GFX_CallBackReset);
-
+    /* No GFX_CallBackReset here: the renderer calls GFX_SetSize from its own
+       reset (RENDER_Reset), so resetting it again would loop forever. As in
+       DOSBox's SDL backend, the reset callback is only for outside changes
+       such as the window switching to fullscreen. */
     return flags | GFX_CAN_32;
 }
 
@@ -732,17 +752,25 @@ extern "C" int WD_CoreInit(const WD_MachineConfig *config)
 
     GFX_Start();
 
-    /* Install the WinDosDX C: mapping as a DOSBox autoexec MOUNT line.
+    /* Install each WinDosDX drive mapping (mountC=, mountD=, ... in
+     * windos.ini) as a DOSBox autoexec MOUNT line, then make C: current.
      * The filesystem backend remains the only host-path boundary; the
      * DOSBox localDrive consumes the resulting mounted directory. */
-    const char *c_mount = WD_FSGetMount('C');
-    if (c_mount && *c_mount)
+    for (char letter = 'C'; letter <= 'Y'; letter++)
     {
-        char mount_line[1024];
-        _snprintf(mount_line, sizeof(mount_line),
-                  "MOUNT C \\\"%s\\\"", c_mount);
-        control->GetSection("autoexec")->HandleInputline(mount_line);
-        OutputDebugStringA("WinDosDX: C: mount configured\n");
+        const char *mount = WD_FSGetMount(letter);
+        if (mount && *mount)
+        {
+            char mount_line[1024];
+            _snprintf(mount_line, sizeof(mount_line), "MOUNT %c \"%s\"", letter, mount);
+            mount_line[sizeof(mount_line) - 1] = '\0';
+            control->GetSection("autoexec")->HandleInputline(mount_line);
+        }
+    }
+    if (WD_FSGetMount('C'))
+    {
+        control->GetSection("autoexec")->HandleInputline("C:");
+        OutputDebugStringA("WinDosDX: drive mounts configured\n");
     }
 
     if (g_wd_initial_command[0])
@@ -781,11 +809,11 @@ extern "C" int WD_CoreRun(void)
     }
     catch (char *error)
     {
-        GFX_ShowMsg("WinDosDX: %s", error ? error : "unknown error");
+        WD_CoreFatal(error ? error : "unknown error");
     }
     catch (...)
     {
-        GFX_ShowMsg("WinDosDX: unknown fatal error in DOS machine core");
+        WD_CoreFatal("unknown fatal error in DOS machine core");
     }
 
     return 0;

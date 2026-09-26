@@ -47,15 +47,16 @@ void WD_TimerShutdown(void)
 u64 WD_TimerNowUs(void)
 {
     LARGE_INTEGER now;
-    double elapsed;
+    u64 ticks, freq;
     if (!g_inited)
         return 0;
     QueryPerformanceCounter(&now);
-    /* Use double math to avoid pulling in the 64-bit integer helpers
-     * (__allmul) that a 32-bit build does not provide in msvcrt. */
-    elapsed = (double)(now.QuadPart - g_start.QuadPart) * 1000000.0 /
-              (double)g_freq.QuadPart;
-    return (u64)elapsed;
+    /* Integer math only: converting a double to u64 needs __ftoul2_legacy,
+     * which the WinDosDX CRT does not provide. Split into whole seconds and
+     * the remainder so ticks * 1000000 cannot overflow. */
+    ticks = (u64)(now.QuadPart - g_start.QuadPart);
+    freq = (u64)g_freq.QuadPart;
+    return (ticks / freq) * 1000000ULL + (ticks % freq) * 1000000ULL / freq;
 }
 
 u64 WD_TimerNowMs(void)

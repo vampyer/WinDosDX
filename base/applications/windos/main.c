@@ -9,6 +9,7 @@
 #include <windows.h>
 
 #include "windos_core/include/windos_platform.h"
+#include "windos_core/include/windos_dos.h"
 
 /*
  * windos.exe is a thin shell around the DOSBox-derived core. It hands control
@@ -21,12 +22,24 @@ WINAPI
 wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
          LPWSTR lpCmdLine, int nCmdShow)
 {
+    /* DOS names are 8-bit: the command line becomes the first command the
+       emulated DOS runs, in the OEM code page, as "windos GAME.EXE" expects. */
+    static char InitialCommand[256];
+
     UNREFERENCED_PARAMETER(hInstance);
     UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
     UNREFERENCED_PARAMETER(nCmdShow);
 
-    if (WD_MachineInit(NULL) != 0)
+    while (*lpCmdLine == L' ' || *lpCmdLine == L'\t')
+        lpCmdLine++;
+    if (*lpCmdLine == L'\0' ||
+        !WideCharToMultiByte(CP_OEMCP, 0, lpCmdLine, -1, InitialCommand,
+                             sizeof(InitialCommand), NULL, NULL))
+    {
+        InitialCommand[0] = '\0';
+    }
+
+    if (WD_DosStart(NULL, InitialCommand[0] ? InitialCommand : NULL) != 0)
         return 1;
 
     WD_MachineRun();
