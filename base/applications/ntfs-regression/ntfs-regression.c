@@ -27,6 +27,7 @@
 BOOL ExfatFindVolume(void);
 BOOL ExfatRunReadTests(void);
 BOOL ExfatRunWriteTests(void);
+extern BOOL ExfatIsTemplate;
 
 static BYTE Data[DATA_SIZE];
 static HANDLE SerialHandle = INVALID_HANDLE_VALUE;
@@ -930,7 +931,15 @@ wmain(int argc, WCHAR **argv)
     if (argc == 1 && ExfatFindVolume())
     {
         IsExfat = TRUE;
-        Result = ExfatRunReadTests();
+        if (ExfatIsTemplate)
+        {
+            Result = ExfatRunReadTests();
+        }
+        else
+        {
+            Emit("EXFATREG INFO not the test image: running the self-contained write tests only");
+            Result = TRUE;
+        }
         Result = ExfatRunWriteTests() && Result;
     }
     else if (argc == 1)

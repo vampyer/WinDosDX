@@ -686,7 +686,8 @@ ExfatRunWriteTests(void)
     Result = TestOverwriteMiddle() && Result;
     Result = TestGapExtend() && Result;
     Result = TestSetEndOfFile() && Result;
-    Result = TestAppendWindowsFiles() && Result;
+    if (ExfatIsTemplate)
+        Result = TestAppendWindowsFiles() && Result;
     Result = TestDirectoryGrowth() && Result;
     Result = TestRenameAndMove() && Result;
     Result = TestDelete() && Result;

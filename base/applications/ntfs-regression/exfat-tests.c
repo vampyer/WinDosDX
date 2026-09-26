@@ -69,6 +69,8 @@ CheckPattern(const BYTE *Buffer, DWORD Length, ULONGLONG Offset, BYTE Seed)
     return -1;
 }
 
+BOOL ExfatIsTemplate = FALSE;
+
 BOOL
 ExfatFindVolume(void)
 {
@@ -85,6 +87,7 @@ ExfatFindVolume(void)
             _wcsicmp(FileSystem, L"exFAT") == 0)
         {
             ExfatRoot[0] = Letter;
+            ExfatIsTemplate = _wcsicmp(Label, L"EXFATREG") == 0;
             Emit("EXFATREG INFO volume %c: fs=%S label=%S", (char)Letter, FileSystem, Label);
             return TRUE;
         }
