@@ -15,6 +15,7 @@
 #include <winioctl.h>
 #define NTOS_MODE_USER
 #include <ndk/rtlfuncs.h>
+#include <ndk/setypes.h>
 #include <fmifs/fmifs.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -22,6 +23,10 @@
 
 #define DATA_SIZE (64 * 1024)
 #define CRASH_ITERATIONS 4096
+
+BOOL ExfatFindVolume(void);
+BOOL ExfatRunReadTests(void);
+BOOL ExfatRunWriteTests(void);
 
 static BYTE Data[DATA_SIZE];
 static HANDLE SerialHandle = INVALID_HANDLE_VALUE;
@@ -43,7 +48,6 @@ FormatExCallback(CALLBACKCOMMAND Command, ULONG SubAction, PVOID ActionInfo)
     return TRUE;
 }
 
-static
 VOID
 Emit(const char *Format, ...)
 {
@@ -428,19 +432,35 @@ TestOverwriteAndFlush(PCWSTR Root)
     File = CreateFileW(Path, GENERIC_READ | GENERIC_WRITE, 0, NULL,
                        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (File == INVALID_HANDLE_VALUE)
+    {
+        Emit("NTFSREG INFO overwrite-flush create gle=%lu status=%08lx",
+             GetLastError(), RtlGetLastNtStatus());
         goto Exit;
+    }
 
     FillPattern(Data, DATA_SIZE, 0x11);
     if (!WriteAll(File, Data, DATA_SIZE) || !FlushFileBuffers(File))
+    {
+        Emit("NTFSREG INFO overwrite-flush write1 gle=%lu status=%08lx",
+             GetLastError(), RtlGetLastNtStatus());
         goto Exit;
+    }
 
     FillPattern(Data, 8192, 0x7d);
     if (!WriteAt(File, 4096 + 17, Data, 8192) || !FlushFileBuffers(File))
+    {
+        Emit("NTFSREG INFO overwrite-flush write2 gle=%lu status=%08lx",
+             GetLastError(), RtlGetLastNtStatus());
         goto Exit;
+    }
 
     FillPattern(Data, DATA_SIZE, 0);
     if (!ReadAt(File, 0, Data, DATA_SIZE))
+    {
+        Emit("NTFSREG INFO overwrite-flush read gle=%lu status=%08lx",
+             GetLastError(), RtlGetLastNtStatus());
         goto Exit;
+    }
 
     for (i = 0; i < DATA_SIZE; i++)
     {
@@ -452,7 +472,11 @@ TestOverwriteAndFlush(PCWSTR Root)
             Expected = (BYTE)(0x11 + (i * 37));
 
         if (Data[i] != Expected)
+        {
+            Emit("NTFSREG INFO overwrite-flush verify i=%lu got=%02x want=%02x",
+                 i, Data[i], Expected);
             goto Exit;
+        }
     }
 
     Result = TRUE;
@@ -736,9 +760,18 @@ VerifyCrashRecovery(PCWSTR Root)
     if (!ReadAt(File, 0, Data, DATA_SIZE))
         goto Exit;
 
+    /* The crash phase flushes block 0 with seed 0x91, then rewrites it with
+       seed 0 (iteration 0) before the harness kills the VM, possibly while
+       that rewrite is in flight. Each sector must hold one of the two
+       patterns in full; anything else is corruption. */
     for (i = 0; i < DATA_SIZE; i++)
     {
-        if (Data[i] != (BYTE)(0x91 + (i * 37)))
+        BYTE Initial = (BYTE)(0x91 + (i * 37));
+        BYTE Rewritten = (BYTE)(i * 37);
+        DWORD Sector = i & ~511UL;
+        BOOL SectorIsInitial = Data[Sector] == (BYTE)(0x91 + (Sector * 37));
+
+        if (Data[i] != (SectorIsInitial ? Initial : Rewritten))
             goto Exit;
     }
 
@@ -879,6 +912,7 @@ wmain(int argc, WCHAR **argv)
     PCWSTR Mode;
     WCHAR Phase[32];
     BOOL Result = TRUE;
+    BOOL IsExfat = FALSE;
 
     /* QEMU's first serial is reserved for kernel/debug output. The regression
      * payload uses COM2 so its protocol markers are not interleaved with it. */
@@ -892,7 +926,14 @@ wmain(int argc, WCHAR **argv)
 
     Emit("NTFSREG BEGIN");
 
-    if (argc == 1)
+    /* An exFAT test disk runs the exFAT suite instead (exfat-tests.c). */
+    if (argc == 1 && ExfatFindVolume())
+    {
+        IsExfat = TRUE;
+        Result = ExfatRunReadTests();
+        Result = ExfatRunWriteTests() && Result;
+    }
+    else if (argc == 1)
     {
         if (!EnsureNtfsVolume())
         {
@@ -935,9 +976,18 @@ wmain(int argc, WCHAR **argv)
             Result = TestRemount(NtfsTestDir) && Result;
             if (Result && WritePhase(L"verify-remount"))
             {
+                BOOLEAN WasEnabled;
+
                 Emit("NTFSREG REBOOT-REQUEST");
+                /* ExitWindowsEx fails with ERROR_PRIVILEGE_NOT_HELD unless
+                   the caller's token has SeShutdownPrivilege enabled. */
+                RtlAdjustPrivilege(SE_SHUTDOWN_PRIVILEGE, TRUE, FALSE,
+                                   &WasEnabled);
                 if (!ExitWindowsEx(EWX_REBOOT | EWX_FORCE, 0))
+                {
+                    Emit("NTFSREG FAIL reboot gle=%lu", GetLastError());
                     Result = FALSE;
+                }
             }
             else
             {
@@ -956,7 +1006,29 @@ wmain(int argc, WCHAR **argv)
         {
             Result = VerifyCrashRecovery(NtfsTestDir);
             if (!DeletePhase())
-                Result = FALSE;
+            {
+                /* Without journal replay the driver mounts a volume left
+                   dirty by the crash with writes denied until chkdsk runs,
+                   so the cleanup delete is refused. That is the expected
+                   fail-safe; a refusal on a clean volume is a failure. */
+                DWORD LastError = GetLastError();
+                HANDLE Volume = OpenVolume();
+                DWORD Flags = 0;
+                DWORD Returned = 0;
+                BOOL Dirty = Volume != INVALID_HANDLE_VALUE &&
+                             DeviceIoControl(Volume, FSCTL_IS_VOLUME_DIRTY,
+                                             NULL, 0, &Flags, sizeof(Flags),
+                                             &Returned, NULL) &&
+                             Returned == sizeof(Flags) &&
+                             (Flags & VOLUME_IS_DIRTY);
+
+                if (Volume != INVALID_HANDLE_VALUE)
+                    CloseHandle(Volume);
+                Emit("NTFSREG %s dirty-write-denied gle=%lu flags=%08lx",
+                     Dirty ? "PASS" : "FAIL", LastError, Flags);
+                if (!Dirty)
+                    Result = FALSE;
+            }
         }
         else
         {
@@ -1029,6 +1101,19 @@ wmain(int argc, WCHAR **argv)
     }
 
     Emit("NTFSREG END %s", Result ? "PASS" : "FAIL");
+
+    if (IsExfat)
+    {
+        /* Reboot so the volume is flushed and cleanly dismounted (its dirty
+           flag cleared); the harness runs QEMU with -no-reboot, so the VM
+           stops there and the image can be checked. */
+        BOOLEAN WasEnabled;
+
+        RtlAdjustPrivilege(SE_SHUTDOWN_PRIVILEGE, TRUE, FALSE, &WasEnabled);
+        if (!ExitWindowsEx(EWX_REBOOT, 0))
+            Emit("NTFSREG INFO exfat-reboot gle=%lu", GetLastError());
+    }
+
     if (SerialHandle != INVALID_HANDLE_VALUE)
         CloseHandle(SerialHandle);
 

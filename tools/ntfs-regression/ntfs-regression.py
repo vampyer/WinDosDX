@@ -285,11 +285,19 @@ class Boot:
             stderr=self.stderr.open("wb"),
             creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
         )
-        try:
-            self.monitor = Monitor(self.port)
-        except OSError as exc:
-            self.stop()
-            fail(f"Could not connect to the QEMU monitor: {exc}")
+        # QEMU opens the monitor socket some time after the process starts,
+        # longer on a cold start, so retry until it listens or QEMU exits.
+        deadline = time.monotonic() + 15
+        while True:
+            try:
+                self.monitor = Monitor(self.port)
+                break
+            except OSError as exc:
+                if self.process.poll() is not None or time.monotonic() > deadline:
+                    self.stop()
+                    fail(f"Could not connect to the QEMU monitor: {exc}\n"
+                         f"{read_text(self.stderr)}")
+                time.sleep(0.25)
 
     def serial_text(self) -> str:
         return read_text(self.machine_serial)
@@ -301,8 +309,12 @@ class Boot:
     def wait_for(self, marker: str, timeout: float) -> bool:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if marker in self.serial_text():
+            text = self.serial_text()
+            if marker in text:
                 return True
+            # The guest gave up; waiting out the timeout adds nothing.
+            if "NTFSREG END FAIL" in text[text.rfind("NTFSREG BEGIN"):]:
+                return False
             if self.process is not None and self.process.poll() is not None:
                 return marker in self.serial_text()
             time.sleep(0.2)
@@ -465,6 +477,15 @@ def file_record(index: int, attributes: bytes | None = None,
         record[attr_off:attr_off + len(attributes)] = attributes
         end_marker = attr_off + len(attributes)
 
+    # Give each attribute its own instance number, as NTFS requires (chkdsk
+    # treats a repeated instance as corruption); NextAttributeNumber follows.
+    instance_count = 0
+    offset = attr_off
+    while offset < end_marker:
+        struct.pack_into("<H", record, offset + 0x0E, instance_count)
+        instance_count += 1
+        offset += struct.unpack_from("<I", record, offset + 4)[0]
+
     struct.pack_into("<I", record, end_marker, 0xFFFFFFFF)
 
     # File record header: NTFS_RECORD_HEADER + FILE_RECORD_HEADER fields
@@ -475,14 +496,16 @@ def file_record(index: int, attributes: bytes | None = None,
     # sync (FixupUpdateSequenceArray trusts the header).
     struct.pack_into("<H", record, 0x06, struct.unpack_from("<H", fixups, 2)[0])
     record[usa_offset:usa_offset + len(fixups)] = fixups
-    struct.pack_into("<H", record, 0x10, 0x38)   # SequenceNumber
+    # System records carry their own number as sequence (the driver refers to
+    # the root as record 5, sequence 5); record 0 uses 1, as sequence 0 is invalid.
+    struct.pack_into("<H", record, 0x10, index or 1)   # SequenceNumber
     struct.pack_into("<H", record, 0x12, 1)      # LinkCount
     struct.pack_into("<H", record, 0x14, attr_off)  # AttributeOffset
     struct.pack_into("<H", record, 0x16, flags)  # Flags: in-use bit
     struct.pack_into("<I", record, 0x18, end_marker + 4)  # BytesInUse
     struct.pack_into("<I", record, 0x1C, record_size)     # BytesAllocated
     struct.pack_into("<Q", record, 0x20, 0)      # BaseFileRecord = NULL
-    struct.pack_into("<H", record, 0x28, index + 1)  # NextAttributeNumber
+    struct.pack_into("<H", record, 0x28, instance_count)  # NextAttributeNumber
     struct.pack_into("<I", record, 0x2C, index)  # MFTRecordNumber
     seal_fixups(record, usa_offset, sector_size)
     return bytes(record)
@@ -566,7 +589,9 @@ def minimal_ntfs_volume(partition_sectors: int) -> bytes:
       holding two valid restart pages marked RESTART_VOLUME_IS_CLEAN;
     - $Volume (record 3) with a resident $VOLUME_INFORMATION attribute;
     - a root directory (record 5) carrying $FILE_NAME and an empty
-      $INDEX_ROOT $I30 so file creation can add entries to it.
+      $INDEX_ROOT $I30 so file creation can add entries to it;
+    - $Bitmap (record 6) with the volume cluster bitmap, needed as soon as
+      any write allocates clusters.
     """
     sector_size = 512
     sectors_per_cluster = 8
@@ -625,7 +650,7 @@ def minimal_ntfs_volume(partition_sectors: int) -> bytes:
     #   UsaOffset(0x04)=0x30, UsaCount(0x06)=SystemPage/512+1=2,
     #   UsaOffset + UsaCount*2 (0x34) must fit before the restart area,
     #   so the area starts at 0x38 (8-aligned, >=32, +16 <= page-2).
-    #   Header 0x1C/0x1E hold major/minor version (1,1).
+    #   Header 0x1A/0x1C hold minor/major version (1,1), as LFS 1.1 has them.
     log_value = bytearray(0x400)
     for i, magic in enumerate((b"RSTR", b"CHKD")):
         page = bytearray(0x200)
@@ -635,8 +660,8 @@ def minimal_ntfs_volume(partition_sectors: int) -> bytes:
         struct.pack_into("<I", page, 0x10, 0x200)  # SystemPageSize
         struct.pack_into("<I", page, 0x14, 0x200)  # LogPageSize
         struct.pack_into("<H", page, 0x18, 0x38)   # RestartAreaOffset
+        struct.pack_into("<H", page, 0x1A, 1)      # minor version
         struct.pack_into("<H", page, 0x1C, 1)      # major version
-        struct.pack_into("<H", page, 0x1E, 1)      # minor version
         struct.pack_into("<I", page, 0x30, 1)      # USA number word
         # Restart area: Lsn(8) | client_in_use(2)=0xFFFF | client_free(2)=0xFFFF
         # | client_array_offset(4)=0x10 | flags(2)=RESTART_VOLUME_IS_CLEAN
@@ -656,12 +681,12 @@ def minimal_ntfs_volume(partition_sectors: int) -> bytes:
     # $I30, mirroring what NtfsCreateFileRecord builds for a new directory.
     # FILENAME_ATTRIBUTE layout: parent@0, times@8..0x38, FileAttributes@0x38,
     # EaInfo/ReparseTag@0x3C, NameLength@0x40, NameType@0x41, Name@0x42.
-    name_value = bytearray(0x42 + 2 * 4)
-    struct.pack_into("<Q", name_value, 0x00, 5 << 48)  # parent = root itself
+    name_value = bytearray(0x42 + 2 * 1)
+    struct.pack_into("<Q", name_value, 0x00, 5 | (5 << 48))  # parent = root itself (record 5, sequence 5)
     struct.pack_into("<I", name_value, 0x38, 0x10000000)  # FileAttributes: dir
-    name_value[0x40] = 4       # NameLength
+    name_value[0x40] = 1       # NameLength
     name_value[0x41] = 1       # NameType: WIN32
-    name_value[0x42:0x4A] = ".".encode("utf-16-le")
+    name_value[0x42:0x44] = ".".encode("utf-16-le")
     root_name_attr = resident_attribute(0x30, "", bytes(name_value))
 
     # Empty $INDEX_ROOT, byte-identical to what CreateIndexRootFromBTree
@@ -685,10 +710,29 @@ def minimal_ntfs_volume(partition_sectors: int) -> bytes:
     struct.pack_into("<H", ir, 0x2C, 2)        # Flags @0x20+0xC: ENTRY_END
     root_index_attr = resident_attribute(0x90, "$I30", bytes(ir))
 
-    # $MFTMirr's non-resident $DATA covering the first 2 MFT records.
-    mirr_run = encode_run(mftmirr_cluster, 1) + b"\x00"
+    # $MFTMirr's non-resident $DATA covering the first 2 MFT records
+    # (2 x 4 KiB = 2 clusters; the run used to claim only one).
+    mirr_clusters = (2 * 4096) // cluster_size
+    mirr_run = encode_run(mftmirr_cluster, mirr_clusters) + b"\x00"
     mirr_data_attr = nonresident_data_attribute(mirr_run, 2 * 4096, 2 * 4096)
-    struct.pack_into("<Q", mirr_data_attr, 0x18, 0)  # HighestVCN = 0
+    struct.pack_into("<Q", mirr_data_attr, 0x18, mirr_clusters - 1)  # HighestVCN
+
+    # $Bitmap (record 6): the volume's cluster allocation bitmap. Without it
+    # every write that needs clusters (e.g. a file outgrowing its resident
+    # $DATA) failed: the driver read record 6, found zeros, and the fixup
+    # check returned STATUS_UNSUCCESSFUL.
+    total_clusters = partition_sectors * sector_size // cluster_size
+    vol_bitmap_bytes = (total_clusters + 7) // 8
+    vol_bitmap_clusters = (vol_bitmap_bytes + cluster_size - 1) // cluster_size
+    vol_bitmap_alloc = vol_bitmap_clusters * cluster_size
+    vol_bitmap_cluster = mftmirr_cluster + mirr_clusters
+    used_clusters = vol_bitmap_cluster + vol_bitmap_clusters  # [0, used) taken
+    vol_bitmap = bytearray(vol_bitmap_alloc)
+    for cluster in list(range(used_clusters)) + list(range(total_clusters, vol_bitmap_bytes * 8)):
+        vol_bitmap[cluster // 8] |= 1 << (cluster % 8)  # beyond-the-end bits stay set
+    bitmap_run = encode_run(vol_bitmap_cluster, vol_bitmap_clusters) + b"\x00"
+    vol_bitmap_attr = nonresident_data_attribute(bitmap_run, vol_bitmap_bytes, vol_bitmap_alloc)
+    struct.pack_into("<Q", vol_bitmap_attr, 0x18, vol_bitmap_clusters - 1)  # HighestVCN
 
     # --- Build records ---------------------------------------------------------
     # $MFT: SI + non-resident DATA + BITMAP
@@ -714,20 +758,30 @@ def minimal_ntfs_volume(partition_sectors: int) -> bytes:
     root_attrs += root_name_attr
     root_attrs += root_index_attr
 
+    # $Bitmap: SI + non-resident DATA (cluster allocation bitmap)
+    bmp_attrs = bytearray()
+    bmp_attrs += resident_attribute(0x10, "", b"\x00" * 0x20)
+    bmp_attrs += vol_bitmap_attr
+
     records = [
         file_record(0, bytes(mft_attrs)),
         file_record(1, bytes(mirr_attrs)),
         file_record(2, bytes(log_attrs)),
         file_record(3, bytes(vol_attrs)),
-        file_record(5, bytes(root_attrs), flags=0x1001),
+        file_record(5, bytes(root_attrs), flags=0x0003),  # in use | directory
+        file_record(6, bytes(bmp_attrs)),
     ]
     mft_data = bytearray(mft_record_count * 4096)
-    for index, record in zip((0, 1, 2, 3, 5), records):
+    for index, record in zip((0, 1, 2, 3, 5, 6), records):
         offset = index * 4096
         mft_data[offset:offset + 4096] = record
-    # Remaining MFT slots (4, 6..63) stay zeroed: magic-zero records the
-    # allocator treats as free (bit clear in $Bitmap).
+    # Remaining system slots (4, 7..15) stay zeroed but are marked allocated in
+    # the $MFT bitmap; slots 16..63 are free for new files.
     image[mft_lcn:mft_lcn + len(mft_data)] = mft_data
+
+    # Volume cluster bitmap contents
+    bitmap_lba = vol_bitmap_cluster * cluster_size
+    image[bitmap_lba:bitmap_lba + vol_bitmap_alloc] = vol_bitmap
 
     # $MFTMirr: mirror the first two records (one cluster is enough).
     mirror_lba = mftmirr_cluster * cluster_size
@@ -851,6 +905,95 @@ def run_crash_case(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
     return read_text(machine_serial)
 
 
+def check_volume(image: Path) -> None:
+    """Run the offline NTFS consistency check (ntfs-check.py) on the image."""
+    result = subprocess.run([sys.executable, str(Path(__file__).with_name("ntfs-check.py")),
+                             str(image), "--quiet-notes"],
+                            capture_output=True, text=True)
+    print(result.stdout, end="")
+    if result.returncode != 0:
+        fail(f"The NTFS consistency check found errors in {image}.\n{result.stderr}")
+
+
+def run_autorun_first_boot(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
+                           work: Path, port: int, timeout: float) -> str:
+    """Run only the first autorun boot and keep the cleanly shut-down image.
+
+    With -no-reboot QEMU exits when the guest reboots, so the image holds what
+    the driver wrote during the write tests, after a clean shutdown: the state
+    to hand Windows chkdsk.
+    """
+    boot = Boot(qemu, image, bootcd, work / "first-boot.serial.log",
+                work / "first-boot.com2.log", work / "first-boot.qemu.err.log", port)
+    boot.start()
+    try:
+        if not boot.wait_for("NTFSREG REBOOT-REQUEST", timeout):
+            fail(f"Autorun did not reach the reboot request.\n{boot.diagnostic_text()}")
+        assert boot.process is not None
+        try:
+            boot.process.wait(timeout=180)
+        except subprocess.TimeoutExpired:
+            fail(f"The guest did not shut down after the reboot request.\n{boot.diagnostic_text()}")
+        output = boot.serial_text()
+    finally:
+        boot.stop(force=True)
+    check_image(qemu_img, image)
+    return output
+
+
+def run_exfat_read(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
+                   work: Path, port: int, timeout: float) -> str:
+    """Boot the autorun image on an exFAT template and run the read suite."""
+    boot = Boot(qemu, image, bootcd, work / "exfat-read.serial.log",
+                work / "exfat-read.com2.log", work / "exfat-read.qemu.err.log", port)
+    boot.start()
+    try:
+        if not boot.wait_for("NTFSREG END PASS", timeout):
+            fail(f"The exFAT suite did not pass.\n{boot.diagnostic_text()}")
+        output = boot.serial_text()
+        # The payload reboots to dismount the volume cleanly; with -no-reboot
+        # QEMU exits there, leaving a clean image to check.
+        assert boot.process is not None
+        try:
+            boot.process.wait(timeout=180)
+        except subprocess.TimeoutExpired:
+            fail(f"The guest did not shut down after the exFAT suite.\n{boot.diagnostic_text()}")
+    finally:
+        boot.stop(force=True)
+    check_image(qemu_img, image)
+    return output
+
+
+def run_exfat_crash(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
+                    work: Path, port: int, timeout: float, marker: str,
+                    delay: float) -> str:
+    """Run the exFAT suites and cut the power `delay` seconds after `marker`."""
+    boot = Boot(qemu, image, bootcd, work / "exfat-crash.serial.log",
+                work / "exfat-crash.com2.log", work / "exfat-crash.qemu.err.log", port)
+    boot.start()
+    try:
+        if not boot.wait_for(marker, timeout):
+            fail(f"The exFAT suite never printed {marker!r}.\n{boot.diagnostic_text()}")
+        time.sleep(delay)
+        output = boot.serial_text()
+        # Terminate QEMU instead of shutting the guest down: an interrupted
+        # write at the virtual-disk boundary, like a power cut.
+        boot.stop(force=True)
+    finally:
+        boot.stop(force=True)
+    check_image(qemu_img, image)
+    return output
+
+
+def check_exfat_volume(image: Path) -> None:
+    """Run the offline exFAT check; warnings (dirty flag, leaked clusters) are allowed."""
+    result = subprocess.run([sys.executable, str(Path(__file__).with_name("exfat-check.py")),
+                             str(image)], capture_output=True, text=True)
+    print(result.stdout, end="")
+    if result.returncode != 0:
+        fail(f"The exFAT consistency check found errors in {image}.\n{result.stderr}")
+
+
 def run_autorun(qemu: Path, qemu_img: Path, image: Path, bootcd: Path,
                 work: Path, port: int, timeout: float) -> str:
     crash_serial = work / "autorun-crash.serial.log"
@@ -897,6 +1040,18 @@ def main() -> int:
     parser.add_argument("--autorun", action="store_true",
                         help="use a bootcd configured with NTFS_REGRESSION_AUTORUN=ON")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
+    parser.add_argument("--exfat-read", action="store_true",
+                        help="with --autorun and an exFAT --template: run the exFAT read suite")
+    parser.add_argument("--exfat-crash-after", metavar="MARKER",
+                        help="with --exfat-read: kill QEMU --crash-delay seconds after the "
+                             "guest prints MARKER, then check the image offline")
+    parser.add_argument("--crash-delay", type=float, default=0.0)
+    parser.add_argument("--stop-at-reboot", action="store_true",
+                        help="with --autorun: run only the write tests and keep the image "
+                             "after the guest's clean shutdown (for Windows chkdsk)")
+    parser.add_argument("--template", type=Path,
+                        help="start from this Windows-formatted disk image (.vhd or raw) "
+                             "instead of the minimal harness-built volume")
     args = parser.parse_args()
 
     assert_allocation_publication_order()
@@ -919,18 +1074,51 @@ def main() -> int:
     if image.exists():
         fail(f"Refusing to overwrite existing image: {image}")
 
-    subprocess.run([str(qemu_img), "create", "-f", "raw", str(image), "256M"],
-                   check=True)
-    create_test_partition(image)
+    if args.template:
+        # A volume formatted by Windows (see ntfs-template/make-template.ps1),
+        # copied so the template itself is never written.
+        template = args.template.resolve()
+        if not template.is_file():
+            fail(f"Template image is missing: {template}")
+        source_format = "vpc" if template.suffix.lower() == ".vhd" else "raw"
+        subprocess.run([str(qemu_img), "convert", "-f", source_format, "-O", "raw",
+                        str(template), str(image)], check=True)
+    else:
+        subprocess.run([str(qemu_img), "create", "-f", "raw", str(image), "256M"],
+                       check=True)
+        create_test_partition(image)
     check_image(qemu_img, image)
 
     port = 45440
     try:
+        if args.autorun and args.exfat_read and args.exfat_crash_after:
+            output = run_exfat_crash(qemu, qemu_img, image, bootcd, work, port,
+                                     max(args.timeout, 300.0), args.exfat_crash_after,
+                                     args.crash_delay)
+            print(output, end="")
+            check_exfat_volume(image)
+            print(f"exFAT power-cut check passed. Image: {image}")
+            return 0
+        if args.autorun and args.exfat_read:
+            output = run_exfat_read(qemu, qemu_img, image, bootcd, work, port,
+                                    max(args.timeout, 300.0))
+            print(output, end="")
+            print(f"exFAT read suite passed. Image: {image}")
+            return 0
+        if args.autorun and args.stop_at_reboot:
+            output = run_autorun_first_boot(qemu, qemu_img, image, bootcd, work, port,
+                                            max(args.timeout, 300.0))
+            if "NTFSREG FAIL" in output:
+                fail("The autorun payload emitted a failure marker.")
+            check_volume(image)
+            print(f"NTFS regression first boot passed; clean image: {image}")
+            return 0
         if args.autorun:
             output = run_autorun(qemu, qemu_img, image, bootcd, work, port,
                                  max(args.timeout, 300.0))
             if "NTFSREG FAIL" in output:
                 fail("The autorun payload emitted a failure marker.")
+            check_volume(image)
             print(f"NTFS regression autorun passed. Image: {image}")
             print(f"Logs: {work}")
             return 0
