@@ -33,6 +33,17 @@ FbActivationContextStackPointer equ FbFlsData + 8
  */
 PUBLIC BaseFiberStartup
 FUNC BaseFiberStartup
+    /* BaseInitializeContext() gives a fresh fiber Rsp = StackBase, the
+     * very top of its stack (16-byte aligned, see its ASSERT). The x64
+     * ABI requires every caller to reserve 32 bytes of home space above
+     * the return address for the callee to spill Rcx/Rdx/R8/R9 into -
+     * without it, BaseThreadStartup's first spill (always emitted in
+     * Debug builds) writes past StackBase into memory the fiber doesn't
+     * own and faults on the very first switch. Reserving 0x20 keeps Rsp
+     * 16-byte aligned, so the call below enters BaseThreadStartup with
+     * the ABI's "as if reached by call" Rsp = 8 (mod 16). */
+    sub rsp, 20h
+    .allocstack 20h
     .ENDPROLOG
 
     mov rax, gs:[TeSelf]
@@ -40,14 +51,9 @@ FUNC BaseFiberStartup
     mov rcx, [rax + FbFiberContext + CxRcx]
     mov rdx, [rax + FbFiberContext + CxRdx]
 
-    /* BaseInitializeContext() gives a fresh fiber a 16-byte-*aligned* Rsp
-     * (see its ASSERT), but every compiled function's prologue -- this
-     * one included -- assumes the ABI's "as if reached by call" state:
-     * Rsp = 8 (mod 16), leaving room for the implicit return address.
-     * A bare jmp here would land 8 bytes short of that and misalign every
-     * shadow-space spill and nested call inside BaseThreadStartup. Use
-     * call instead (BaseThreadStartup is DECLSPEC_NORETURN and never
-     * actually returns, so the pushed return address is never used). */
+    /* call rather than jmp, for the return-address slot the ABI expects.
+     * BaseThreadStartup is DECLSPEC_NORETURN and never actually returns,
+     * so the pushed return address is never used. */
     call BaseThreadStartup
 
 ENDFUNC
@@ -108,8 +114,8 @@ FUNC SwitchToFiber
     mov [rax + FbExceptionList], r11
     mov r11, [r10 + TeStackLimit]
     mov [rax + FbStackLimit], r11
-    mov r11, [r10 + TeGuaranteedStackBytes]
-    mov [rax + FbGuaranteedStackBytes], r11
+    mov r11d, [r10 + TeGuaranteedStackBytes]      /* ULONG */
+    mov [rax + FbGuaranteedStackBytes], r11d
     mov r11, [r10 + TeFlsData]
     mov [rax + FbFlsData], r11
     mov r11, [r10 + TeActivationContextStackPointer]
@@ -126,8 +132,8 @@ FUNC SwitchToFiber
     mov [r10 + TeStackLimit], r11
     mov r11, [rcx + FbDeallocationStack]
     mov [r10 + TeDeallocationStack], r11
-    mov r11, [rcx + FbGuaranteedStackBytes]
-    mov [r10 + TeGuaranteedStackBytes], r11
+    mov r11d, [rcx + FbGuaranteedStackBytes]      /* ULONG */
+    mov [r10 + TeGuaranteedStackBytes], r11d
     mov r11, [rcx + FbActivationContextStackPointer]
     mov [r10 + TeActivationContextStackPointer], r11
     mov r11, [rcx + FbFlsData]

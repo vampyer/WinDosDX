@@ -682,7 +682,8 @@ CSR_API(BaseSrvCheckVDM)
             NewConsoleRecord = TRUE;
         }
 
-        if (!NewConsoleRecord)
+        /* The list is empty once the parent has collected the last task's exit code */
+        if (!NewConsoleRecord && !IsListEmpty(&ConsoleRecord->DosListHead))
         {
             /* Get the primary DOS record */
             DosRecord = (PVDM_DOS_RECORD)CONTAINING_RECORD(ConsoleRecord->DosListHead.Flink,

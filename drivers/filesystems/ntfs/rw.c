@@ -77,12 +77,7 @@ NtfsReadFile(PDEVICE_EXTENSION DeviceExt,
 
     Fcb = (PNTFS_FCB)FileObject->FsContext;
 
-    if (NtfsFCBIsCompressed(Fcb))
-    {
-        DPRINT1("Compressed file!\n");
-        UNIMPLEMENTED;
-        return STATUS_NOT_IMPLEMENTED;
-    }
+    /* Compressed streams are decompressed by ReadAttribute */
 
     if (NtfsFCBIsEncrypted(Fcb))
     {

@@ -18,12 +18,34 @@ MiniportReset(
 {
     PI225_ADAPTER Adapter = (PI225_ADAPTER)MiniportAdapterContext;
     NDIS_STATUS Status;
+    UINT n;
 
     *AddressingReset = FALSE;
 
     NICDisableTxRx(Adapter);
 
     Status = NICSoftReset(Adapter);
+
+    /* Every packet MiniportSend returned NDIS_STATUS_PENDING for still
+     * belongs to this driver - ReactOS's ndis.sys doesn't reclaim them on
+     * reset (drivers/network/ndis/ndis/miniport.c MiniReset), and the ring
+     * indices are about to be zeroed, so the Tx-complete path would never
+     * see them again. Fail them back now. This must come after
+     * NICSoftReset: NdisMSendComplete releases each packet's
+     * scatter/gather DMA mapping, and only the master disable + DEV_RST
+     * there guarantee the NIC has stopped reading those buffers. Done
+     * even if the reset reported failure - DEV_RST was still asserted. */
+    for (n = 0; n < NUM_TRANSMIT_DESCRIPTORS; n++)
+    {
+        PNDIS_PACKET Packet = Adapter->TransmitPackets[n];
+
+        if (Packet)
+        {
+            Adapter->TransmitPackets[n] = NULL;
+            NdisMSendComplete(Adapter->AdapterHandle, Packet, NDIS_STATUS_REQUEST_ABORTED);
+        }
+    }
+
     if (Status != NDIS_STATUS_SUCCESS)
     {
         return Status;

@@ -7,7 +7,7 @@ PROJECT(NTVDM)
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/command_com.c ${CMAKE_CURRENT_BINARY_DIR}/command_com.h
     COMMAND native-bin2c $<TARGET_PROPERTY:command,BINARY_PATH> ${CMAKE_CURRENT_BINARY_DIR}/command_com.c ${CMAKE_CURRENT_BINARY_DIR}/command_com.h BIN CommandCom
-    DEPENDS native-bin2c command)
+    DEPENDS native-bin2c command $<TARGET_PROPERTY:command,BINARY_PATH>)
 #####################################
 
 spec2def(ntvdm.exe ntvdm.spec ADD_IMPORTLIB)

@@ -1055,6 +1055,146 @@ SetResidentAttributeDataLength(PDEVICE_EXTENSION Vcb,
     return STATUS_SUCCESS;
 }
 
+/*
+ * NTFS compresses non-resident data in "compression units" of
+ * 2^CompressionUnit clusters (16 in practice). Each unit is stored in one
+ * of three ways, told apart only by how many of its clusters are
+ * allocated:
+ *   - all of them:    the unit is stored uncompressed
+ *   - none of them:   the unit is a hole (all zeros)
+ *   - some of them:   the allocated clusters, in VCN order, hold an LZNT1
+ *                     stream that decompresses to the whole unit, and the
+ *                     rest of the unit is left sparse
+ * Returns the number of bytes read, or 0 on failure (like ReadAttribute).
+ */
+static
+ULONG
+ReadCompressedAttribute(PDEVICE_EXTENSION Vcb,
+                        PNTFS_ATTR_CONTEXT Context,
+                        ULONGLONG Offset,
+                        PCHAR Buffer,
+                        ULONG Length)
+{
+    ULONG ClusterSize = Vcb->NtfsInfo.BytesPerCluster;
+    USHORT UnitShift = Context->pRecord->NonResident.CompressionUnit;
+    ULONG UnitClusters, UnitSize;
+    PUCHAR RawBuffer, UnitBuffer;
+    ULONG AlreadyRead = 0;
+    NTSTATUS Status = STATUS_SUCCESS;
+
+    /* Windows only compresses volumes with clusters of 4KB or less, always
+     * with 16-cluster units - anything past 64KB per unit is corrupt. */
+    if (UnitShift > 4 || ((ULONGLONG)ClusterSize << UnitShift) > 0x10000)
+    {
+        DPRINT1("Unsupported compression unit (2^%u clusters of %lu bytes)\n", UnitShift, ClusterSize);
+        return 0;
+    }
+
+    UnitClusters = 1UL << UnitShift;
+    UnitSize = UnitClusters * ClusterSize;
+
+    RawBuffer = ExAllocatePoolWithTag(NonPagedPool, UnitSize, TAG_NTFS);
+    UnitBuffer = ExAllocatePoolWithTag(NonPagedPool, UnitSize, TAG_NTFS);
+    if (RawBuffer == NULL || UnitBuffer == NULL)
+    {
+        if (RawBuffer) ExFreePoolWithTag(RawBuffer, TAG_NTFS);
+        if (UnitBuffer) ExFreePoolWithTag(UnitBuffer, TAG_NTFS);
+        return 0;
+    }
+
+    while (Length > 0)
+    {
+        LONGLONG FirstVcn = (LONGLONG)(Offset / UnitSize) * UnitClusters;
+        ULONG UnitOffset = (ULONG)(Offset % UnitSize);
+        ULONG Chunk = min(Length, UnitSize - UnitOffset);
+        ULONG Allocated = 0;
+        PUCHAR UnitData;
+
+        /* Read the unit's allocated clusters into RawBuffer, stopping at
+         * the first hole: a compressed unit's allocated clusters always
+         * come first. FsRtlLookupLargeMcbEntry reports a hole as Lcn == -1
+         * and a VCN past the last run as FALSE. */
+        while (Allocated < UnitClusters)
+        {
+            LONGLONG Lcn, RunRemaining;
+            ULONG RunClusters;
+
+            if (!FsRtlLookupLargeMcbEntry(&Context->DataRunsMCB,
+                                          FirstVcn + Allocated,
+                                          &Lcn,
+                                          &RunRemaining,
+                                          NULL,
+                                          NULL,
+                                          NULL) ||
+                Lcn == -1)
+            {
+                break;
+            }
+
+            RunClusters = (ULONG)min(RunRemaining, (LONGLONG)(UnitClusters - Allocated));
+            Status = NtfsReadDisk(Vcb->StorageDevice,
+                                  Lcn * ClusterSize,
+                                  RunClusters * ClusterSize,
+                                  Vcb->NtfsInfo.BytesPerSector,
+                                  RawBuffer + Allocated * ClusterSize,
+                                  FALSE);
+            if (!NT_SUCCESS(Status))
+                break;
+
+            Allocated += RunClusters;
+        }
+
+        if (!NT_SUCCESS(Status))
+        {
+            DPRINT1("Failed to read compression unit at VCN %I64d (0x%08lx)\n", FirstVcn, Status);
+            break;
+        }
+
+        if (Allocated == UnitClusters)
+        {
+            UnitData = RawBuffer;
+        }
+        else if (Allocated == 0)
+        {
+            RtlZeroMemory(UnitBuffer, UnitSize);
+            UnitData = UnitBuffer;
+        }
+        else
+        {
+            ULONG FinalSize;
+
+            Status = RtlDecompressBuffer(COMPRESSION_FORMAT_LZNT1,
+                                         UnitBuffer,
+                                         UnitSize,
+                                         RawBuffer,
+                                         Allocated * ClusterSize,
+                                         &FinalSize);
+            if (!NT_SUCCESS(Status))
+            {
+                DPRINT1("Bad LZNT1 data in compression unit at VCN %I64d (0x%08lx)\n", FirstVcn, Status);
+                break;
+            }
+
+            /* A stream that ends early means the rest of the unit is zeros */
+            if (FinalSize < UnitSize)
+                RtlZeroMemory(UnitBuffer + FinalSize, UnitSize - FinalSize);
+
+            UnitData = UnitBuffer;
+        }
+
+        RtlCopyMemory(Buffer, UnitData + UnitOffset, Chunk);
+        Buffer += Chunk;
+        Offset += Chunk;
+        Length -= Chunk;
+        AlreadyRead += Chunk;
+    }
+
+    ExFreePoolWithTag(RawBuffer, TAG_NTFS);
+    ExFreePoolWithTag(UnitBuffer, TAG_NTFS);
+
+    return NT_SUCCESS(Status) ? AlreadyRead : 0;
+}
+
 ULONG
 ReadAttribute(PDEVICE_EXTENSION Vcb,
               PNTFS_ATTR_CONTEXT Context,
@@ -1094,6 +1234,12 @@ ReadAttribute(PDEVICE_EXTENSION Vcb,
     /*
      * Non-resident attribute
      */
+
+    if ((Context->pRecord->Flags & NTFS_ATTR_COMPRESSION_MASK) &&
+        Context->pRecord->NonResident.CompressionUnit != 0)
+    {
+        return ReadCompressedAttribute(Vcb, Context, Offset, Buffer, Length);
+    }
 
     /*
      * I. Find the corresponding start data run.

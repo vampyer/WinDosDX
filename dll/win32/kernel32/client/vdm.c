@@ -633,7 +633,8 @@ BaseCheckForVDM(IN HANDLE ProcessHandle,
 
     /* Setup the input parameters */
     GetVdmExitCode->ConsoleHandle = NtCurrentPeb()->ProcessParameters->ConsoleHandle;
-    GetVdmExitCode->hParent = ProcessHandle;
+    /* CreateProcess tags this handle, but basesrv matches it by its untagged value */
+    GetVdmExitCode->hParent = (HANDLE)((ULONG_PTR)ProcessHandle & ~OBJ_HANDLE_TAGBITS);
 
     /* Call CSRSS */
     Status = CsrClientCallServer((PCSR_API_MESSAGE)&ApiMessage,
@@ -1500,6 +1501,7 @@ GetNextVDMCommand(PVDM_COMMAND_INFO CommandData)
     GetNextVdmCommand->TitleLen = CommandData->TitleLen;
     GetNextVdmCommand->ReservedLen = CommandData->ReservedLen;
     GetNextVdmCommand->VDMState = CommandData->VDMState;
+    GetNextVdmCommand->ExitCode = CommandData->ExitCode;
 
     /* Count the number of strings */
     if (CommandData->CmdLen) NumStrings++;

@@ -18,11 +18,15 @@
 /* DEFINES ********************************************************************/
 
 //
-// We are DOS 5.00 (reported by INT 21h, AH=30h)
-//    and DOS 5.50 (reported by INT 21h, AX=3306h) for Windows NT Compatibility
+// WinDosDX reports MS-DOS 6.22 for compatibility with DOS games/programs
+// that check for it explicitly (a very common minimum-version check).
+// Real Windows NT's NTVDM instead reported 5.00 (AH=30h) / 5.50 (AX=3306h,
+// the SETVER-proof "true version" call) - kept in sync here rather than
+// split the way NT did, since games checking either call should see the
+// same, real-looking version.
 //
-#define DOS_VERSION     MAKEWORD(5, 00)
-#define NTDOS_VERSION   MAKEWORD(5, 50)
+#define DOS_VERSION     MAKEWORD(6, 22)
+#define NTDOS_VERSION   MAKEWORD(6, 22)
 
 #define DOS_CONFIG_PATH L"%SystemRoot%\\system32\\CONFIG.NT"
 #define DOS_COMMAND_INTERPRETER L"%SystemRoot%\\system32\\COMMAND.COM /k %SystemRoot%\\system32\\AUTOEXEC.NT"
