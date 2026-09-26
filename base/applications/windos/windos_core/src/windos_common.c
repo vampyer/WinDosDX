@@ -39,3 +39,32 @@ void WD_PlatformRequestQuit(void)
             PostMessage(hwnd, WM_CLOSE, 0, 0);
     }
 }
+
+/*
+ * Per-user data file: %APPDATA%\WinDosDX\<file>, creating the folder. The
+ * program folder (often the read-only Windows directory) is the fallback
+ * when there is no APPDATA.
+ */
+void WD_DataPath(char *out, size_t max, const char *file)
+{
+    char dir[MAX_PATH];
+    DWORD n = GetEnvironmentVariableA("APPDATA", dir, MAX_PATH);
+
+    if (n > 0 && n + 10 < MAX_PATH)
+    {
+        lstrcatA(dir, "\\WinDosDX");
+        CreateDirectoryA(dir, NULL);
+    }
+    else
+    {
+        char *slash;
+        n = GetModuleFileNameA(NULL, dir, MAX_PATH);
+        if (n == 0 || n >= MAX_PATH)
+            dir[0] = '\0';
+        slash = strrchr(dir, '\\');
+        if (slash)
+            *slash = '\0';
+    }
+    _snprintf(out, max, "%s%s%s", dir, dir[0] ? "\\" : "", file);
+    out[max - 1] = '\0';
+}

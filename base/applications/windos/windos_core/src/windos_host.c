@@ -37,12 +37,15 @@ WD_DefaultConfig(WD_MachineConfig *cfg)
     cfg->memory_kb = 0;
     cfg->fullscreen = 0;
     cfg->mute = 0;
+    cfg->scale = 2;
+    cfg->aspect = 1;
+    cfg->smooth = 0;
 }
 
-/* Find WinDosDX.ini next to the executable.  Accept windos.ini as a
- * compatibility fallback for existing installations. */
+
+/* The system-wide defaults: WinDosDX.ini, or windos.ini, next to the exe. */
 static void
-WD_ConfigPath(char *out, size_t max)
+WD_SystemConfigPath(char *out, size_t max)
 {
     char exe[MAX_PATH];
     DWORD n = GetModuleFileNameA(NULL, exe, MAX_PATH);
@@ -67,16 +70,45 @@ WD_ConfigPath(char *out, size_t max)
 }
 
 /*
- * Minimal key=value INI reader. Recognised keys:
+ * Save one of the user's settings in %APPDATA%\WinDosDX\windos.ini, which is
+ * read after the system-wide file (see WD_MachineInit).
+ */
+void WD_ConfigSave(const char *section, const char *key, const char *value)
+{
+    char ini[MAX_PATH];
+    WD_DataPath(ini, sizeof(ini), "windos.ini");
+    WritePrivateProfileStringA(section, key, value, ini);
+}
+
+void WD_ConfigSaveInt(const char *section, const char *key, int value)
+{
+    char text[16];
+    _snprintf(text, sizeof(text), "%d", value);
+    text[sizeof(text) - 1] = '\0';
+    WD_ConfigSave(section, key, text);
+}
+
+static int WD_ConfigParseFile(const char *host_path, WD_MachineConfig *out_cfg);
+
+/*
+ * Minimal key=value INI reader; [section] lines are ignored. Recognised keys:
  *   title, width, height, cycles, memory, fullscreen, mute
+ *   scale (1-4), aspect (0/1), smooth (0/1)
+ *   memsize (MB), machine (graphics card), sbtype (sound card)
  *   mountC, mountD, ... (DOS drive -> host path)
  */
 int WD_MachineLoadConfig(const char *host_path, WD_MachineConfig *out_cfg)
 {
+    WD_DefaultConfig(out_cfg);
+    return WD_ConfigParseFile(host_path, out_cfg);
+}
+
+/* Applies the keys in host_path on top of out_cfg. */
+static int WD_ConfigParseFile(const char *host_path, WD_MachineConfig *out_cfg)
+{
     FILE *f;
     char line[512];
 
-    WD_DefaultConfig(out_cfg);
     if (!host_path)
         return -1;
 
@@ -111,6 +143,12 @@ int WD_MachineLoadConfig(const char *host_path, WD_MachineConfig *out_cfg)
         else if (!_stricmp(key, "memory"))     out_cfg->memory_kb = (u32)atoi(val);
         else if (!_stricmp(key, "fullscreen")) out_cfg->fullscreen = atoi(val);
         else if (!_stricmp(key, "mute"))       out_cfg->mute = atoi(val);
+        else if (!_stricmp(key, "scale"))      out_cfg->scale = (u32)atoi(val);
+        else if (!_stricmp(key, "aspect"))     out_cfg->aspect = atoi(val);
+        else if (!_stricmp(key, "smooth"))     out_cfg->smooth = atoi(val);
+        else if (!_stricmp(key, "memsize"))    out_cfg->memsize_mb = (u32)atoi(val);
+        else if (!_stricmp(key, "machine"))    lstrcpynA(out_cfg->machine, val, sizeof(out_cfg->machine));
+        else if (!_stricmp(key, "sbtype"))     lstrcpynA(out_cfg->sbtype, val, sizeof(out_cfg->sbtype));
         else if ((key[0] == 'm' || key[0] == 'M') && key[1] == 'o'
                  && key[2] == 'u' && key[3] == 'n' && key[4] == 't')
         {
@@ -140,6 +178,10 @@ static WD_MachineConfig g_cfg;
 
 /* The OS loader may provide one command to execute when the DOS shell starts. */
 static const char *g_initial_command;
+static char g_program_dir[MAX_PATH];
+static char g_program_name[64];
+static char g_profile_path[MAX_PATH];
+static const char *g_default_drive;
 static WD_DosDesktopLauncher g_desktop_launcher;
 
 static void WD_Trace(const char *message)
@@ -149,14 +191,7 @@ static void WD_Trace(const char *message)
     DWORD written;
     char line[512];
 
-    WD_ConfigPath(path, sizeof(path));
-    {
-        char *ext = strrchr(path, '.');
-        if (ext)
-            lstrcpynA(ext, ".log", (int)(sizeof(path) - (ext - path)));
-        else
-            lstrcatA(path, ".log");
-    }
+    WD_DataPath(path, sizeof(path), "windos.log");
     file = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
                        OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (file == INVALID_HANDLE_VALUE)
@@ -186,17 +221,49 @@ int WD_MachineInit(const WD_MachineConfig *config)
     }
     else
     {
+        /* System-wide defaults first, then the user's own settings. */
         char ini[MAX_PATH];
-        WD_ConfigPath(ini, sizeof(ini));
-        WD_MachineLoadConfig(ini, &g_cfg);
+        WD_DefaultConfig(&g_cfg);
+        WD_SystemConfigPath(ini, sizeof(ini));
+        WD_ConfigParseFile(ini, &g_cfg);
+        WD_DataPath(ini, sizeof(ini), "windos.ini");
+        WD_ConfigParseFile(ini, &g_cfg);
+        /* A program's own profile goes on top (game profiles). */
+        if (g_profile_path[0])
+        {
+            char note[MAX_PATH + 32];
+            int loaded = WD_ConfigParseFile(g_profile_path, &g_cfg) == 0;
+            _snprintf(note, sizeof(note), "profile %s: %s (machine=%s memsize=%u)",
+                      loaded ? "loaded" : "not found", g_profile_path,
+                      g_cfg.machine, g_cfg.memsize_mb);
+            note[sizeof(note) - 1] = '\0';
+            WD_Trace(note);
+        }
     }
     cfg = &g_cfg;
-    if (!cfg->title)
-        cfg->title = "WinDosDX";
+    /* A program shows its name; the DOS prompt the configured title. */
+    if (g_program_name[0])
+    {
+        static char program_title[96];
+        _snprintf(program_title, sizeof(program_title), "%s - DOS 6.22", g_program_name);
+        program_title[sizeof(program_title) - 1] = '\0';
+        cfg->title = program_title;
+    }
+    else if (!cfg->title || !strcmp(cfg->title, "WinDosDX"))
+    {
+        cfg->title = "WinDosDX DOS 6.22";
+    }
 
     /* WinDosDX always presents a usable DOS C: drive.  An explicit
      * mountC= entry in windos.ini wins; otherwise the current WinDosDX
      * working directory is exposed as C:. */
+    if (g_program_dir[0])
+        WD_FSAddMount('C', g_program_dir);
+    else if (!WD_FSGetMount('C') && g_default_drive)
+    {
+        CreateDirectoryA(g_default_drive, NULL);
+        WD_FSAddMount('C', g_default_drive);
+    }
     if (!WD_FSGetMount('C'))
     {
         char current_dir[MAX_PATH];
@@ -210,6 +277,7 @@ int WD_MachineInit(const WD_MachineConfig *config)
         WD_CoreSetInitialCommand(g_initial_command);
 
     WD_Trace("machine init begin");
+    WD_VideoConfigure(cfg->scale, cfg->aspect, cfg->smooth);
     if (WD_VideoInit(cfg->title, cfg->width, cfg->height, 32) != 0)
     {
         WD_Trace("video init failed");
@@ -283,6 +351,58 @@ void WD_TimerDispatch(void);
  * frames.  The host only has to dispatch the periodic timer callbacks that the
  * sound and input backends rely on, which DOSBox's loop does not know about.
  */
+/*
+ * Profiles are named after the program's folder and file, which tells apart
+ * the many INSTALL.EXE and SETUP.EXE: "DOOM - DOOM.EXE.ini".
+ */
+void WD_DosSetProgram(const char *host_dir, const char *name)
+{
+    const char *folder;
+    char file[128];
+    char *c;
+
+    lstrcpynA(g_program_dir, host_dir ? host_dir : "", sizeof(g_program_dir));
+    lstrcpynA(g_program_name, name ? name : "", sizeof(g_program_name));
+    g_profile_path[0] = '\0';
+    if (!g_program_dir[0] || !g_program_name[0])
+        return;
+
+    folder = strrchr(g_program_dir, '\\');
+    folder = (folder && folder[1]) ? folder + 1 : g_program_dir;
+    _snprintf(file, sizeof(file), "%s - %s.ini", folder, g_program_name);
+    file[sizeof(file) - 1] = '\0';
+    for (c = file; *c; c++)
+    {
+        if (strchr("\\/:*?\"<>|", *c))
+            *c = '_';
+    }
+
+    WD_DataPath(g_profile_path, sizeof(g_profile_path), "profiles");
+    CreateDirectoryA(g_profile_path, NULL);
+    lstrcatA(g_profile_path, "\\");
+    lstrcatA(g_profile_path, file);
+}
+
+const WD_MachineConfig *WD_HostGetConfig(void)
+{
+    return &g_cfg;
+}
+
+const char *WD_HostProgramName(void)
+{
+    return g_program_name[0] ? g_program_name : NULL;
+}
+
+const char *WD_HostProfilePath(void)
+{
+    return g_profile_path[0] ? g_profile_path : NULL;
+}
+
+void WD_DosSetDefaultDrive(const char *host_dir)
+{
+    g_default_drive = host_dir;
+}
+
 int WD_DosStart(const WD_MachineConfig *config, const char *initial_command)
 {
     g_initial_command = initial_command;

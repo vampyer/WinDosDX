@@ -74,17 +74,7 @@ static void WD_CoreTrace(const char *message)
     HANDLE file;
     DWORD written;
     char line[512];
-    DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
-    if (n == 0 || n >= MAX_PATH)
-        return;
-    {
-        char *slash = strrchr(path, '\\');
-        if (slash)
-            slash[1] = 0;
-        else
-            path[0] = 0;
-    }
-    lstrcatA(path, "windos.log");
+    WD_DataPath(path, sizeof(path), "windos.log");
     file = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
                        OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (file == INVALID_HANDLE_VALUE)
@@ -708,8 +698,20 @@ extern "C" int WD_CoreInit(const WD_MachineConfig *config)
      */
     static char arg0[] = "windos";
     static char arg_machine[] = "-machine";
-    static char arg_value[] = "svga_s3";
+    static char arg_value[16] = "svga_s3";
     static char * const argv[] = { arg0, arg_machine, arg_value };
+
+    /* The graphics card is chosen on this command line (settings window). */
+    if (config && config->machine[0])
+    {
+        static const char * const cards[] =
+            { "svga_s3", "vgaonly", "ega", "cga", "tandy", "hercules", "pcjr" };
+        for (size_t i = 0; i < sizeof(cards) / sizeof(cards[0]); i++)
+        {
+            if (!_stricmp(config->machine, cards[i]))
+                strcpy(arg_value, cards[i]);
+        }
+    }
     static CommandLine cmdline(3, argv);
 
     static Config config_object(&cmdline);
@@ -735,11 +737,22 @@ extern "C" int WD_CoreInit(const WD_MachineConfig *config)
     {
         char line[64];
 
-        if (config->memory_kb)
+        if (config->memsize_mb)
+        {
+            _snprintf(line, sizeof(line), "memsize=%u", (unsigned)config->memsize_mb);
+            control->GetSection("dosbox")->HandleInputline(line);
+        }
+        else if (config->memory_kb >= 1024)
         {
             _snprintf(line, sizeof(line), "memsize=%u",
                       (unsigned)(config->memory_kb / 1024u));
             control->GetSection("dosbox")->HandleInputline(line);
+        }
+        if (config->sbtype[0])
+        {
+            _snprintf(line, sizeof(line), "sbtype=%s", config->sbtype);
+            line[sizeof(line) - 1] = '\0';
+            control->GetSection("sblaster")->HandleInputline(line);
         }
         if (config->cycles)
         {
@@ -775,13 +788,26 @@ extern "C" int WD_CoreInit(const WD_MachineConfig *config)
 
     if (g_wd_initial_command[0])
     {
-        control->GetSection("autoexec")->HandleInputline(g_wd_initial_command);
+        /* One autoexec line per '\n'-separated command ("GAME.EXE\nEXIT"). */
+        char *line = g_wd_initial_command;
+        while (line && *line)
+        {
+            char *next = strchr(line, '\n');
+            if (next)
+                *next++ = '\0';
+            if (*line)
+                control->GetSection("autoexec")->HandleInputline(line);
+            line = next;
+        }
         WD_CoreTrace("initial DOS command installed");
     }
 
     OutputDebugStringA("WinDosDX: DOS core init complete\n");
     return 0;
 }
+
+/* Set by the shell's EXIT command: the last DOS program's errorlevel. */
+extern "C" int wd_dos_exit_code = 0;
 
 extern "C" int WD_CoreRun(void)
 {
@@ -816,7 +842,7 @@ extern "C" int WD_CoreRun(void)
         WD_CoreFatal("unknown fatal error in DOS machine core");
     }
 
-    return 0;
+    return wd_dos_exit_code;
 }
 
 void WD_CorePresentFrame(void)

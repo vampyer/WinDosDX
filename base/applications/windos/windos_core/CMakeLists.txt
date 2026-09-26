@@ -15,9 +15,11 @@ set(WINDOS_CORE_SOURCE
     src/windos_sound.c
     src/windos_fs.c
     src/windos_host.c
+    src/windos_settings.c
     src/dosbox/windos_stubs.cpp
     include/windos_platform.h
     include/windos_dos.h
+    include/windos_resource.h
     src/windos_internal.h)
 
 # ---------------------------------------------------------------------------

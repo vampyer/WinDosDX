@@ -46,4 +46,7 @@ int  WD_InputHandleMessage(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 void WD_InputSetLastPosition(int x, int y, int have_position);
 int  WD_InputGetPosition(int *x, int *y);
 
+/* Settings window (windos_settings.c), opened from the system menu. */
+void WD_SettingsShow(HWND owner);
+
 #endif /* _WINDOS_INTERNAL_H_ */

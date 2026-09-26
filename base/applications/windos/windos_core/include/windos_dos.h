@@ -38,6 +38,17 @@ typedef int (*WD_DosDesktopLauncher)(void);
  */
 int WD_DosStart(const WD_MachineConfig *config, const char *initial_command);
 
+/*
+ * The program windos.exe was asked to run: its host folder is mounted as C:
+ * whatever the configuration says, and its profile (per-program settings)
+ * is loaded. name is the DOS file name ("DOOM.EXE"). Both are copied.
+ */
+void WD_DosSetProgram(const char *host_dir, const char *name);
+
+/* Host folder to mount as C: when the configuration names none. Borrowed
+ * until WD_DosStart. Without either, the current directory is C:. */
+void WD_DosSetDefaultDrive(const char *host_dir);
+
 /* Register the OS-owned launcher used by the internal WINDEX command. */
 void WD_DosSetDesktopLauncher(WD_DosDesktopLauncher launcher);
 

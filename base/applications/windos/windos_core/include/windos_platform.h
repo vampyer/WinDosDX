@@ -223,6 +223,14 @@ typedef struct
     u32  memory_kb;         /* conventional memory, 0 = auto */
     int  fullscreen;        /* start fullscreen */
     int  mute;              /* start muted */
+    u32  scale;             /* window size: 1-4 times the DOS resolution */
+    int  aspect;            /* show 4:3, as on a DOS monitor */
+    int  smooth;            /* smooth (not sharp-pixel) scaling */
+    u32  memsize_mb;        /* emulated memory in MB, 0 = DOSBox default */
+    char machine[16];       /* graphics card: svga_s3, vgaonly, ega, cga,
+                               tandy, hercules; empty = svga_s3 */
+    char sbtype[16];        /* sound card: sb16, sbpro2, sb2, none;
+                               empty = sb16 */
 } WD_MachineConfig;
 
 /* Boot / shutdown the emulated machine. Return 0 on success. Provided by the
@@ -238,6 +246,30 @@ void WD_PlatformRequestQuit(void);
 
 /* Load an optional config file (host path). Returns 0 if none/absent. */
 int  WD_MachineLoadConfig(const char *host_path, WD_MachineConfig *out_cfg);
+
+/* Per-user data file path: %APPDATA%\WinDosDX\<file> (folder created). */
+void WD_DataPath(char *out, size_t max, const char *file);
+
+/* Save a user setting in %APPDATA%\WinDosDX\windos.ini. */
+void WD_ConfigSave(const char *section, const char *key, const char *value);
+void WD_ConfigSaveInt(const char *section, const char *key, int value);
+
+/* The configuration the machine started with (defaults, then windos.ini
+ * next to the exe, then the user's windos.ini, then the program's profile). */
+const WD_MachineConfig *WD_HostGetConfig(void);
+
+/* The program windos.exe was asked to run ("DOOM.EXE"), or NULL for the DOS
+ * prompt; and its profile file (%APPDATA%\WinDosDX\profiles\...), or NULL. */
+const char *WD_HostProgramName(void);
+const char *WD_HostProfilePath(void);
+
+
+/* Display options: window size 1-4x, 4:3 aspect, smooth scaling. */
+void WD_VideoConfigure(u32 scale, int aspect, int smooth);
+void WD_VideoGetOptions(u32 *scale, int *aspect, int *smooth);
+
+/* Save the current DOS screen as a .bmp in Pictures\WinDosDX. */
+int  WD_VideoScreenshot(void);
 
 #ifdef __cplusplus
 }

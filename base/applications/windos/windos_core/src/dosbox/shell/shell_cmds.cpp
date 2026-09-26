@@ -293,8 +293,14 @@ void DOS_Shell::CMD_ECHO(char * args){
 }
 
 
+/* WinDosDX: the DOS exit code windos.exe returns (see WD_CoreRun). */
+extern "C" int wd_dos_exit_code;
+
 void DOS_Shell::CMD_EXIT(char * args) {
 	HELP("EXIT");
+	/* Leaving the shell: the errorlevel of the last program becomes the
+	   exit code of windos.exe, so Windows sees what the DOS program returned. */
+	wd_dos_exit_code = dos.return_code;
 	exit = true;
 }
 

@@ -182,6 +182,32 @@ WD_InputVkToScancode(WPARAM vk, LPARAM lparam, int *out_extended)
  */
 int WD_InputHandleMessage(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+    /* Window shortcuts; their keys never reach the DOS program. A key whose
+       press was taken keeps its release too. */
+    static WPARAM swallowed_key;
+
+    if (msg == WM_SYSKEYDOWN && wparam == VK_RETURN && (lparam & (1 << 29)))
+    {
+        if (!(lparam & (1 << 30)))          /* not auto-repeat */
+            WD_VideoSetFullscreen(!WD_VideoIsFullscreen());
+        swallowed_key = VK_RETURN;
+        return 1;
+    }
+    if (msg == WM_KEYDOWN && wparam == VK_F5 && GetKeyState(VK_CONTROL) < 0)
+    {
+        if (!(lparam & (1 << 30)))
+            WD_VideoScreenshot();
+        swallowed_key = VK_F5;
+        return 1;
+    }
+    if (msg == WM_SYSKEYDOWN && wparam == VK_SPACE)
+        return 0;                           /* Alt+Space: the system menu */
+    if ((msg == WM_KEYUP || msg == WM_SYSKEYUP) && swallowed_key && wparam == swallowed_key)
+    {
+        swallowed_key = 0;
+        return 1;
+    }
+
     switch (msg)
     {
         case WM_KEYDOWN:

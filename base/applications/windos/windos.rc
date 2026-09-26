@@ -3,8 +3,58 @@
 // LICENSE:        GNU GPLv2 only as published by the Free Software Foundation
 // PURPOSE:        windos.exe resources
 //
+#include <windef.h>
+#include <winuser.h>
+#include "windos_core/include/windos_resource.h"
+
 #define REACTOS_VERSION_DLL
 #define REACTOS_STR_FILE_DESCRIPTION  "WinDosDX DOS Engine"
 #define REACTOS_STR_INTERNAL_NAME     "WinDosDX"
 #define REACTOS_STR_ORIGINAL_FILENAME "windos.exe"
 #include <reactos/version.rc>
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+IDD_SETTINGS DIALOGEX 0, 0, 280, 262
+STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "DOS 6.22 Settings"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    GROUPBOX        "Emulated PC", -1, 7, 5, 266, 78
+    LTEXT           "CPU speed:", -1, 15, 19, 50, 8
+    AUTORADIOBUTTON "&Automatic", IDC_CPU_AUTO, 70, 18, 50, 10, WS_GROUP | WS_TABSTOP
+    AUTORADIOBUTTON "&Fixed:", IDC_CPU_FIXED, 125, 18, 36, 10
+    EDITTEXT        IDC_CPU_CYCLES, 163, 16, 45, 12, ES_NUMBER | WS_GROUP
+    LTEXT           "cycles/ms", -1, 212, 19, 40, 8
+    LTEXT           "&Memory:", -1, 15, 35, 50, 8
+    COMBOBOX        IDC_MEMORY, 70, 33, 60, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Graphics card:", -1, 15, 51, 50, 8
+    COMBOBOX        IDC_MACHINE, 70, 49, 138, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "S&ound card:", -1, 15, 67, 50, 8
+    COMBOBOX        IDC_SBTYPE, 70, 65, 138, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    AUTOCHECKBOX    "M&ute", IDC_MUTE, 216, 67, 50, 10, WS_TABSTOP
+
+    GROUPBOX        "Drives", -1, 7, 87, 266, 62
+    LTEXT           "C:", -1, 15, 101, 10, 8
+    EDITTEXT        IDC_DRIVE_C, 28, 99, 186, 12, ES_AUTOHSCROLL
+    PUSHBUTTON      "&Browse...", IDC_BROWSE_C, 218, 98, 48, 14
+    LTEXT           "D:", -1, 15, 118, 10, 8
+    EDITTEXT        IDC_DRIVE_D, 28, 116, 186, 12, ES_AUTOHSCROLL
+    PUSHBUTTON      "Br&owse...", IDC_BROWSE_D, 218, 115, 48, 14
+    LTEXT           "", IDC_DRIVE_NOTE, 15, 133, 251, 12
+
+    GROUPBOX        "Display", -1, 7, 153, 266, 42
+    LTEXT           "&Window size:", -1, 15, 166, 50, 8
+    COMBOBOX        IDC_SCALE, 70, 164, 45, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    AUTOCHECKBOX    "Correct &aspect ratio (4:3)", IDC_ASPECT, 125, 165, 110, 10, WS_TABSTOP
+    AUTOCHECKBOX    "Smoot&h scaling", IDC_SMOOTH, 15, 180, 100, 10, WS_TABSTOP
+    AUTOCHECKBOX    "Start in full &screen", IDC_FULLSCREEN, 125, 180, 110, 10, WS_TABSTOP
+
+    GROUPBOX        "Save these settings for", IDC_SAVE_GROUP, 7, 199, 266, 26
+    AUTORADIOBUTTON "", IDC_SAVE_PROGRAM, 15, 210, 125, 10, WS_GROUP | WS_TABSTOP
+    AUTORADIOBUTTON "All DOS programs", IDC_SAVE_ALL, 145, 210, 120, 10
+
+    LTEXT           "", IDC_NOTE, 7, 229, 266, 16
+    DEFPUSHBUTTON   "OK", IDOK, 169, 245, 50, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 223, 245, 50, 14
+END
