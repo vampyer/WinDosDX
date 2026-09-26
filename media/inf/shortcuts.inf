@@ -23,6 +23,7 @@ QuickLaunchShortcuts=26, Microsoft\Internet Explorer\Quick Launch
 %SystemRoot%\explorer.exe, %EXPLORER_TITLE%, %EXPLORER_DESC%, 1, %HOMEDRIVE%%HOMEPATH%
 %SystemRoot%\system32\rapps.exe, %RAPPS_TITLE%, %RAPPS_DESC%, 0
 %16422%\Internet Explorer\iexplore.exe, %IEXPLORE_TITLE%, %IEXPLORE_DESC%, 0
+%SystemRoot%\windos.exe, %WINDOS_TITLE%, %WINDOS_DESC%, 0
 
 [AdminToolsShortcuts]
 %SystemRoot%\system32\servman.exe, %SERVMAN_TITLE%, %SERVMAN_DESC%, 0
@@ -83,6 +84,8 @@ README_DESC=ReactOS Read-Me file
 
 CMD_TITLE=Command Prompt
 CMD_DESC=Open command prompt
+WINDOS_TITLE=DOS 6.22
+WINDOS_DESC=Run DOS programs and games in the WinDosDX DOS 6.22 machine
 EXPLORER_TITLE=ReactOS Explorer
 EXPLORER_DESC=Launch Explorer
 RAPPS_TITLE=ReactOS Applications Manager
