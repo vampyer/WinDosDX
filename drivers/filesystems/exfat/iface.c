@@ -36,10 +36,11 @@ DriverEntry(
     PDEVICE_OBJECT DeviceObject;
     UNICODE_STRING DeviceName = RTL_CONSTANT_STRING(L"\\ExFat");
     NTSTATUS Status;
-    ULONG EnableWriteSupport = 0;
+    ULONG EnableWriteSupport = 1;
     RTL_QUERY_REGISTRY_TABLE QueryTable[2];
 
-    /* Writing stays off unless the service key enables it. */
+    /* Writing is on unless the service key's EnableWriteSupport is 0. Volumes
+       that are dirty or damaged still mount read-only (see VfatMount). */
     RtlZeroMemory(QueryTable, sizeof(QueryTable));
     QueryTable[0].Flags = RTL_QUERY_REGISTRY_DIRECT;
     QueryTable[0].Name = L"EnableWriteSupport";
