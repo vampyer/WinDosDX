@@ -117,9 +117,13 @@ NtfsWriteEmptyIndexNode(PDEVICE_EXTENSION DeviceExt,
                                   sizeof(INDEX_HEADER_ATTRIBUTE);
     IndexBuffer->Ntfs.UsaCount = IndexBufferSize / DeviceExt->NtfsInfo.BytesPerSector + 1;
     IndexBuffer->VCN = Vcn;
-    IndexBuffer->Header.FirstEntryOffset = FirstEntryOffset;
-    IndexBuffer->Header.AllocatedSize = IndexBufferSize - FirstEntryOffset;
-    IndexBuffer->Header.TotalSizeOfEntries = FirstEntryOffset;
+    /* FirstEntryOffset above is relative to the buffer; the INDEX_HEADER
+       fields are relative to the header itself (as every reader assumes:
+       entries live at &Header + FirstEntryOffset, and AllocatedSize +
+       FIELD_OFFSET(INDEX_BUFFER, Header) is the block size). */
+    IndexBuffer->Header.FirstEntryOffset = FirstEntryOffset - FIELD_OFFSET(INDEX_BUFFER, Header);
+    IndexBuffer->Header.AllocatedSize = IndexBufferSize - FIELD_OFFSET(INDEX_BUFFER, Header);
+    IndexBuffer->Header.TotalSizeOfEntries = IndexBuffer->Header.FirstEntryOffset;
 
     EndEntry = (PINDEX_ENTRY_ATTRIBUTE)((PUCHAR)IndexBuffer + FirstEntryOffset);
     EndEntry->Length = FIELD_OFFSET(INDEX_ENTRY_ATTRIBUTE, FileName);
@@ -1064,8 +1068,10 @@ CreateIndexBufferFromBTreeNode(PDEVICE_EXTENSION DeviceExt,
     ASSERT(Node->HasValidVCN);
     IndexBuffer->VCN = Node->VCN;
 
-    IndexBuffer->Header.FirstEntryOffset = FirstEntryOffset;
-    IndexBuffer->Header.AllocatedSize = BufferSize - FirstEntryOffset;
+    /* FirstEntryOffset is relative to the buffer; INDEX_HEADER offsets and
+       sizes are relative to the header (see NtfsWriteEmptyIndexNode). */
+    IndexBuffer->Header.FirstEntryOffset = FirstEntryOffset - FIELD_OFFSET(INDEX_BUFFER, Header);
+    IndexBuffer->Header.AllocatedSize = BufferSize - FIELD_OFFSET(INDEX_BUFFER, Header);
 
     // Start summing the total size of this node's entries
     IndexBuffer->Header.TotalSizeOfEntries = IndexBuffer->Header.FirstEntryOffset;
@@ -1076,7 +1082,10 @@ CreateIndexBufferFromBTreeNode(PDEVICE_EXTENSION DeviceExt,
     for (i = 0; i < Node->KeyCount; i++)
     {
         // Would adding the current entry to the index increase the node size beyond the allocation size?
-        ULONG IndexSize = IndexBuffer->Header.TotalSizeOfEntries
+        // TotalSizeOfEntries is header-relative, so add the header's offset in the buffer:
+        // without it the last entry could run up to 24 bytes past the end of IndexBuffer.
+        ULONG IndexSize = FIELD_OFFSET(INDEX_BUFFER, Header)
+            + IndexBuffer->Header.TotalSizeOfEntries
             + CurrentKey->IndexEntry->Length;
         if (IndexSize > BufferSize)
         {
@@ -1531,6 +1540,10 @@ CreateBTreeKeyFromFilename(ULONGLONG FileReference, PFILENAME_ATTRIBUTE FileName
         ExFreePoolWithTag(NewEntry, TAG_NTFS);
         return NULL;
     }
+    /* Zero the whole key: LesserChild used to be left uninitialized, and
+       DestroyBTree() then followed that garbage pointer (pool corruption, or
+       a page fault under special pool). */
+    RtlZeroMemory(NewKey, sizeof(B_TREE_KEY));
     NewKey->IndexEntry = NewEntry;
     NewKey->NextKey = NULL;
 
@@ -1552,7 +1565,7 @@ DestroyBTreeKey(PB_TREE_KEY Key)
 VOID
 DestroyBTreeNode(PB_TREE_FILENAME_NODE Node)
 {
-    PB_TREE_KEY NextKey;
+    PB_TREE_KEY NextKey = NULL;
     PB_TREE_KEY CurrentKey = Node->FirstKey;
     ULONG i;
     for (i = 0; i < Node->KeyCount; i++)

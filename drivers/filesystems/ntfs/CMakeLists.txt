@@ -12,6 +12,7 @@ list(APPEND SOURCE
     fastio.c
     fcb.c
     finfo.c
+    index.c
     fsctl.c
     mft.c
     misc.c

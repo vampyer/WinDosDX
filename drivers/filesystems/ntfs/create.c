@@ -158,8 +158,9 @@ NtfsMoonWalkID(PDEVICE_EXTENSION DeviceExt,
     if (!NT_SUCCESS(Status))
         return Status;
 
-    OutPath->Length = (MAX_PATH - WritePosition - 1) * sizeof(WCHAR);
-    OutPath->MaximumLength = (MAX_PATH - WritePosition) * sizeof(WCHAR);
+    /* Both are bounded by MAX_PATH * sizeof(WCHAR), which fits a USHORT. */
+    OutPath->Length = (USHORT)((MAX_PATH - WritePosition - 1) * sizeof(WCHAR));
+    OutPath->MaximumLength = (USHORT)((MAX_PATH - WritePosition) * sizeof(WCHAR));
     OutPath->Buffer = ExAllocatePoolWithTag(NonPagedPool, OutPath->MaximumLength, TAG_NTFS);
     if (OutPath->Buffer == NULL)
     {
@@ -321,6 +322,95 @@ NtfsOpenFile(PDEVICE_EXTENSION DeviceExt,
 
 
 /*
+ * FUNCTION: Opens the directory that would hold FileObject's name
+ * (SL_OPEN_TARGET_DIRECTORY, used for renames). FileObject->FileName is cut
+ * down to the final name, and Information tells whether that name exists.
+ */
+static
+NTSTATUS
+NtfsOpenTargetDirectory(PDEVICE_EXTENSION DeviceExt,
+                        PFILE_OBJECT FileObject,
+                        BOOLEAN CaseSensitive,
+                        PNTFS_FCB *FoundFCB,
+                        PULONG_PTR Information)
+{
+    PUNICODE_STRING Name = &FileObject->FileName;
+    USHORT Count = Name->Length / sizeof(WCHAR);
+    USHORT Start;
+    UNICODE_STRING LastName;
+    ULONGLONG ExistingMft;
+    ULONG FirstEntry = 0;
+    PNTFS_FCB Fcb;
+    NTSTATUS Status;
+
+    *FoundFCB = NULL;
+
+    /* Ignore one trailing backslash. */
+    if (Count > 1 && Name->Buffer[Count - 1] == L'\\')
+        Count--;
+    if (Count == 0 || (Count == 1 && Name->Buffer[0] == L'\\'))
+        return STATUS_INVALID_PARAMETER;
+
+    for (Start = Count; Start > 0 && Name->Buffer[Start - 1] != L'\\'; Start--);
+    if (Start == Count || Count - Start > 255)
+        return STATUS_OBJECT_NAME_INVALID;
+
+    if (Start == 0)
+    {
+        /* Just a name: the directory is the related file object. */
+        if (!FileObject->RelatedFileObject)
+            return STATUS_INVALID_PARAMETER;
+
+        Fcb = FileObject->RelatedFileObject->FsContext;
+        if (!Fcb || !NtfsFCBIsDirectory(Fcb))
+            return STATUS_INVALID_PARAMETER;
+
+        NtfsGrabFCB(DeviceExt, Fcb);
+        Status = NtfsAttachFCBToFileObject(DeviceExt, Fcb, FileObject);
+        if (!NT_SUCCESS(Status))
+        {
+            NtfsReleaseFCB(DeviceExt, Fcb);
+            return Status;
+        }
+    }
+    else
+    {
+        WCHAR Parent[MAX_PATH];
+        USHORT ParentCount = (Start == 1) ? 1 : Start - 1;
+
+        if (ParentCount >= MAX_PATH)
+            return STATUS_OBJECT_NAME_INVALID;
+        RtlCopyMemory(Parent, Name->Buffer, ParentCount * sizeof(WCHAR));
+        Parent[ParentCount] = UNICODE_NULL;
+
+        Status = NtfsOpenFile(DeviceExt, FileObject, Parent, CaseSensitive, &Fcb);
+        if (!NT_SUCCESS(Status))
+            return (Status == STATUS_OBJECT_NAME_NOT_FOUND) ? STATUS_OBJECT_PATH_NOT_FOUND : Status;
+
+        if (!NtfsFCBIsDirectory(Fcb))
+        {
+            NtfsCloseFile(DeviceExt, FileObject);
+            return STATUS_OBJECT_PATH_NOT_FOUND;
+        }
+    }
+
+    LastName.Buffer = &Name->Buffer[Start];
+    LastName.Length = LastName.MaximumLength = (Count - Start) * sizeof(WCHAR);
+    Status = NtfsIndexLookup(DeviceExt, Fcb->MFTIndex, &LastName, &FirstEntry, FALSE, CaseSensitive, &ExistingMft);
+    *Information = NT_SUCCESS(Status) ? FILE_EXISTS : FILE_DOES_NOT_EXIST;
+
+    /* The file object keeps only the final name; the rename reads it from there. */
+    RtlMoveMemory(Name->Buffer, LastName.Buffer, LastName.Length);
+    Name->Length = LastName.Length;
+    if (Name->MaximumLength > Name->Length)
+        Name->Buffer[Name->Length / sizeof(WCHAR)] = UNICODE_NULL;
+
+    *FoundFCB = Fcb;
+    return STATUS_SUCCESS;
+}
+
+
+/*
  * FUNCTION: Opens a file
  */
 static
@@ -417,6 +507,25 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
         return STATUS_SUCCESS;
     }
 
+    if (Stack->Flags & SL_OPEN_TARGET_DIRECTORY)
+    {
+        PNTFS_CCB Ccb;
+
+        Status = NtfsOpenTargetDirectory(DeviceExt,
+                                         FileObject,
+                                         BooleanFlagOn(Stack->Flags, SL_CASE_SENSITIVE),
+                                         &Fcb,
+                                         &Irp->IoStatus.Information);
+        if (!NT_SUCCESS(Status))
+            return Status;
+
+        Ccb = (PNTFS_CCB)FileObject->FsContext2;
+        Fcb->OpenHandleCount++;
+        DeviceExt->OpenHandleCount++;
+        Ccb->VcbHandleCounted = TRUE;
+        return STATUS_SUCCESS;
+    }
+
     if (Fcb == NULL)
     {
         Status = NtfsOpenFile(DeviceExt,
@@ -433,6 +542,12 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
 
     if (NT_SUCCESS(Status))
     {
+        if (Fcb->Flags & FCB_DELETE_PENDING)
+        {
+            NtfsCloseFile(DeviceExt, FileObject);
+            return STATUS_DELETE_PENDING;
+        }
+
         if (RequestedDisposition == FILE_CREATE)
         {
             Irp->IoStatus.Information = FILE_EXISTS;
@@ -644,6 +759,20 @@ NtfsCreateFile(PDEVICE_OBJECT DeviceObject,
     {
         PNTFS_CCB Ccb = (PNTFS_CCB)FileObject->FsContext2;
 
+        if (RequestedOptions & FILE_DELETE_ON_CLOSE)
+        {
+            if (Fcb->MFTIndex < NTFS_FILE_FIRST_USER_FILE ||
+                NtfsFCBIsRoot(Fcb) ||
+                (Fcb->Entry.FileAttributes & NTFS_FILE_TYPE_READ_ONLY))
+            {
+                NtfsCloseFile(DeviceExt, FileObject);
+                Irp->IoStatus.Information = 0;
+                return STATUS_CANNOT_DELETE;
+            }
+            if (Ccb)
+                Ccb->DeleteOnClose = TRUE;
+        }
+
         Fcb->OpenHandleCount++;
         DeviceExt->OpenHandleCount++;
         if (Ccb)
@@ -738,6 +867,7 @@ NtfsCreateDirectory(PDEVICE_EXTENSION DeviceExt,
     PINDEX_ROOT_ATTRIBUTE NewIndexRoot;
     ULONG MaxIndexRootSize;
     ULONG RootLength;
+    BOOLEAN DiskMutated;
 
     DPRINT("NtfsCreateFileRecord(%p, %p, %s, %s)\n",
             DeviceExt,
@@ -766,7 +896,13 @@ NtfsCreateDirectory(PDEVICE_EXTENSION DeviceExt,
     NextAttribute = (PNTFS_ATTR_RECORD)((ULONG_PTR)NextAttribute + (ULONG_PTR)NextAttribute->Length);
 
     // Add the $FILE_NAME attribute
-    AddFileName(FileRecord, NextAttribute, DeviceExt, FileObject, CaseSensitive, &ParentMftIndex);
+    Status = AddFileName(FileRecord, NextAttribute, DeviceExt, FileObject, CaseSensitive, &ParentMftIndex);
+    if (!NT_SUCCESS(Status))
+    {
+        DPRINT1("ERROR: Unable to add the $FILE_NAME attribute (0x%08lx)\n", Status);
+        ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+        return Status;
+    }
 
     // save a pointer to the filename attribute
     FilenameAttribute = (PFILENAME_ATTRIBUTE)((ULONG_PTR)NextAttribute + NextAttribute->Resident.ValueOffset);
@@ -823,19 +959,21 @@ NtfsCreateDirectory(PDEVICE_EXTENSION DeviceExt,
     Status = NtfsPrepareForMetadataUpdate(DeviceExt);
     if (!NT_SUCCESS(Status))
     {
-        NtfsMarkJournalFailure(DeviceExt,
-                               (((ULONG)Status & 0xFF) << 8) | 0x01);
         ExFreePoolWithTag(NewIndexRoot, TAG_NTFS);
         ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
         return Status;
     }
 
     // Now that we've built the directory record in memory, store it in the MFT.
-    Status = AddNewMftEntry(FileRecord, DeviceExt, &FileMftIndex, CanWait);
+    Status = AddNewMftEntry(FileRecord, DeviceExt, &FileMftIndex, CanWait, &DiskMutated);
     if (!NT_SUCCESS(Status))
     {
-        NtfsMarkJournalFailure(DeviceExt,
-                               (((ULONG)Status & 0xFF) << 8) | 0x02);
+        /* Only fail closed when the allocation attempt already reached disk. */
+        if (DiskMutated)
+        {
+            NtfsMarkJournalFailure(DeviceExt,
+                                   (((ULONG)Status & 0xFF) << 8) | 0x02);
+        }
     }
     else
     {
@@ -967,6 +1105,7 @@ NtfsCreateFileRecord(PDEVICE_EXTENSION DeviceExt,
     PFILENAME_ATTRIBUTE FilenameAttribute;
     ULONGLONG ParentMftIndex;
     ULONGLONG FileMftIndex;
+    BOOLEAN DiskMutated;
 
     DPRINT("NtfsCreateFileRecord(%p, %p, %s, %s)\n",
             DeviceExt,
@@ -992,7 +1131,13 @@ NtfsCreateFileRecord(PDEVICE_EXTENSION DeviceExt,
     NextAttribute = (PNTFS_ATTR_RECORD)((ULONG_PTR)NextAttribute + (ULONG_PTR)NextAttribute->Length);
 
     // Add the $FILE_NAME attribute
-    AddFileName(FileRecord, NextAttribute, DeviceExt, FileObject, CaseSensitive, &ParentMftIndex);
+    Status = AddFileName(FileRecord, NextAttribute, DeviceExt, FileObject, CaseSensitive, &ParentMftIndex);
+    if (!NT_SUCCESS(Status))
+    {
+        DPRINT1("ERROR: Unable to add the $FILE_NAME attribute (0x%08lx)\n", Status);
+        ExFreeToNPagedLookasideList(&DeviceExt->FileRecLookasideList, FileRecord);
+        return Status;
+    }
 
     // save a pointer to the filename attribute
     FilenameAttribute = (PFILENAME_ATTRIBUTE)((ULONG_PTR)NextAttribute + NextAttribute->Resident.ValueOffset);
@@ -1016,11 +1161,15 @@ NtfsCreateFileRecord(PDEVICE_EXTENSION DeviceExt,
     }
 
     // Now that we've built the file record in memory, we need to store it in the MFT.
-    Status = AddNewMftEntry(FileRecord, DeviceExt, &FileMftIndex, CanWait);
+    Status = AddNewMftEntry(FileRecord, DeviceExt, &FileMftIndex, CanWait, &DiskMutated);
     if (!NT_SUCCESS(Status))
     {
-        NtfsMarkJournalFailure(DeviceExt,
-                               ((ULONG)Status & 0xFF) << 8 | 0x04);
+        /* Only fail closed when the allocation attempt already reached disk. */
+        if (DiskMutated)
+        {
+            NtfsMarkJournalFailure(DeviceExt,
+                                   ((ULONG)Status & 0xFF) << 8 | 0x04);
+        }
     }
     else
     {

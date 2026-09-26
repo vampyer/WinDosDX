@@ -162,6 +162,7 @@ NtfsAllocateClusters(PDEVICE_EXTENSION DeviceExt,
 
     if (FreeClusters < DesiredClusters)
     {
+        DPRINT1("NtfsAllocateClusters: disk full (%I64u free, %lu needed)\n", FreeClusters, DesiredClusters);
         ReleaseAttributeContext(DataContext);
 
         ExFreePoolWithTag(BitmapData, TAG_NTFS);
@@ -193,6 +194,11 @@ NtfsAllocateClusters(PDEVICE_EXTENSION DeviceExt,
     }
 
     Status = WriteAttribute(DeviceExt, DataContext, 0, BitmapData, (ULONG)BitmapDataSize, &LengthWritten, BitmapRecord);
+    if (!NT_SUCCESS(Status))
+    {
+        DPRINT1("NtfsAllocateClusters: WriteAttribute failed 0x%08lx (wrote %lu of %lu)\n",
+                Status, LengthWritten, (ULONG)BitmapDataSize);
+    }
 
     ReleaseAttributeContext(DataContext);
 

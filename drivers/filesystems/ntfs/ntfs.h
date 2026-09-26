@@ -129,6 +129,7 @@ typedef struct
 #define VCB_VOLUME_LOCKED       0x0001
 #define VCB_VOLUME_DIRTY        0x0002
 #define VCB_JOURNAL_DIRTY       0x0004
+#define VCB_LOGFILE_EMPTY       0x0008  /* Native $LogFile holds no records (all 0xFF) */
 
 typedef struct
 {
@@ -143,6 +144,7 @@ typedef struct
     ULONG LastCluster;
     ULONG LastOffset;
     BOOLEAN VcbHandleCounted;
+    BOOLEAN DeleteOnClose;
 } NTFS_CCB, *PNTFS_CCB;
 
 typedef struct
@@ -480,6 +482,10 @@ typedef struct
     ULONG Unknown2;
 } VOLINFO_ATTRIBUTE, *PVOLINFO_ATTRIBUTE;
 
+/* VOLINFO_ATTRIBUTE.Flags: set while the volume may be inconsistent; Windows
+   runs chkdsk on a volume that carries it. */
+#define NTFS_VOLUME_FLAG_DIRTY  0x0001
+
 typedef struct {
     ULONG ReparseTag;
     USHORT DataLength;
@@ -524,6 +530,8 @@ typedef struct _NTFS_ATTR_CONTEXT
 #define FCB_CACHE_INITIALIZED   0x0001
 #define FCB_IS_VOLUME_STREAM    0x0002
 #define FCB_IS_VOLUME           0x0004
+#define FCB_DELETE_PENDING      0x0008
+#define FCB_IS_DELETED          0x0010
 #define MAX_PATH                260
 
 typedef struct _FCB
@@ -630,6 +638,15 @@ AddRun(PNTFS_VCB Vcb,
        PFILE_RECORD_HEADER FileRecord,
        ULONGLONG NextAssignedCluster,
        ULONG RunLength);
+
+NTSTATUS
+AddRunEx(PNTFS_VCB Vcb,
+         PNTFS_ATTR_CONTEXT AttrContext,
+         ULONG AttrOffset,
+         PFILE_RECORD_HEADER FileRecord,
+         ULONGLONG NextAssignedCluster,
+         ULONG RunLength,
+         BOOLEAN UpdateRecord);
 
 NTSTATUS
 AddIndexAllocation(PNTFS_VCB Vcb,
@@ -991,6 +1008,15 @@ PNTFS_FCB
 NtfsGrabFCBFromTable(PNTFS_VCB Vcb,
                      PCWSTR FileName);
 
+VOID
+NtfsRemoveFCBFromTable(PNTFS_VCB Vcb,
+                       PNTFS_FCB Fcb);
+
+NTSTATUS
+NtfsRenameFCBPaths(PNTFS_VCB Vcb,
+                   PCWSTR OldPath,
+                   PCWSTR NewPath);
+
 NTSTATUS
 NtfsFCBInitializeCache(PNTFS_VCB Vcb,
                        PNTFS_FCB Fcb);
@@ -1050,6 +1076,45 @@ NtfsSetEndOfFile(PNTFS_FCB Fcb,
 NTSTATUS
 NtfsSetInformation(PNTFS_IRP_CONTEXT IrpContext);
 
+NTSTATUS
+NtfsDeleteFileRecord(PDEVICE_EXTENSION Vcb,
+                     ULONGLONG MftIndex);
+
+/* index.c */
+
+NTSTATUS
+NtfsIndexLookup(PDEVICE_EXTENSION Vcb,
+                ULONGLONG DirectoryMftIndex,
+                PUNICODE_STRING FileName,
+                PULONG FirstEntry,
+                BOOLEAN DirSearch,
+                BOOLEAN CaseSensitive,
+                PULONGLONG MftIndex);
+
+NTSTATUS
+NtfsIndexUpdateSizes(PDEVICE_EXTENSION Vcb,
+                     ULONGLONG DirectoryMftIndex,
+                     PUNICODE_STRING FileName,
+                     BOOLEAN DirSearch,
+                     ULONGLONG DataSize,
+                     ULONGLONG AllocatedSize,
+                     BOOLEAN CaseSensitive);
+
+NTSTATUS
+NtfsIndexUpdate(PDEVICE_EXTENSION Vcb,
+                ULONGLONG DirectoryMftIndex,
+                BOOLEAN Remove,
+                ULONGLONG RemoveMftIndex,
+                PFILENAME_ATTRIBUTE AddName,
+                ULONGLONG AddFileReference,
+                BOOLEAN CaseSensitive,
+                PULONG RemovedCount);
+
+NTSTATUS
+NtfsIndexIsEmpty(PDEVICE_EXTENSION Vcb,
+                 ULONGLONG DirectoryMftIndex,
+                 PBOOLEAN Empty);
+
 /* fsctl.c */
 
 NTSTATUS
@@ -1081,7 +1146,8 @@ NTSTATUS
 AddNewMftEntry(PFILE_RECORD_HEADER FileRecord,
                PDEVICE_EXTENSION DeviceExt,
                PULONGLONG DestinationIndex,
-               BOOLEAN CanWait);
+               BOOLEAN CanWait,
+               PBOOLEAN DiskMutated);
 
 NTSTATUS
 RemoveNewMftEntry(PDEVICE_EXTENSION DeviceExt,
@@ -1171,21 +1237,6 @@ NTSTATUS
 ReadFileRecord(PDEVICE_EXTENSION Vcb,
                ULONGLONG index,
                PFILE_RECORD_HEADER file);
-
-NTSTATUS
-UpdateIndexEntryFileNameSize(PDEVICE_EXTENSION Vcb,
-                             PFILE_RECORD_HEADER MftRecord,
-                             PCHAR IndexRecord,
-                             ULONG IndexBlockSize,
-                             PINDEX_ENTRY_ATTRIBUTE FirstEntry,
-                             PINDEX_ENTRY_ATTRIBUTE LastEntry,
-                             PUNICODE_STRING FileName,
-                             PULONG StartEntry,
-                             PULONG CurrentEntry,
-                             BOOLEAN DirSearch,
-                             ULONGLONG NewDataSize,
-                             ULONGLONG NewAllocatedSize,
-                             BOOLEAN CaseSensitive);
 
 NTSTATUS
 UpdateFileNameRecord(PDEVICE_EXTENSION Vcb,

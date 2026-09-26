@@ -423,6 +423,94 @@ static
 BOOLEAN
 NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb);
 
+/* LFS restart area fields, relative to the restart area. */
+#define LFS_RESTART_CLIENT_IN_USE_LIST  0x0C
+#define LFS_RESTART_FLAGS               0x0E
+#define LFS_NO_CLIENT                   0xFFFF
+#define LFS_RESTART_VOLUME_IS_CLEAN     0x0002
+
+/*
+ * Decides whether a native (non-resident) $LogFile leaves nothing to replay.
+ * This driver never writes log records, so it may only modify a volume whose
+ * journal is idle: either emptied (all 0xFF, as this driver and ntfs-3g leave
+ * it; Windows reinitializes such a log) or with both restart pages showing
+ * no active log client or the clean flag Windows sets on a clean dismount.
+ * A volume hibernated by Fast Startup fails this and stays read-only.
+ */
+static
+BOOLEAN
+NtfsCheckNativeLogFileClean(PDEVICE_EXTENSION Vcb,
+                            PNTFS_ATTR_CONTEXT DataContext,
+                            ULONGLONG DataLength)
+{
+    ULONG SectorSize = Vcb->NtfsInfo.BytesPerSector;
+    ULONG SystemPageSize = 0;
+    ULONGLONG Offset = 0;
+    ULONG RestartAreaOffset;
+    ULONG Page;
+    ULONG i;
+    PUCHAR Buffer;
+    BOOLEAN Empty = TRUE;
+    BOOLEAN Result = FALSE;
+
+    Buffer = ExAllocatePoolWithTag(NonPagedPool, SectorSize, TAG_NTFS);
+    if (!Buffer)
+    {
+        return FALSE;
+    }
+
+    if (DataLength < 2 * SectorSize ||
+        ReadAttribute(Vcb, DataContext, 0, (PCHAR)Buffer, SectorSize) != SectorSize)
+    {
+        goto Exit;
+    }
+
+    for (i = 0; i < SectorSize; i++)
+    {
+        if (Buffer[i] != 0xFF)
+        {
+            Empty = FALSE;
+            break;
+        }
+    }
+    if (Empty)
+    {
+        Vcb->Flags |= VCB_LOGFILE_EMPTY;
+        Result = TRUE;
+        goto Exit;
+    }
+
+    /* The restart area and the fields read here lie in the first sector of
+       each page, ahead of any update-sequence-protected bytes. */
+    for (Page = 0; Page < 2; Page++)
+    {
+        if ((Page != 0 &&
+             ReadAttribute(Vcb, DataContext, Offset, (PCHAR)Buffer, SectorSize) != SectorSize) ||
+            !NtfsValidateRestartPage(Buffer, SectorSize, SectorSize, Page == 0,
+                                     &SystemPageSize))
+        {
+            goto Exit;
+        }
+        if (Page == 0 && DataLength / SystemPageSize < 2)
+        {
+            goto Exit;
+        }
+
+        RestartAreaOffset = *(PUSHORT)(Buffer + 0x18);
+        if (*(PUSHORT)(Buffer + RestartAreaOffset + LFS_RESTART_CLIENT_IN_USE_LIST) != LFS_NO_CLIENT &&
+            !(*(PUSHORT)(Buffer + RestartAreaOffset + LFS_RESTART_FLAGS) & LFS_RESTART_VOLUME_IS_CLEAN))
+        {
+            goto Exit;
+        }
+        Offset = SystemPageSize;
+    }
+    Result = TRUE;
+
+Exit:
+    ExFreePoolWithTag(Buffer, TAG_NTFS);
+    return Result;
+}
+
 static
 BOOLEAN
 NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
@@ -441,9 +529,12 @@ NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
     USHORT RestartFlags;
     BOOLEAN IsRestartPage;
 
-    /* Temporary autorun diagnostic: preserve the first failed check in the
-       otherwise-unused high VCB flag byte so the test payload can report it. */
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000100;
+
+    /* Left dirty by a crash, by chkdsk, or by us: only chkdsk may write. */
+    if (Vcb->NtfsInfo.Flags & NTFS_VOLUME_FLAG_DIRTY)
+    {
+        return FALSE;
+    }
 
     LogFileRecord = ExAllocateFromNPagedLookasideList(&Vcb->FileRecLookasideList);
     if (!LogFileRecord)
@@ -465,8 +556,16 @@ NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
     }
 
     DataLength = AttributeDataLength(DataContext->pRecord);
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000300;
-    if (DataContext->pRecord->IsNonResident || DataLength < Vcb->NtfsInfo.BytesPerSector)
+    if (DataContext->pRecord->IsNonResident)
+    {
+        /* A journal written by Windows (or emptied by us). */
+        BOOLEAN Clean = NtfsCheckNativeLogFileClean(Vcb, DataContext, DataLength);
+
+        ReleaseAttributeContext(DataContext);
+        ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
+        return Clean;
+    }
+    if (DataLength < Vcb->NtfsInfo.BytesPerSector)
     {
         ReleaseAttributeContext(DataContext);
         ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, LogFileRecord);
@@ -483,7 +582,6 @@ NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
         return FALSE;
     }
 
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000400;
     BytesRead = ReadAttribute(Vcb, DataContext, 0, RestartPage,
                               Vcb->NtfsInfo.BytesPerSector);
     ReleaseAttributeContext(DataContext);
@@ -496,7 +594,6 @@ NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
     }
 
     Magic = *(PULONG)RestartPage;
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000500;
     IsRestartPage = (Magic == 0x52545352 || Magic == 0x444b4843); /* RSTR or CHKD */
     if (!IsRestartPage)
     {
@@ -510,15 +607,15 @@ NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
     UsaCount = *(PUSHORT)(RestartPage + 0x06);
     RestartAreaOffset = *(PUSHORT)(RestartPage + 0x18);
 
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000600;
     if (SystemPageSize < Vcb->NtfsInfo.BytesPerSector ||
         SystemPageSize > 0x10000 ||
         (SystemPageSize & (SystemPageSize - 1)) != 0 ||
         LogPageSize < Vcb->NtfsInfo.BytesPerSector ||
         LogPageSize > SystemPageSize ||
         (LogPageSize & (LogPageSize - 1)) != 0 ||
-        ((PUSHORT)(RestartPage + 0x1c))[1] != 1 ||
-        ((PUSHORT)(RestartPage + 0x1c))[0] > 1 ||
+        /* LFS major version at 0x1C (minor at 0x1A; 0x1E starts the update
+           sequence array): 1.x, or 2.x as Windows 8 and later may write. */
+        (*(PUSHORT)(RestartPage + 0x1C) != 1 && *(PUSHORT)(RestartPage + 0x1C) != 2) ||
         RestartAreaOffset < sizeof(ULONG) * 8 ||
         (RestartAreaOffset & 7) != 0 ||
         RestartAreaOffset + 16 > Vcb->NtfsInfo.BytesPerSector - 2 ||
@@ -538,7 +635,6 @@ NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
     }
 
     RestartFlags = *(PUSHORT)(RestartPage + RestartAreaOffset + 14);
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000800;
     ExFreePoolWithTag(RestartPage, TAG_NTFS);
 
     /* This driver does not create native log-client records.  Require the
@@ -548,10 +644,7 @@ NtfsCheckLogFileClean(PDEVICE_EXTENSION Vcb)
         return FALSE;
     }
 
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000900;
     IsRestartPage = NtfsCheckSecondRestartPage(Vcb);
-    if (IsRestartPage)
-        Vcb->Flags &= ~0x0000FF00;
     return IsRestartPage;
 }
 
@@ -592,8 +685,9 @@ NtfsValidateRestartPage(PUCHAR Page,
         (SystemSize & (SystemSize - 1)) != 0 ||
         LogPageSize < BytesPerSector || LogPageSize > SystemSize ||
         (LogPageSize & (LogPageSize - 1)) != 0 ||
-        ((PUSHORT)(Page + 0x1c))[1] != 1 ||
-        ((PUSHORT)(Page + 0x1c))[0] > 1 ||
+        /* LFS major version at 0x1C (minor at 0x1A; 0x1E starts the update
+           sequence array): 1.x, or 2.x as Windows 8 and later may write. */
+        (*(PUSHORT)(Page + 0x1C) != 1 && *(PUSHORT)(Page + 0x1C) != 2) ||
         RestartAreaOffset < sizeof(ULONG) * 8 ||
         (RestartAreaOffset & 7) != 0 ||
         RestartAreaOffset + 16 > PageSize ||
@@ -638,7 +732,6 @@ NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb)
     USHORT RestartFlags;
     BOOLEAN Result = FALSE;
 
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A00;
     LogFileRecord = ExAllocateFromNPagedLookasideList(&Vcb->FileRecLookasideList);
     if (!LogFileRecord)
     {
@@ -648,14 +741,12 @@ NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb)
     {
         goto Cleanup;
     }
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A10;
     if (!NT_SUCCESS(FindAttribute(Vcb, LogFileRecord, AttributeData, L"", 0,
                                    &DataContext, NULL)))
     {
         goto Cleanup;
     }
 
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A20;
     DataLength = AttributeDataLength(DataContext->pRecord);
     if (DataContext->pRecord->IsNonResident || DataLength < 0x400)
     {
@@ -670,7 +761,6 @@ NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb)
         goto Cleanup;
     }
     BytesRead = ReadAttribute(Vcb, DataContext, 0, Header, 0x200);
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A30;
     if (BytesRead != 0x200 ||
         !NtfsValidateRestartPage(Header, 0x200,
                                  Vcb->NtfsInfo.BytesPerSector, TRUE,
@@ -683,7 +773,6 @@ NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb)
     }
     ExFreePoolWithTag(Header, TAG_NTFS);
 
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A40;
     SecondPage = ExAllocatePoolWithTag(NonPagedPool, 0x200, TAG_NTFS);
     if (!SecondPage)
     {
@@ -692,18 +781,14 @@ NtfsCheckSecondRestartPage(PDEVICE_EXTENSION Vcb)
     }
     BytesRead = ReadAttribute(Vcb, DataContext, SystemPageSize,
                               SecondPage, 0x200);
-    Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A50;
     if (BytesRead == 0x200 &&
         NtfsValidateRestartPage(SecondPage, 0x200,
                                 Vcb->NtfsInfo.BytesPerSector, FALSE,
                                 &SystemPageSize))
     {
-        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000A60;
         RestartAreaOffset = *(PUSHORT)(SecondPage + 0x18);
         RestartFlags = *(PUSHORT)(SecondPage + RestartAreaOffset + 14);
         Result = (RestartFlags & 0x0002) != 0;
-        if (Result)
-            Vcb->Flags &= ~0x0000FF00;
     }
     ExFreePoolWithTag(SecondPage, TAG_NTFS);
     ReleaseAttributeContext(DataContext);
@@ -875,6 +960,148 @@ NtfsVerifyJournalState(PDEVICE_EXTENSION Vcb,
 
 static
 NTSTATUS
+NtfsSetVolumeDirtyFlag(PDEVICE_EXTENSION Vcb,
+                       BOOLEAN Dirty)
+{
+    PFILE_RECORD_HEADER VolumeRecord;
+    PNTFS_ATTR_CONTEXT InfoContext;
+    PVOLINFO_ATTRIBUTE VolumeInfo;
+    USHORT Flags;
+    ULONG LengthWritten;
+    NTSTATUS Status;
+
+    VolumeRecord = ExAllocateFromNPagedLookasideList(&Vcb->FileRecLookasideList);
+    if (!VolumeRecord)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    Status = ReadFileRecord(Vcb, NTFS_FILE_VOLUME, VolumeRecord);
+    if (NT_SUCCESS(Status))
+    {
+        Status = FindAttribute(Vcb, VolumeRecord, AttributeVolumeInformation,
+                               L"", 0, &InfoContext, NULL);
+    }
+    if (!NT_SUCCESS(Status))
+    {
+        ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, VolumeRecord);
+        return Status;
+    }
+
+    /* The on-disk value is 12 bytes, shorter than VOLINFO_ATTRIBUTE, so only
+       the Flags field is rewritten. */
+    if (InfoContext->pRecord->IsNonResident ||
+        InfoContext->pRecord->Resident.ValueLength <
+            FIELD_OFFSET(VOLINFO_ATTRIBUTE, Flags) + sizeof(USHORT))
+    {
+        Status = STATUS_DISK_CORRUPT_ERROR;
+    }
+    else
+    {
+        VolumeInfo = (PVOLINFO_ATTRIBUTE)((ULONG_PTR)InfoContext->pRecord +
+                                          InfoContext->pRecord->Resident.ValueOffset);
+        Flags = Dirty ? (VolumeInfo->Flags | NTFS_VOLUME_FLAG_DIRTY)
+                      : (VolumeInfo->Flags & ~NTFS_VOLUME_FLAG_DIRTY);
+        Status = WriteAttribute(Vcb, InfoContext,
+                                FIELD_OFFSET(VOLINFO_ATTRIBUTE, Flags),
+                                (PUCHAR)&Flags, sizeof(Flags),
+                                &LengthWritten, VolumeRecord);
+        if (NT_SUCCESS(Status))
+        {
+            Status = NtfsFlushJournalPages(Vcb);
+        }
+        if (NT_SUCCESS(Status))
+        {
+            Vcb->NtfsInfo.Flags = Flags;
+        }
+    }
+
+    ReleaseAttributeContext(InfoContext);
+    ExFreeToNPagedLookasideList(&Vcb->FileRecLookasideList, VolumeRecord);
+    return Status;
+}
+
+
+static
+NTSTATUS
+NtfsEmptyLogFile(PDEVICE_EXTENSION Vcb,
+                 PFILE_RECORD_HEADER LogFileRecord,
+                 PNTFS_ATTR_CONTEXT DataContext,
+                 ULONGLONG DataLength)
+{
+    const ULONG ChunkSize = 0x10000;
+    ULONGLONG Offset;
+    ULONG Length;
+    ULONG LengthWritten;
+    PUCHAR Buffer;
+    NTSTATUS Status = STATUS_SUCCESS;
+
+    Buffer = ExAllocatePoolWithTag(NonPagedPool, ChunkSize, TAG_NTFS);
+    if (!Buffer)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    RtlFillMemory(Buffer, ChunkSize, 0xFF);
+
+    for (Offset = 0; Offset < DataLength && NT_SUCCESS(Status); Offset += Length)
+    {
+        Length = (ULONG)min(ChunkSize, DataLength - Offset);
+        Status = WriteAttribute(Vcb, DataContext, Offset, Buffer, Length,
+                                &LengthWritten, LogFileRecord);
+        if (NT_SUCCESS(Status) && LengthWritten != Length)
+        {
+            Status = STATUS_END_OF_FILE;
+        }
+    }
+
+    ExFreePoolWithTag(Buffer, TAG_NTFS);
+    if (NT_SUCCESS(Status))
+    {
+        Status = NtfsFlushJournalPages(Vcb);
+    }
+    return Status;
+}
+
+
+/*
+ * Journal state for a volume with a native $LogFile. This driver writes no
+ * log records, so the $Volume dirty flag carries the state instead, as
+ * Windows' own chkdsk and ntfs-3g read it:
+ * - before the first change, the dirty flag is published, then Windows' log
+ *   is emptied, since replaying it over this driver's changes would corrupt
+ *   them; a crash from here on leaves a volume Windows repairs with chkdsk;
+ * - a checkpoint clears the dirty flag again once everything is flushed.
+ */
+static
+NTSTATUS
+NtfsSetNativeJournalState(PDEVICE_EXTENSION Vcb,
+                          PFILE_RECORD_HEADER LogFileRecord,
+                          PNTFS_ATTR_CONTEXT DataContext,
+                          ULONGLONG DataLength,
+                          BOOLEAN Clean)
+{
+    NTSTATUS Status;
+
+    if (Clean)
+    {
+        return NtfsSetVolumeDirtyFlag(Vcb, FALSE);
+    }
+
+    Status = NtfsSetVolumeDirtyFlag(Vcb, TRUE);
+    if (NT_SUCCESS(Status) && !(Vcb->Flags & VCB_LOGFILE_EMPTY))
+    {
+        Status = NtfsEmptyLogFile(Vcb, LogFileRecord, DataContext, DataLength);
+        if (NT_SUCCESS(Status))
+        {
+            Vcb->Flags |= VCB_LOGFILE_EMPTY;
+        }
+    }
+    return Status;
+}
+
+
+static
+NTSTATUS
 NtfsSetJournalState(PDEVICE_EXTENSION Vcb,
                      BOOLEAN Clean)
 {
@@ -913,7 +1140,13 @@ NtfsSetJournalState(PDEVICE_EXTENSION Vcb,
     }
 
     DataLength = AttributeDataLength(DataContext->pRecord);
-    if (DataContext->pRecord->IsNonResident || DataLength < 0x200)
+    if (DataContext->pRecord->IsNonResident)
+    {
+        Status = NtfsSetNativeJournalState(Vcb, LogFileRecord, DataContext,
+                                           DataLength, Clean);
+        goto Publish;
+    }
+    if (DataLength < 0x200)
     {
         ReleaseAttributeContext(DataContext);
         Status = STATUS_DATA_ERROR;
@@ -974,22 +1207,20 @@ NtfsSetJournalState(PDEVICE_EXTENSION Vcb,
                                         SystemPageSize, Clean);
     }
 
+Publish:
     ReleaseAttributeContext(DataContext);
 
     if (!NT_SUCCESS(Status))
     {
         Vcb->Flags |= VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY;
-        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x0000D200;
     }
     else if (Clean)
     {
         Vcb->Flags &= ~VCB_JOURNAL_DIRTY;
-        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x0000D400;
     }
     else
     {
         Vcb->Flags |= VCB_JOURNAL_DIRTY;
-        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x0000D300;
     }
 
 Cleanup:
@@ -1031,8 +1262,7 @@ NtfsMarkJournalFailure(PDEVICE_EXTENSION Vcb,
                        ULONG CallSite)
 {
     Vcb->Flags |= VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY;
-    Vcb->Flags = (Vcb->Flags & ~0x00FFFF00) |
-                 ((CallSite & 0x0000FFFF) << 8);
+    DPRINT1("NTFS: metadata update failed at call site %04lx; volume marked dirty\n", CallSite);
 }
 
 
@@ -1097,7 +1327,6 @@ NtfsMountVolume(PDEVICE_OBJECT DeviceObject,
     else
     {
         Vcb->Flags &= ~(VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY);
-        Vcb->Flags = (Vcb->Flags & ~0x0000FF00) | 0x00000F00;
     }
 
     Lookaside = TRUE;
@@ -1530,6 +1759,10 @@ LockOrUnlockVolume(PDEVICE_EXTENSION DeviceExt,
             DeviceExt->OpenHandleCount != 1 ||
             DeviceExt->VolumeFcb->OpenHandleCount != 1)
         {
+            DPRINT1("Volume lock refused: owner %p, handles %lu, volume handles %lu\n",
+                    DeviceExt->VolumeLockOwner,
+                    DeviceExt->OpenHandleCount,
+                    DeviceExt->VolumeFcb->OpenHandleCount);
             Status = STATUS_ACCESS_DENIED;
             goto Exit;
         }
@@ -1609,8 +1842,7 @@ NtfsUserFsRequest(PDEVICE_OBJECT DeviceObject,
             ExAcquireResourceSharedLite(&DeviceExt->DirResource, TRUE);
             *(PULONG)Irp->AssociatedIrp.SystemBuffer =
                 ((DeviceExt->Flags & (VCB_VOLUME_DIRTY | VCB_JOURNAL_DIRTY)) ?
-                 VOLUME_IS_DIRTY : 0) |
-                ((DeviceExt->Flags & 0x00FFFF00) << 8);
+                 VOLUME_IS_DIRTY : 0);
             ExReleaseResourceLite(&DeviceExt->DirResource);
             Irp->IoStatus.Information = sizeof(ULONG);
             Status = STATUS_SUCCESS;
@@ -1630,7 +1862,6 @@ NtfsUserFsRequest(PDEVICE_OBJECT DeviceObject,
                     /* FSCTL_MARK_VOLUME_DIRTY is an explicit, durable
                        request to keep the volume read-only until reboot. */
                     DeviceExt->Flags |= VCB_VOLUME_DIRTY;
-                    DeviceExt->Flags = (DeviceExt->Flags & ~0x0000FF00) | 0x0000D500;
                 }
                 ExReleaseResourceLite(&DeviceExt->DirResource);
             }

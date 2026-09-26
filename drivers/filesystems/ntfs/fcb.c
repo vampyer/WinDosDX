@@ -200,7 +200,9 @@ NtfsReleaseFCB(PNTFS_VCB Vcb,
     Fcb->RefCount--;
     if (Fcb->RefCount <= 0 && !NtfsFCBIsDirectory(Fcb))
     {
-        RemoveEntryList(&Fcb->FcbListEntry);
+        /* Deleted files were already taken out of the table. */
+        if (!IsListEmpty(&Fcb->FcbListEntry))
+            RemoveEntryList(&Fcb->FcbListEntry);
         KeReleaseSpinLock(&Vcb->FcbListLock, oldIrql);
         CcUninitializeCacheMap(Fcb->FileObject, NULL, NULL);
         NtfsDestroyFCB(Fcb);
@@ -265,6 +267,85 @@ NtfsGrabFCBFromTable(PNTFS_VCB Vcb,
     KeReleaseSpinLock(&Vcb->FcbListLock, oldIrql);
 
     return NULL;
+}
+
+
+/*
+ * Takes a deleted file's FCB out of the path table, so a new file with the
+ * same name gets its own FCB. The entry is left self-linked, which
+ * NtfsReleaseFCB() recognizes as "not in the table".
+ */
+VOID
+NtfsRemoveFCBFromTable(PNTFS_VCB Vcb,
+                       PNTFS_FCB Fcb)
+{
+    KIRQL oldIrql;
+
+    KeAcquireSpinLock(&Vcb->FcbListLock, &oldIrql);
+    if (!IsListEmpty(&Fcb->FcbListEntry))
+    {
+        RemoveEntryList(&Fcb->FcbListEntry);
+        InitializeListHead(&Fcb->FcbListEntry);
+    }
+    KeReleaseSpinLock(&Vcb->FcbListLock, oldIrql);
+}
+
+
+/*
+ * Renames OldPath to NewPath in the path table: the FCB of the renamed file
+ * and, for a directory, the FCBs of everything below it.
+ */
+NTSTATUS
+NtfsRenameFCBPaths(PNTFS_VCB Vcb,
+                   PCWSTR OldPath,
+                   PCWSTR NewPath)
+{
+    KIRQL oldIrql;
+    PLIST_ENTRY current_entry;
+    SIZE_T OldLength = wcslen(OldPath);
+    SIZE_T NewLength = wcslen(NewPath);
+    NTSTATUS Status = STATUS_SUCCESS;
+
+    KeAcquireSpinLock(&Vcb->FcbListLock, &oldIrql);
+
+    /* Check every affected path fits before changing any of them. */
+    for (current_entry = Vcb->FcbListHead.Flink;
+         current_entry != &Vcb->FcbListHead;
+         current_entry = current_entry->Flink)
+    {
+        PNTFS_FCB Fcb = CONTAINING_RECORD(current_entry, NTFS_FCB, FcbListEntry);
+
+        if (_wcsnicmp(Fcb->PathName, OldPath, OldLength) == 0 &&
+            (Fcb->PathName[OldLength] == UNICODE_NULL || Fcb->PathName[OldLength] == L'\\') &&
+            wcslen(Fcb->PathName) - OldLength + NewLength >= MAX_PATH)
+        {
+            Status = STATUS_OBJECT_NAME_INVALID;
+            break;
+        }
+    }
+
+    for (current_entry = Vcb->FcbListHead.Flink;
+         NT_SUCCESS(Status) && current_entry != &Vcb->FcbListHead;
+         current_entry = current_entry->Flink)
+    {
+        PNTFS_FCB Fcb = CONTAINING_RECORD(current_entry, NTFS_FCB, FcbListEntry);
+
+        if (_wcsnicmp(Fcb->PathName, OldPath, OldLength) == 0 &&
+            (Fcb->PathName[OldLength] == UNICODE_NULL || Fcb->PathName[OldLength] == L'\\'))
+        {
+            WCHAR Rest[MAX_PATH];
+
+            wcscpy(Rest, &Fcb->PathName[OldLength]);
+            wcscpy(Fcb->PathName, NewPath);
+            wcscat(Fcb->PathName, Rest);
+            Fcb->ObjectName = wcsrchr(Fcb->PathName, L'\\');
+            if (!Fcb->ObjectName)
+                Fcb->ObjectName = Fcb->PathName;
+        }
+    }
+
+    KeReleaseSpinLock(&Vcb->FcbListLock, oldIrql);
+    return Status;
 }
 
 

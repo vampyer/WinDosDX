@@ -294,7 +294,18 @@ AddFileName(PFILE_RECORD_HEADER FileRecord,
                                    CaseSensitive,
                                    &CurrentMFTIndex);
         if (!NT_SUCCESS(Status))
+        {
+            /* A missing intermediate component means the parent directory
+               does not exist. The last component is the name being created,
+               so not finding it is expected: CurrentMFTIndex is its parent. */
+            if (Remaining.Length != 0)
+            {
+                DPRINT1("Parent directory component %wZ not found (0x%08lx)\n", &Current, Status);
+                return Status;
+            }
+            Status = STATUS_SUCCESS;
             break;
+        }
 
         if (Remaining.Length == 0 )
         {
@@ -325,7 +336,16 @@ AddFileName(PFILE_RECORD_HEADER FileRecord,
 
     DPRINT1("FileNameAttribute->DirectoryFileReferenceNumber: 0x%016I64x\n", FileNameAttribute->DirectoryFileReferenceNumber);
 
-    FileNameAttribute->NameLength = FilenameNoPath.Length / sizeof(WCHAR);
+    /* NameLength is a UCHAR: NTFS names are at most 255 characters. A longer
+       name would be stored with a truncated length while the copy below
+       wrote the whole name past the attribute. */
+    if (FilenameNoPath.Length == 0 || FilenameNoPath.Length > 255 * sizeof(WCHAR))
+    {
+        DPRINT1("Invalid file name length %u\n", FilenameNoPath.Length / sizeof(WCHAR));
+        return STATUS_OBJECT_NAME_INVALID;
+    }
+
+    FileNameAttribute->NameLength = (UCHAR)(FilenameNoPath.Length / sizeof(WCHAR));
     RtlCopyMemory(FileNameAttribute->Name, FilenameNoPath.Buffer, FilenameNoPath.Length);
 
     // For now, we're emulating the way Windows behaves when 8.3 name generation is disabled
@@ -603,6 +623,24 @@ AddRun(PNTFS_VCB Vcb,
        ULONGLONG NextAssignedCluster,
        ULONG RunLength)
 {
+    return AddRunEx(Vcb, AttrContext, AttrOffset, FileRecord,
+                    NextAssignedCluster, RunLength, TRUE);
+}
+
+/*
+ * AddRunEx() is AddRun() with control over publishing: callers that are
+ * assembling several changes to one file record pass UpdateRecord = FALSE and
+ * write the record themselves once it is consistent.
+ */
+NTSTATUS
+AddRunEx(PNTFS_VCB Vcb,
+         PNTFS_ATTR_CONTEXT AttrContext,
+         ULONG AttrOffset,
+         PFILE_RECORD_HEADER FileRecord,
+         ULONGLONG NextAssignedCluster,
+         ULONG RunLength,
+         BOOLEAN UpdateRecord)
+{
     NTSTATUS Status;
     int DataRunMaxLength;
     PNTFS_ATTR_RECORD DestinationAttribute = (PNTFS_ATTR_RECORD)((ULONG_PTR)FileRecord + AttrOffset);
@@ -727,7 +765,9 @@ AddRun(PNTFS_VCB Vcb,
                   RunBufferSize);
 
     // Update the file record
-    Status = UpdateFileRecord(Vcb, AttrContext->FileMFTIndex, FileRecord);
+    Status = STATUS_SUCCESS;
+    if (UpdateRecord)
+        Status = UpdateFileRecord(Vcb, AttrContext->FileMFTIndex, FileRecord);
 
     ExFreePoolWithTag(RunBuffer, TAG_NTFS);
 
@@ -1149,7 +1189,11 @@ FreeClusters(PNTFS_VCB Vcb,
     }
 
     // update $BITMAP file on disk
-    Status = WriteAttribute(Vcb, DataContext, 0, BitmapData, (ULONG)BitmapDataSize, &LengthWritten, FileRecord);
+    /* The $Bitmap attribute lives in its own file record, not in FileRecord;
+       passing FileRecord would make the resident-write path search the wrong
+       record and corrupt the caller's data with bitmap bytes. NULL makes
+       WriteAttribute open the record that owns the attribute. */
+    Status = WriteAttribute(Vcb, DataContext, 0, BitmapData, (ULONG)BitmapDataSize, &LengthWritten, NULL);
     if (!NT_SUCCESS(Status))
     {
         ReleaseAttributeContext(DataContext);

@@ -34,6 +34,72 @@
 /* FUNCTIONS ****************************************************************/
 
 /*
+ * FUNCTION: Drops the handle's volume-wide count. Cached file objects can
+ * outlive their last handle by a long time, so this happens at cleanup
+ * rather than at close; otherwise FSCTL_LOCK_VOLUME sees stale handles.
+ */
+static
+VOID
+NtfsReleaseVcbHandle(PDEVICE_EXTENSION DeviceExt,
+                     PFILE_OBJECT FileObject)
+{
+    PNTFS_CCB Ccb = (PNTFS_CCB)(FileObject->FsContext2);
+
+    if (Ccb == NULL || !Ccb->VcbHandleCounted)
+        return;
+
+    Ccb->VcbHandleCounted = FALSE;
+    ASSERT(DeviceExt->OpenHandleCount > 0);
+    if (DeviceExt->OpenHandleCount > 0)
+    {
+        DeviceExt->OpenHandleCount--;
+    }
+
+    if (DeviceExt->VolumeLockOwner == FileObject)
+    {
+        DeviceExt->VolumeLockOwner = NULL;
+        DeviceExt->Flags &= ~VCB_VOLUME_LOCKED;
+    }
+}
+
+/*
+ * FUNCTION: Deletes a file whose last handle went away with a delete pending.
+ * The caller holds DirResource and the FCB's MainResource.
+ */
+static
+VOID
+NtfsDeletePendingFile(PDEVICE_EXTENSION DeviceExt,
+                      PNTFS_FCB Fcb)
+{
+    NTSTATUS Status;
+
+    /* Cached data must never reach the clusters once they are freed. */
+    if (!CcPurgeCacheSection(&Fcb->SectionObjectPointers, NULL, 0, FALSE))
+    {
+        CcFlushCache(&Fcb->SectionObjectPointers, NULL, 0, NULL);
+        if (!CcPurgeCacheSection(&Fcb->SectionObjectPointers, NULL, 0, FALSE))
+        {
+            DPRINT1("Can't delete %S: its cached data is still in use\n", Fcb->PathName);
+            return;
+        }
+    }
+
+    Status = NtfsDeleteFileRecord(DeviceExt, Fcb->MFTIndex);
+    if (!NT_SUCCESS(Status))
+    {
+        DPRINT1("Deleting %S failed (0x%08lx)\n", Fcb->PathName, Status);
+        return;
+    }
+
+    Fcb->Flags &= ~FCB_DELETE_PENDING;
+    Fcb->Flags |= FCB_IS_DELETED;
+    Fcb->RFCB.FileSize.QuadPart = 0;
+    Fcb->RFCB.ValidDataLength.QuadPart = 0;
+    Fcb->RFCB.AllocationSize.QuadPart = 0;
+    NtfsRemoveFCBFromTable(DeviceExt, Fcb);
+}
+
+/*
  * FUNCTION: Cleans up a file
  */
 NTSTATUS
@@ -42,6 +108,7 @@ NtfsCleanupFile(PDEVICE_EXTENSION DeviceExt,
                 BOOLEAN CanWait)
 {
     PNTFS_FCB Fcb;
+    PNTFS_CCB Ccb;
 
     DPRINT("NtfsCleanupFile(DeviceExt %p, FileObject %p, CanWait %u)\n",
            DeviceExt,
@@ -66,6 +133,7 @@ NtfsCleanupFile(PDEVICE_EXTENSION DeviceExt,
         {
             // Remove share access when handled
         }
+        NtfsReleaseVcbHandle(DeviceExt, FileObject);
         FileObject->Flags |= FO_CLEANUP_COMPLETE;
     }
     else
@@ -81,13 +149,24 @@ NtfsCleanupFile(PDEVICE_EXTENSION DeviceExt,
             Fcb->OpenHandleCount--;
         }
 
+        Ccb = (PNTFS_CCB)(FileObject->FsContext2);
+        if (Ccb && Ccb->DeleteOnClose)
+        {
+            Fcb->Flags |= FCB_DELETE_PENDING;
+        }
+
         CcUninitializeCacheMap(FileObject, &Fcb->RFCB.FileSize, NULL);
 
         if (Fcb->OpenHandleCount != 0)
         {
             // Remove share access when handled
         }
+        else if (Fcb->Flags & FCB_DELETE_PENDING)
+        {
+            NtfsDeletePendingFile(DeviceExt, Fcb);
+        }
 
+        NtfsReleaseVcbHandle(DeviceExt, FileObject);
         FileObject->Flags |= FO_CLEANUP_COMPLETE;
 
         ExReleaseResourceLite(&Fcb->MainResource);

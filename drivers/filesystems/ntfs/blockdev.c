@@ -285,6 +285,8 @@ NtfsWriteDisk(IN PDEVICE_OBJECT DeviceObject,
         // Did we fail the read?
         if (!NT_SUCCESS(Status))
         {
+            DPRINT1("NtfsWriteDisk: RMW read failed 0x%08lx at offset %I64x len %lu\n",
+                    Status, RealWriteOffset, RealLength);
             RtlSecureZeroMemory(TempBuffer, RealLength);
             ExFreePoolWithTag(TempBuffer, TAG_NTFS);
             return Status;
