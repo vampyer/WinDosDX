@@ -2351,6 +2351,13 @@ HKLM,"SYSTEM\CurrentControlSet\Services\fastfat","ImagePath",0x00020000,"system3
 HKLM,"SYSTEM\CurrentControlSet\Services\fastfat","Start",0x00010001,0x00000003
 HKLM,"SYSTEM\CurrentControlSet\Services\fastfat","Type",0x00010001,0x00000002
 
+; exFAT filesystem driver
+HKLM,"SYSTEM\CurrentControlSet\Services\exfat","ErrorControl",0x00010001,0x00000001
+HKLM,"SYSTEM\CurrentControlSet\Services\exfat","Group",0x00000000,"Boot File System"
+HKLM,"SYSTEM\CurrentControlSet\Services\exfat","ImagePath",0x00020000,"system32\drivers\exfat.sys"
+HKLM,"SYSTEM\CurrentControlSet\Services\exfat","Start",0x00010001,0x00000003
+HKLM,"SYSTEM\CurrentControlSet\Services\exfat","Type",0x00010001,0x00000002
+
 ; RAM Disk class driver
 HKLM,"SYSTEM\CurrentControlSet\Services\RamDisk","ErrorControl",0x00010001,0x00000001
 HKLM,"SYSTEM\CurrentControlSet\Services\RamDisk","ImagePath",0x00020000,"system32\drivers\ramdisk.sys"

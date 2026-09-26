@@ -3,6 +3,7 @@ list(APPEND SOURCE
     btrfs.c
     cdfs.c
     ext.c
+    exfat.c
     fat.c
     fatx.c
     ffs.c
