@@ -35,6 +35,20 @@ static const BYTE VerTestCom[] =
     0x53, 0x55, 0x4C, 0x54, 0x2E, 0x54, 0x58, 0x54, 0x00,
 };
 
+/*
+ * FPUTEST.COM: FINIT, FLD1, FADD ST,ST, FISTP, then writes "FPU 2" to
+ * RESULT.TXT; without math coprocessor emulation it writes "FPU 0".
+ */
+static const BYTE FpuTestCom[] =
+{
+    0x9B, 0xDB, 0xE3, 0xD9, 0xE8, 0xD8, 0xC0, 0xDF, 0x1E, 0x32, 0x01, 0x9B,
+    0xA0, 0x32, 0x01, 0x04, 0x30, 0xA2, 0x38, 0x01, 0xB4, 0x3C, 0x31, 0xC9,
+    0xBA, 0x3C, 0x01, 0xCD, 0x21, 0x89, 0xC3, 0xB4, 0x40, 0xB9, 0x07, 0x00,
+    0xBA, 0x34, 0x01, 0xCD, 0x21, 0xB4, 0x3E, 0xCD, 0x21, 0xB8, 0x00, 0x4C,
+    0xCD, 0x21, 0x00, 0x00, 0x46, 0x50, 0x55, 0x20, 0x3F, 0x0D, 0x0A, 0x24,
+    0x52, 0x45, 0x53, 0x55, 0x4C, 0x54, 0x2E, 0x54, 0x58, 0x54, 0x00,
+};
+
 /* EXIT42.COM: mov ax,4C2Ah ; int 21h */
 static const BYTE Exit42Com[] = { 0xB8, 0x2A, 0x4C, 0xCD, 0x21 };
 
@@ -158,7 +172,7 @@ MakeDirectory(PCWSTR Relative, PWSTR Path)
 
 static
 VOID
-CheckVersionResult(PCWSTR Directory, const char *Name)
+CheckResult(PCWSTR Directory, const char *Name, const char *Expected)
 {
     WCHAR Path[MAX_PATH];
     char Text[64];
@@ -168,10 +182,17 @@ CheckVersionResult(PCWSTR Directory, const char *Name)
     Path[MAX_PATH - 1] = L'\0';
     if (!ReadSmallFile(Path, Text, sizeof(Text)))
         Emit("DOSREG FAIL %s no RESULT.TXT", Name);
-    else if (strcmp(Text, ExpectedVersion) != 0)
+    else if (strcmp(Text, Expected) != 0)
         Emit("DOSREG FAIL %s reported \"%s\"", Name, Visible(Text, Shown, sizeof(Shown)));
     else
         Emit("DOSREG PASS %s", Name);
+}
+
+static
+VOID
+CheckVersionResult(PCWSTR Directory, const char *Name)
+{
+    CheckResult(Directory, Name, ExpectedVersion);
 }
 
 /* Emits each line of a text file as "DOSREG LOG <tag>: <line>". */
@@ -393,6 +414,27 @@ TestWindos(void)
             DumpDosView(Directory);
     }
     CheckVersionResult(Directory, "windos-longname");
+
+    /* Math coprocessor emulation: 1 + 1 on the FPU. */
+    _snwprintf(Program, MAX_PATH, L"%s\\FPUTEST.COM", Directory);
+    {
+        WCHAR Result[MAX_PATH];
+        _snwprintf(Result, MAX_PATH, L"%s\\RESULT.TXT", Directory);
+        DeleteFileW(Result);
+    }
+    if (!WriteBytes(Program, FpuTestCom, sizeof(FpuTestCom)))
+    {
+        Emit("DOSREG FAIL windos-fpu write gle=%lu", GetLastError());
+        return;
+    }
+    _snwprintf(CommandLine, ARRAYSIZE(CommandLine), L"\"%s\" \"%s\"", Windos, Program);
+    CommandLine[ARRAYSIZE(CommandLine) - 1] = L'\0';
+    if (!RunAndWait(CommandLine, Directory, 120, TRUE, &ExitCode, "windos-fpu"))
+    {
+        Emit("DOSREG FAIL windos-fpu no result (exit code %lu)", ExitCode);
+        return;
+    }
+    CheckResult(Directory, "windos-fpu", "FPU 2\r\n");
 }
 
 VOID
