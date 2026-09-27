@@ -19,8 +19,11 @@
 #define C_HEAVY_DEBUG 0
 
 /* The type of cpu this host has */
+#ifdef _WIN64
+#define C_TARGETCPU X86_64
+#else
 #define C_TARGETCPU X86
-//#define C_TARGETCPU X86_64
+#endif
 
 /* Define to 1 to use x86 dynamic cpu core */
 #define C_DYNAMIC_X86 0
@@ -31,8 +34,9 @@
 /* Enable memory function inlining in */
 #define C_CORE_INLINE 0
 
-/* Enable the FPU module, still only for beta testing */
-#define C_FPU 0
+/* Enable the FPU module (the portable C++ one: C_FPU_X86 stays 0). DOS
+   games and programs that need a math coprocessor rely on it. */
+#define C_FPU 1
 
 /* Define to 1 to use a x86 assembly fpu core */
 #define C_FPU_X86 0
@@ -73,6 +77,13 @@ typedef  unsigned long		Bit32u;
 typedef    signed long		Bit32s;
 typedef unsigned __int64	Bit64u;
 typedef   signed __int64	Bit64s;
+/* Bitu/Bits hold pointers in places (the VGA and OPL code), so they are
+   pointer-sized, as in DOSBox's own 64-bit builds. */
+#ifdef _WIN64
+typedef unsigned __int64	Bitu;
+typedef   signed __int64	Bits;
+#else
 typedef unsigned int		Bitu;
 typedef signed int			Bits;
+#endif
 

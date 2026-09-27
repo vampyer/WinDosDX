@@ -92,6 +92,9 @@ target_compile_definitions(windos_core PRIVATE
 # the core's own C-style code, not in the ReactOS build.
 target_compile_options(windos_core PRIVATE
     /wd4244 /wd4267 /wd4305 /wd4310 /wd4996 /wd4146 /wd5208)
+# The 64-bit build also warns about unused locals and size_t passed for a
+# printf '*' width, both harmless in the vendored sources.
+target_compile_options(windos_core PRIVATE /wd4189 /wd4477)
 
 # Force-include the compatibility prelude into the DOSBox translation units
 # only, so the vendored sources stay as close to upstream as possible.  The

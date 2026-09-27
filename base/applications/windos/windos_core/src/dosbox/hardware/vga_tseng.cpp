@@ -357,7 +357,8 @@ void FinishSetMode_ET4K(Bitu crtc_base, VGA_ModeExtraData* modeData) {
 		Bitu best = 1;
 		Bits dist = 100000000;
 		for (Bitu i=0; i<16; i++) {
-			Bits cdiff=abs((Bits)(target-et4k.clockFreq[i]));
+			Bits cdiff = (Bits)(target-et4k.clockFreq[i]);
+			if (cdiff < 0) cdiff = -cdiff; /* abs() has no Bits overload on 64-bit */
 			if (cdiff < dist) {
 				best = i;
 				dist = cdiff;
@@ -719,7 +720,8 @@ void FinishSetMode_ET3K(Bitu crtc_base, VGA_ModeExtraData* modeData) {
 		Bitu best = 1;
 		Bits dist = 100000000;
 		for (Bitu i=0; i<8; i++) {
-			Bits cdiff = abs((Bits)(target-et3k.clockFreq[i]));
+			Bits cdiff = (Bits)(target-et3k.clockFreq[i]);
+			if (cdiff < 0) cdiff = -cdiff; /* abs() has no Bits overload on 64-bit */
 			if (cdiff < dist) {
 				best = i;
 				dist = cdiff;
