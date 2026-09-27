@@ -4995,6 +4995,49 @@ MmPurgeSegment(
     return TRUE;
 }
 
+/*
+ * Zero a data section's resident page from Offset to the end of that page.
+ * Used when a file shrinks to an Offset inside a page: the bytes before
+ * Offset may hold data not written yet, so the page cannot be purged, but
+ * the bytes after it are past the end of the file and must not come back
+ * if the file grows again.
+ */
+VOID
+NTAPI
+MmZeroSegmentPageTail(
+    _In_ PSECTION_OBJECT_POINTERS SectionObjectPointer,
+    _In_ LONGLONG Offset)
+{
+    ULONG PageOffset = (ULONG)(Offset & (PAGE_SIZE - 1));
+    PMM_SECTION_SEGMENT Segment;
+    LARGE_INTEGER PageStart;
+    ULONG_PTR Entry;
+
+    if (PageOffset == 0)
+        return;
+
+    Segment = MiGrabDataSection(SectionObjectPointer);
+    if (!Segment)
+        return;
+
+    MmLockSectionSegment(Segment);
+    PageStart.QuadPart = PAGE_ROUND_DOWN_64(Offset);
+    Entry = MmGetPageEntrySectionSegment(Segment, &PageStart);
+    /* A page being read in is not resident yet: its read stops at the end of
+       the file. */
+    if (Entry != 0 && !IS_SWAP_FROM_SSE(Entry))
+    {
+        PEPROCESS Process = PsGetCurrentProcess();
+        KIRQL OldIrql;
+        PUCHAR Page = MiMapPageInHyperSpace(Process, PFN_FROM_SSE(Entry), &OldIrql);
+
+        RtlZeroMemory(Page + PageOffset, PAGE_SIZE - PageOffset);
+        MiUnmapPageInHyperSpace(Process, Page, OldIrql);
+    }
+    MmUnlockSectionSegment(Segment);
+    MmDereferenceSegment(Segment);
+}
+
 BOOLEAN
 NTAPI
 MmIsDataSectionResident(

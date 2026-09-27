@@ -299,6 +299,7 @@ CcSetFileSizes (
     KIRQL OldIrql;
     PROS_SHARED_CACHE_MAP SharedCacheMap;
     LARGE_INTEGER OldSectionSize;
+    LARGE_INTEGER OldFileSize;
 
     CCTRACE(CC_API_DEBUG, "FileObject=%p FileSizes=%p\n",
         FileObject, FileSizes);
@@ -314,18 +315,55 @@ CcSetFileSizes (
 
     /*
      * It is valid to call this function on file objects that weren't
-     * initialized for caching. In this case it's simple no-op.
+     * initialized for caching. The data section can still hold pages of the
+     * file, though (a cache map went away, the section stayed): past the new
+     * end of the file they would reappear if the file grew again, so they
+     * go, as the next branch does for a cached file. Bytes past the end
+     * are never file data, so this is right whether the file shrank or not.
      */
     if (SharedCacheMap == NULL)
+    {
+        LARGE_INTEGER PurgeStart;
+
+        if (FileObject->SectionObjectPointer->DataSectionObject == NULL)
+            return;
+        MmZeroSegmentPageTail(FileObject->SectionObjectPointer,
+                              FileSizes->FileSize.QuadPart);
+        PurgeStart.QuadPart = PAGE_ROUND_UP_64(FileSizes->FileSize.QuadPart);
+        MmPurgeSegment(FileObject->SectionObjectPointer, &PurgeStart, 0);
         return;
+    }
 
     /* Update the relevant fields */
     KeAcquireSpinLock(&SharedCacheMap->CacheMapLock, &OldIrql);
     OldSectionSize = SharedCacheMap->SectionSize;
+    OldFileSize = SharedCacheMap->FileSize;
     SharedCacheMap->SectionSize = FileSizes->AllocationSize;
     SharedCacheMap->FileSize = FileSizes->FileSize;
     SharedCacheMap->ValidDataLength = FileSizes->ValidDataLength;
     KeReleaseSpinLock(&SharedCacheMap->CacheMapLock, OldIrql);
+
+    /*
+     * A file that shrank: the bytes of its last page past the new end are
+     * zeroed, and the pages wholly past it purged, so none of the old data
+     * comes back if the file grows again. The allocation can end well after
+     * the file does, so purging from AllocationSize alone is not enough.
+     */
+    if (FileSizes->FileSize.QuadPart < OldFileSize.QuadPart)
+    {
+        LARGE_INTEGER PurgeStart;
+
+        MmZeroSegmentPageTail(FileObject->SectionObjectPointer,
+                              FileSizes->FileSize.QuadPart);
+        PurgeStart.QuadPart = PAGE_ROUND_UP_64(FileSizes->FileSize.QuadPart);
+        if (PurgeStart.QuadPart < FileSizes->AllocationSize.QuadPart)
+        {
+            CcPurgeCacheSection(FileObject->SectionObjectPointer,
+                                &PurgeStart,
+                                (ULONG)(FileSizes->AllocationSize.QuadPart - PurgeStart.QuadPart),
+                                FALSE);
+        }
+    }
 
     if (FileSizes->AllocationSize.QuadPart < OldSectionSize.QuadPart)
     {

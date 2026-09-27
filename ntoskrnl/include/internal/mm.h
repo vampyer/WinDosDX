@@ -1536,6 +1536,12 @@ MmPurgeSegment(
     _In_opt_ PLARGE_INTEGER Offset,
     _In_ ULONG Length);
 
+VOID
+NTAPI
+MmZeroSegmentPageTail(
+    _In_ PSECTION_OBJECT_POINTERS SectionObjectPointer,
+    _In_ LONGLONG Offset);
+
 BOOLEAN
 NTAPI
 MmCheckDirtySegment(
