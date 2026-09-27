@@ -29,6 +29,7 @@ BOOL ExfatRunReadTests(void);
 BOOL ExfatRunWriteTests(void);
 extern BOOL ExfatIsTemplate;
 VOID DosRunTests(void);
+VOID SoundRunTests(void);
 
 static BYTE Data[DATA_SIZE];
 static HANDLE SerialHandle = INVALID_HANDLE_VALUE;
@@ -944,6 +945,7 @@ wmain(int argc, WCHAR **argv)
         Result = ExfatRunWriteTests() && Result;
         /* Reported on their own DOSREG lines; they do not change Result. */
         DosRunTests();
+        SoundRunTests();
     }
     else if (argc == 1)
     {

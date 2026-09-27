@@ -437,6 +437,79 @@ TestWindos(void)
     CheckResult(Directory, "windos-fpu", "FPU 2\r\n");
 }
 
+/*
+ * Real DOS programs, when the test disk carries them in C:\GAMES (a local
+ * image made with make-fat-image.py --add; they are not part of the tree).
+ * Each runs in windos.exe while the harness saves the screen
+ * (<name>.ppm); the pictures are the result.
+ */
+static
+VOID
+TestGames(void)
+{
+    static const struct { PCWSTR Program; const char *Name; DWORD Seconds; } Games[] =
+    {
+        { L"GAMES\\JAZZ\\JAZZ.EXE",         "game-jazz",     20 },
+        { L"GAMES\\KEEN\\START.EXE",        "game-keen",     15 },
+        { L"GAMES\\MARIOLG\\MARIO.EXE",     "game-mariolg",  45 },
+        { L"GAMES\\MARIOVGA\\MARIO.EXE",    "game-mariovga", 15 },
+        { L"GAMES\\QUAKE\\QUAKE.EXE",       "game-quake",    40 },
+        { L"GAMES\\HOTDIR\\HDIR.COM",       "game-hotdir",   10 },
+    };
+    WCHAR Windos[MAX_PATH], Program[MAX_PATH], Directory[MAX_PATH];
+    WCHAR CommandLine[MAX_PATH * 2];
+    ULONG i;
+
+    ExfatPath(Directory, L"GAMES");
+    if (GetFileAttributesW(Directory) == INVALID_FILE_ATTRIBUTES)
+        return;
+    GetWindowsDirectoryW(Windos, MAX_PATH);
+    wcscat(Windos, L"\\windos.exe");
+
+    for (i = 0; i < ARRAYSIZE(Games); i++)
+    {
+        STARTUPINFOW Startup = { sizeof(Startup) };
+        PROCESS_INFORMATION Process;
+        WCHAR *Slash;
+        DWORD ExitCode = 0;
+
+        ExfatPath(Program, Games[i].Program);
+        if (GetFileAttributesW(Program) == INVALID_FILE_ATTRIBUTES)
+        {
+            Emit("DOSREG INFO %s not on the disk", Games[i].Name);
+            continue;
+        }
+        wcscpy(Directory, Program);
+        Slash = wcsrchr(Directory, L'\\');
+        if (Slash)
+            *Slash = L'\0';
+        _snwprintf(CommandLine, ARRAYSIZE(CommandLine), L"\"%s\" \"%s\"", Windos, Program);
+        CommandLine[ARRAYSIZE(CommandLine) - 1] = L'\0';
+        if (!CreateProcessW(NULL, CommandLine, NULL, NULL, FALSE, 0, NULL, Directory,
+                            &Startup, &Process))
+        {
+            Emit("DOSREG FAIL %s start gle=%lu", Games[i].Name, GetLastError());
+            continue;
+        }
+        /* The harness takes the screenshot a few seconds before the end. */
+        Emit("DOSREG WAIT %s %lu", Games[i].Name, Games[i].Seconds - 3);
+        if (WaitForSingleObject(Process.hProcess, Games[i].Seconds * 1000) == WAIT_OBJECT_0)
+        {
+            GetExitCodeProcess(Process.hProcess, &ExitCode);
+            Emit("DOSREG INFO %s ended by itself, exit code %lu", Games[i].Name, ExitCode);
+        }
+        else
+        {
+            Emit("DOSREG INFO %s still running after %lu s (screenshot %s.ppm)",
+                 Games[i].Name, Games[i].Seconds, Games[i].Name);
+            TerminateProcess(Process.hProcess, 0);
+            WaitForSingleObject(Process.hProcess, 5000);
+        }
+        CloseHandle(Process.hThread);
+        CloseHandle(Process.hProcess);
+    }
+}
+
 VOID
 DosRunTests(void)
 {
@@ -453,5 +526,6 @@ DosRunTests(void)
     }
     TestLaunch();
     TestWindos();
+    TestGames();
     Emit("DOSREG END");
 }

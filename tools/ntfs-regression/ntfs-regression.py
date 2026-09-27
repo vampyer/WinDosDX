@@ -246,6 +246,16 @@ def prepare_bootcd(bootcd: Path, work: Path) -> Path:
     return patched
 
 
+# Extra QEMU arguments for every boot (the sound card, with --audio-wav).
+QEMU_EXTRA: list[str] = []
+
+AUDIO_CARDS = {
+    "ac97": ["-device", "AC97,audiodev=snd0"],
+    "sb16": ["-device", "sb16,audiodev=snd0"],
+    "hda": ["-device", "intel-hda", "-device", "hda-output,audiodev=snd0"],
+}
+
+
 class Boot:
     def __init__(self, qemu: Path, image: Path, bootcd: Path, serial: Path,
                  machine_serial: Path, stderr: Path, port: int,
@@ -280,6 +290,7 @@ class Boot:
         ]
         if not self.allow_reboot:
             command.append("-no-reboot")
+        command += QEMU_EXTRA
         self.process = subprocess.Popen(
             command,
             stdout=subprocess.DEVNULL,
@@ -1082,10 +1093,17 @@ def main() -> int:
     parser.add_argument("--stop-at-reboot", action="store_true",
                         help="with --autorun: run only the write tests and keep the image "
                              "after the guest's clean shutdown (for Windows chkdsk)")
+    parser.add_argument("--audio-wav", type=Path,
+                        help="give the guest a sound card (--audio-card) and record "
+                             "everything it plays to this WAV file")
+    parser.add_argument("--audio-card", choices=sorted(AUDIO_CARDS), default="ac97")
     parser.add_argument("--template", type=Path,
                         help="start from this Windows-formatted disk image (.vhd or raw) "
                              "instead of the minimal harness-built volume")
     args = parser.parse_args()
+    if args.audio_wav:
+        QEMU_EXTRA.extend(["-audiodev", f"wav,id=snd0,path={args.audio_wav.resolve()}"])
+        QEMU_EXTRA.extend(AUDIO_CARDS[args.audio_card])
 
     assert_allocation_publication_order()
     assert_journal_readback_order()
