@@ -7,6 +7,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <stdio.h>
 
 #include "windos_core/include/windos_platform.h"
 #include "windos_core/include/windos_dos.h"
@@ -59,6 +60,100 @@ FirstToken(LPCWSTR CmdLine, WCHAR *Token, DWORD Size)
     while (*CmdLine == L' ' || *CmdLine == L'\t')
         CmdLine++;
     return CmdLine;
+}
+
+/* Whether files can be created in Folder (not a CD or a read-only share). */
+static BOOL
+IsWritableFolder(LPCWSTR Folder)
+{
+    WCHAR Probe[MAX_PATH];
+    HANDLE File;
+
+    if (_snwprintf(Probe, ARRAYSIZE(Probe), L"%s%s~wdwrite.tmp", Folder,
+                   Folder[wcslen(Folder) - 1] == L'\\' ? L"" : L"\\") < 0)
+        return FALSE;
+    File = CreateFileW(Probe, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+                       FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+    if (File != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(File);
+        return TRUE;
+    }
+    return GetLastError() == ERROR_FILE_EXISTS;
+}
+
+/*
+ * Copies the folder tree From to To. Files already in To are kept, so what a
+ * program saved earlier in the session survives a second start. Copies of
+ * files from a CD come read-only; that is cleared, so the program can
+ * update its own files.
+ */
+static BOOL
+CopyTree(LPCWSTR From, LPCWSTR To)
+{
+    WCHAR Pattern[MAX_PATH], Source[MAX_PATH], Target[MAX_PATH];
+    WIN32_FIND_DATAW Data;
+    HANDLE Find;
+    BOOL Ok = TRUE;
+
+    if (!CreateDirectoryW(To, NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+        return FALSE;
+    _snwprintf(Pattern, ARRAYSIZE(Pattern), L"%s\\*", From);
+    Pattern[ARRAYSIZE(Pattern) - 1] = L'\0';
+    Find = FindFirstFileW(Pattern, &Data);
+    if (Find == INVALID_HANDLE_VALUE)
+        return FALSE;
+    do
+    {
+        if (!wcscmp(Data.cFileName, L".") || !wcscmp(Data.cFileName, L".."))
+            continue;
+        _snwprintf(Source, ARRAYSIZE(Source), L"%s\\%s", From, Data.cFileName);
+        _snwprintf(Target, ARRAYSIZE(Target), L"%s\\%s", To, Data.cFileName);
+        Source[ARRAYSIZE(Source) - 1] = Target[ARRAYSIZE(Target) - 1] = L'\0';
+        if (Data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            Ok = CopyTree(Source, Target) && Ok;
+        }
+        else if (CopyFileW(Source, Target, TRUE))
+        {
+            SetFileAttributesW(Target, Data.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY);
+        }
+        else if (GetLastError() != ERROR_FILE_EXISTS)
+        {
+            Ok = FALSE;
+        }
+    } while (FindNextFileW(Find, &Data));
+    FindClose(Find);
+    return Ok;
+}
+
+/*
+ * A program on a CD (the live CD's DOSGames folder, say) cannot write its
+ * settings or saved games there. Run a copy in %TEMP%\WinDosDX\<folder>
+ * instead; it lasts for the session. Folder is replaced by the copy's path.
+ */
+static VOID
+UseWritableCopy(LPWSTR Folder, DWORD Size)
+{
+    WCHAR Copy[MAX_PATH];
+    LPCWSTR Leaf;
+    DWORD n;
+
+    if (IsWritableFolder(Folder))
+        return;
+    n = GetTempPathW(ARRAYSIZE(Copy), Copy);
+    if (n == 0 || n >= ARRAYSIZE(Copy) - 40)
+        return;
+    wcscat(Copy, L"WinDosDX");
+    CreateDirectoryW(Copy, NULL);
+    Leaf = wcsrchr(Folder, L'\\');
+    Leaf = (Leaf && Leaf[1]) ? Leaf + 1 : L"program";
+    if (wcslen(Copy) + 1 + wcslen(Leaf) >= ARRAYSIZE(Copy))
+        return;
+    wcscat(Copy, L"\\");
+    wcscat(Copy, Leaf);
+    if (CopyTree(Folder, Copy) && wcslen(Copy) < Size)
+        wcscpy(Folder, Copy);
 }
 
 int
@@ -118,6 +213,7 @@ wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             FilePart[0] = L'\0';
         else
             FilePart[-1] = L'\0';
+        UseWritableCopy(FullPath, ARRAYSIZE(FullPath));
         ToHost(FullPath, ProgramDrive, sizeof(ProgramDrive));
         WD_DosSetProgram(ProgramDrive, Name);
 

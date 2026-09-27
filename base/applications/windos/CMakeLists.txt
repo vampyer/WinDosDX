@@ -30,3 +30,20 @@ elseif(WINDOSDX_BUILD_DOS_CORE)
     # Preserve an explicit target for developers who opt in to the core.
     add_custom_target(windos DEPENDS windos_core)
 endif()
+
+# Optional: a local folder of DOS programs to put on the live CD as
+# \DOSGames, for trying them without installing. It is never part of the
+# source tree (the programs are the user's own); unset, nothing is added.
+set(WINDOSDX_DOS_FILES_DIR "" CACHE PATH
+    "Local folder of DOS programs to copy to the live CD as DOSGames")
+if(WINDOSDX_DOS_FILES_DIR)
+    file(GLOB_RECURSE _dos_files LIST_DIRECTORIES false
+         RELATIVE "${WINDOSDX_DOS_FILES_DIR}" "${WINDOSDX_DOS_FILES_DIR}/*")
+    foreach(_file IN LISTS _dos_files)
+        get_filename_component(_dir "${_file}" DIRECTORY)
+        add_cd_file(FILE "${WINDOSDX_DOS_FILES_DIR}/${_file}"
+                    DESTINATION "DOSGames/${_dir}" FOR livecd)
+    endforeach()
+    list(LENGTH _dos_files _count)
+    message(STATUS "WinDosDX: ${_count} DOS files from ${WINDOSDX_DOS_FILES_DIR} go on the live CD")
+endif()
