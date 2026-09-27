@@ -569,7 +569,18 @@ TestAttributesAndTimesWrite(void)
         Ok = FALSE;
     }
 
-    /* Read them back from a fresh open: exFAT keeps 10 ms for these two. */
+    /* Read them back from a fresh open: exFAT keeps 10 ms for these two.
+       FAT keeps the write time in 2-second steps, rounded up, as Windows
+       does: 12:34:56.78 comes back as 12:34:58. */
+    if (ExfatIsFat)
+    {
+        ULARGE_INTEGER Time;
+        Time.LowPart = SetModified.dwLowDateTime;
+        Time.HighPart = SetModified.dwHighDateTime;
+        Time.QuadPart = (Time.QuadPart + 20000000 - 1) / 20000000 * 20000000;
+        SetModified.dwLowDateTime = Time.LowPart;
+        SetModified.dwHighDateTime = Time.HighPart;
+    }
     File = CreateFileW(Path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (Ok && (File == INVALID_HANDLE_VALUE ||
                !GetFileTime(File, &GotCreation, &GotAccess, &GotModified) ||

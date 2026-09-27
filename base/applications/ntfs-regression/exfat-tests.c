@@ -70,6 +70,7 @@ CheckPattern(const BYTE *Buffer, DWORD Length, ULONGLONG Offset, BYTE Seed)
 }
 
 BOOL ExfatIsTemplate = FALSE;
+BOOL ExfatIsFat = FALSE;
 
 BOOL
 ExfatFindVolume(void)
@@ -82,12 +83,17 @@ ExfatFindVolume(void)
     for (Letter = L'C'; Letter <= L'Z'; Letter++)
     {
         Root[0] = Letter;
+        /* exFAT, or a FAT test disk (make-fat-image.py labels it FATREG):
+           the write tests only use Win32 file calls, so they cover FAT too. */
         if (GetVolumeInformationW(Root, Label, ARRAYSIZE(Label), NULL, NULL, NULL,
                                   FileSystem, ARRAYSIZE(FileSystem)) &&
-            _wcsicmp(FileSystem, L"exFAT") == 0)
+            (_wcsicmp(FileSystem, L"exFAT") == 0 ||
+             ((_wcsicmp(FileSystem, L"FAT") == 0 || _wcsicmp(FileSystem, L"FAT32") == 0) &&
+              _wcsicmp(Label, L"FATREG") == 0)))
         {
             ExfatRoot[0] = Letter;
             ExfatIsTemplate = _wcsicmp(Label, L"EXFATREG") == 0;
+            ExfatIsFat = _wcsicmp(FileSystem, L"exFAT") != 0;
             Emit("EXFATREG INFO volume %c: fs=%S label=%S", (char)Letter, FileSystem, Label);
             return TRUE;
         }

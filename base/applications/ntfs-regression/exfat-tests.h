@@ -12,6 +12,8 @@ extern WCHAR ExfatRoot[4];
    read suite and the append test expect. Any other exFAT volume only runs
    the tests that create their own files. */
 extern BOOL ExfatIsTemplate;
+/* TRUE on a FAT test disk (label FATREG) instead of exFAT. */
+extern BOOL ExfatIsFat;
 
 VOID Emit(const char *Format, ...);
 VOID ExfatPath(PWSTR Buffer, PCWSTR Relative);
