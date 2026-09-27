@@ -504,6 +504,23 @@ CompletionRoutine(
   if (_InvokeOnCancel) _IrpSp->Control |= SL_INVOKE_ON_CANCEL; \
 }
 
+/* The physical device object an adapter's functional device sits on. */
+NTSTATUS
+NTAPI
+PcGetPhysicalDeviceObject(
+    IN  PDEVICE_OBJECT DeviceObject,
+    OUT PDEVICE_OBJECT *PhysicalDeviceObject)
+{
+    PPCLASS_DEVICE_EXTENSION DeviceExt;
+
+    if (!DeviceObject || !PhysicalDeviceObject)
+        return STATUS_INVALID_PARAMETER;
+
+    DeviceExt = (PPCLASS_DEVICE_EXTENSION)DeviceObject->DeviceExtension;
+    *PhysicalDeviceObject = DeviceExt->PhysicalDeviceObject;
+    return *PhysicalDeviceObject ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+}
+
 NTSTATUS
 NTAPI
 PcForwardIrpSynchronous(

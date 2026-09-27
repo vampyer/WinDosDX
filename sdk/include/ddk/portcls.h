@@ -2411,6 +2411,11 @@ PcForwardIrpSynchronous(
   IN PDEVICE_OBJECT DeviceObject,
   IN PIRP Irp);
 
+PORTCLASSAPI NTSTATUS NTAPI
+PcGetPhysicalDeviceObject(
+  IN PDEVICE_OBJECT DeviceObject,
+  OUT PDEVICE_OBJECT *PhysicalDeviceObject);
+
 /* ===============================================================
     Power Management
 */

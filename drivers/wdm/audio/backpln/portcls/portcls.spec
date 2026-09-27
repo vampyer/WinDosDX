@@ -28,6 +28,7 @@
 @ stdcall PcCompleteIrp(ptr ptr long)
 @ stdcall PcDispatchIrp(ptr ptr)
 @ stdcall PcForwardIrpSynchronous(ptr ptr)
+@ stdcall PcGetPhysicalDeviceObject(ptr ptr)
 
 ; Misc
 @ stdcall PcGetTimeInterval(long long)
