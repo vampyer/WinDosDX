@@ -90,6 +90,11 @@ if(MSVC)
     #        narrows a token count to 16 bits.
     target_compile_options(vkd3d PRIVATE
         /wd4715 /wd4090 /wd4098 /wd4146 /wd4200 /wd4245 /wd4267 /wd4305 /wd4309 /wd4319)
+    # C4005: the flex-generated scanners define INT16_MIN and friends
+    #        themselves before <stdint.h> defines them again.
+    set_source_files_properties(${FLEX_vkd3d_hlsl_scanner_OUTPUTS}
+                                ${FLEX_vkd3d_preproc_scanner_OUTPUTS}
+                                PROPERTIES COMPILE_FLAGS /wd4005)
 else()
     target_compile_options(vkd3d PRIVATE -Wno-unused-but-set-variable)
 endif()

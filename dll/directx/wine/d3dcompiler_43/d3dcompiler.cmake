@@ -21,6 +21,13 @@ function(add_d3dcompiler_target VERSION)
                  DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/asmshader.tab.h)
     ADD_FLEX_BISON_DEPENDENCY(${_target}_asmshader_scanner ${_target}_asmshader_parser)
 
+    # The flex-generated scanner defines INT16_MIN and friends itself before
+    # <stdint.h> defines them again (C4005), which /WX turns into an error.
+    if(MSVC)
+        set_source_files_properties(${FLEX_${_target}_asmshader_scanner_OUTPUTS}
+                                    PROPERTIES COMPILE_FLAGS /wd4005)
+    endif()
+
     add_library(${_target} MODULE
         ${_source}
         ${FLEX_${_target}_asmshader_scanner_OUTPUTS}
