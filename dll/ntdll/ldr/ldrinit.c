@@ -1588,6 +1588,46 @@ LdrpDisableProcessCompatGuidDetection(VOID)
 }
 
 
+/*
+ * A program whose manifest declares support for a newer Windows sees that
+ * version, as on Windows (which reports 6.2 to programs that do not declare
+ * 8.1 or 10). GetVersion(Ex), RtlGetVersion and VerifyVersionInfo all read
+ * these PEB fields. Programs without such a manifest keep the real version.
+ */
+static
+VOID
+LdrpApplyCompatVersion(DWORD Version)
+{
+    static const struct
+    {
+        DWORD Version;
+        ULONG Major, Minor;
+        USHORT Build, ServicePack;
+        PCWSTR CsdVersion;
+    } Versions[] = {
+        { _WIN32_WINNT_WIN10,   10, 0, 19045, 0, L"" },
+        { _WIN32_WINNT_WINBLUE,  6, 3,  9600, 0, L"" },
+        { _WIN32_WINNT_WIN8,     6, 2,  9200, 0, L"" },
+        { _WIN32_WINNT_WIN7,     6, 1,  7601, 1, L"Service Pack 1" },
+        { _WIN32_WINNT_VISTA,    6, 0,  6002, 2, L"Service Pack 2" },
+    };
+    PPEB Peb = NtCurrentPeb();
+    ULONG i;
+
+    for (i = 0; i < RTL_NUMBER_OF(Versions); i++)
+    {
+        if (Versions[i].Version == Version)
+        {
+            Peb->OSMajorVersion = Versions[i].Major;
+            Peb->OSMinorVersion = Versions[i].Minor;
+            Peb->OSBuildNumber = Versions[i].Build;
+            Peb->OSCSDVersion = (USHORT)(Versions[i].ServicePack << 8);
+            RtlInitUnicodeString(&Peb->CSDVersion, Versions[i].CsdVersion);
+            return;
+        }
+    }
+}
+
 VOID
 NTAPI
 LdrpInitializeProcessCompat(PVOID pProcessActctx, PVOID* pOldShimData)
@@ -1656,13 +1696,11 @@ LdrpInitializeProcessCompat(PVOID pProcessActctx, PVOID* pOldShimData)
     if (ContextCompatInfo->ElementCount == 0)
         return;
 
-    /* Search for known GUIDs, starting from oldest to newest.
-       Note that on Windows it is somewhat reversed, starting from the latest known
-       version, going down. But we are not Windows, trying to allow a lower version,
-       we are ReactOS trying to fake a higher version. So we interpret what Windows
-       does as "try the closest version to the actual version", so we start with the
-       lowest version, which is closest to Windows 2003, which we mostly are. */
-    for (cur = RTL_NUMBER_OF(KnownCompatGuids) - 1; cur != -1; --cur)
+    /* Search for known GUIDs from the newest version down, as Windows does:
+       WinDosDX aims to run programs built for Windows 10, so a program that
+       declares Windows 10 support gets Windows 10 behaviour (version and
+       apisets) rather than that of the oldest version it also lists. */
+    for (cur = 0; cur < RTL_NUMBER_OF(KnownCompatGuids); ++cur)
     {
         for (n = 0; n < ContextCompatInfo->ElementCount; ++n)
         {
@@ -1700,8 +1738,9 @@ LdrpInitializeProcessCompat(PVOID pProcessActctx, PVOID* pOldShimData)
                     *pOldShimData = pShimData;
                 }
 
-                /* Store the lowest found version, and bail out. */
+                /* Store the newest version found, report it, and bail out. */
                 pShimData->dwRosProcessCompatVersion = KnownCompatGuids[cur].Version;
+                LdrpApplyCompatVersion(KnownCompatGuids[cur].Version);
                 DPRINT1("LdrpInitializeProcessCompat: Found guid for winver 0x%x in manifest from %wZ\n",
                         KnownCompatGuids[cur].Version,
                         &(NtCurrentPeb()->ProcessParameters->ImagePathName));

@@ -34,6 +34,16 @@ int __cdecl __acrt_initialize_sse2(void)
     return 0;
 }
 
+// C++17 std::uncaught_exceptions(): the count of exceptions in flight. The
+// runtime tracks whether one is, which is the count for code that does not
+// throw from destructors during unwinding.
+extern int __cdecl __uncaught_exception(void);
+int __cdecl __uncaught_exceptions(void)
+{
+    /* Low byte only: the flag may come back as a C++ bool. */
+    return (__uncaught_exception() & 0xFF) ? 1 : 0;
+}
+
 // The following stubs cannot be implemented as stubs by spec2def, because they are intrinsics
 
 #ifdef _MSC_VER

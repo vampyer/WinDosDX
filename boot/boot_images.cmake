@@ -191,6 +191,24 @@ add_custom_target(livecd
     DEPENDS native-mkisofs
     VERBATIM)
 
+## WinDosDX: the live files on a writable FAT volume. FreeLdr loads it as the
+## RAM disk (RDPATH=liveimg.img in bootcd.ini), so the live system can save
+## settings and files, as Windows PE can; the read-only CD image remains a
+## boot menu entry.
+option(WINDOSDX_WRITABLE_LIVE "Build the writable live RAM disk image (needs Python 3)" ON)
+if(WINDOSDX_WRITABLE_LIVE)
+    # find_program, not find_package(Python3): the build's own add_executable
+    # does not accept the imported targets FindPython3 creates.
+    find_program(WINDOSDX_PYTHON NAMES python py python3 REQUIRED)
+    add_custom_target(liveimgfat
+        COMMAND ${WINDOSDX_PYTHON} ${REACTOS_SOURCE_DIR}/tools/ntfs-regression/make-fat-image.py
+            ${REACTOS_BINARY_DIR}/liveimg.img --force --superfloppy --label WINDOSDX
+            --list ${CMAKE_CURRENT_BINARY_DIR}/livecd.$<CONFIG>.lst --free-mb 128
+        VERBATIM)
+    add_dependencies(liveimgfat livecd)
+    add_cd_file(TARGET liveimgfat FILE ${REACTOS_BINARY_DIR}/liveimg.img DESTINATION root NO_CAB FOR bootcd)
+endif()
+
 
 if(DEFINED EFI_PLATFORM_ID)
     # For devices such as USB drives, add also the EFI boot image into efi/boot.

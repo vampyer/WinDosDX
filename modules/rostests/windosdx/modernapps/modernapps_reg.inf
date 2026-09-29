@@ -1,0 +1,6 @@
+; Test-only modern-application autorun fragment.
+; Included only when WINDOSDX_MODERNAPP_AUTORUN=ON (implies
+; WINDOSDX_MODERNAPP_TESTS=ON). Launches the netinfo payload from the
+; Explorer Run key at logon so the disposable guest needs no UI automation.
+; Results go to COM2, which QEMU captures on the host.
+HKCU,"SOFTWARE\Microsoft\Windows\CurrentVersion\Run","wdx-netinfo",0x00020002,"%SystemRoot%\system32\cmd.exe /c D:\reactos\tests\modern\run_netinfo.cmd"

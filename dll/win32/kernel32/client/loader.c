@@ -11,6 +11,10 @@
 #define NDEBUG
 #include <debug.h>
 
+#ifndef LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
+#define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR 0x00000100
+#endif
+
 /* FUNCTIONS ****************************************************************/
 
 NTSTATUS
@@ -335,10 +339,15 @@ LoadLibraryExW(LPCWSTR lpLibFileName,
         FreeString = TRUE;
     }
 
-    /* Compute the load path */
-    SearchPath = BaseComputeProcessDllPath((dwFlags & LOAD_WITH_ALTERED_SEARCH_PATH) ?
+    /* Compute the load path. LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR searches the
+     * DLL's own folder first, like LOAD_WITH_ALTERED_SEARCH_PATH. */
+    SearchPath = BaseComputeProcessDllPath((dwFlags & (LOAD_WITH_ALTERED_SEARCH_PATH |
+                                                       LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)) ?
                                            DllName.Buffer : NULL,
                                            NULL);
+    /* Folders added with AddDllDirectory, when this load asks for them */
+    if (SearchPath)
+        SearchPath = BasepAppendUserDllDirectories(SearchPath, dwFlags);
     if (!SearchPath)
     {
         /* Getting DLL path failed, so set last error, free mem and return */

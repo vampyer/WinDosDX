@@ -114,7 +114,8 @@ endif()
 set(USE_DUMMY_PSEH FALSE CACHE BOOL
 "Whether to disable PSEH support.")
 
-# WinDosDX: export the Vista/Windows 7 API surface (already implemented but
-# gated in the .spec files) so programs built for Windows 7 load.
-set(DLL_EXPORT_VERSION "0x601" CACHE STRING
+# WinDosDX: export the API surface up to Windows 10 (implemented but gated in
+# the .spec files) so programs built for Windows 7 to 10 load. At 0xA00 the
+# d3d12, d3d12core and dxcore modules are built too.
+set(DLL_EXPORT_VERSION "0xA00" CACHE STRING
 "The NT version the user mode DLLs target.")

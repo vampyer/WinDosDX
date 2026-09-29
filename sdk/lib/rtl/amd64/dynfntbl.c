@@ -270,6 +270,70 @@ RtlDeleteFunctionTable(
     return removed;
 }
 
+/*
+ * Growable tables (Windows 8): a JIT registers a fixed code range up front
+ * and adds sorted entries to the table as it generates code.
+ */
+NTSTATUS
+NTAPI
+RtlAddGrowableFunctionTable(
+    _Out_ PVOID *DynamicTable,
+    _In_reads_(MaximumEntryCount) PRUNTIME_FUNCTION FunctionTable,
+    _In_ ULONG EntryCount,
+    _In_ ULONG MaximumEntryCount,
+    _In_ ULONG_PTR RangeBase,
+    _In_ ULONG_PTR RangeEnd)
+{
+    PDYNAMIC_FUNCTION_TABLE dynamicTable;
+
+    if (!DynamicTable || EntryCount > MaximumEntryCount || RangeEnd < RangeBase)
+        return STATUS_INVALID_PARAMETER;
+
+    dynamicTable = RtlpAllocateMemory(sizeof(*dynamicTable), TAG_RTLDYNFNTBL);
+    if (dynamicTable == NULL)
+        return STATUS_NO_MEMORY;
+
+    dynamicTable->FunctionTable = FunctionTable;
+    dynamicTable->EntryCount = EntryCount;
+    dynamicTable->BaseAddress = RangeBase;
+    dynamicTable->Callback = NULL;
+    dynamicTable->Context = NULL;
+    dynamicTable->OutOfProcessCallbackDll = NULL;
+    dynamicTable->Type = RF_SORTED;
+    dynamicTable->MinimumAddress = RangeBase;
+    dynamicTable->MaximumAddress = RangeEnd;
+
+    RtlpInsertDynamicFunctionTable(dynamicTable);
+    *DynamicTable = dynamicTable;
+    return STATUS_SUCCESS;
+}
+
+VOID
+NTAPI
+RtlGrowFunctionTable(
+    _Inout_ PVOID DynamicTable,
+    _In_ ULONG NewEntryCount)
+{
+    PDYNAMIC_FUNCTION_TABLE dynamicTable = DynamicTable;
+
+    AcquireDynamicFunctionTableLockExclusive();
+    dynamicTable->EntryCount = NewEntryCount;
+    ReleaseDynamicFunctionTableLockExclusive();
+}
+
+VOID
+NTAPI
+RtlDeleteGrowableFunctionTable(
+    _In_ PVOID DynamicTable)
+{
+    PDYNAMIC_FUNCTION_TABLE dynamicTable = DynamicTable;
+
+    AcquireDynamicFunctionTableLockExclusive();
+    RemoveEntryList(&dynamicTable->ListEntry);
+    ReleaseDynamicFunctionTableLockExclusive();
+    RtlpFreeMemory(dynamicTable, TAG_RTLDYNFNTBL);
+}
+
 PRUNTIME_FUNCTION
 NTAPI
 RtlpLookupDynamicFunctionEntry(

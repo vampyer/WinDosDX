@@ -23,7 +23,8 @@ list(APPEND SOURCE
     sync.c
     ThreadDescription.c
     threadpool.c
-    vista.c)
+    vista.c
+    win10.c)
 
 # These functions are not exported from kernel32_vista (yet).
 # They are only used when NT6 exports in kernel32 are enabled.

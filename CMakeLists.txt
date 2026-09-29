@@ -365,6 +365,11 @@ Enable this if the module uses typeid or dynamic_cast. You will probably need to
     # payload as the interactive shell. It is OFF for normal boot media.
     option(NTFS_REGRESSION_AUTORUN "Enable the disposable NTFS regression autorun image" OFF)
 
+    # Test-only switch that auto-runs the modern-application payload at logon
+    # (results over COM2). For disposable guests only; implies the modern-app
+    # tests being staged. OFF for normal boot media.
+    option(WDX_MODERNAPP_AUTORUN "Auto-run the modern-application tests at guest logon (disposable guests only)" OFF)
+
     #begin with boot so reactos_cab target is defined before all other modules
     add_subdirectory(boot)
     add_subdirectory(base)

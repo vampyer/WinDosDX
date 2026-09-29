@@ -18,3 +18,5 @@ add_pch(serenum serenum.h "${PCH_SKIP_SOURCE}")
 set_module_type(serenum kernelmodedriver)
 add_importlibs(serenum ntoskrnl hal)
 add_cd_file(TARGET serenum DESTINATION reactos/system32/drivers FOR all)
+
+add_registry_inf(serenum_reg.inf)

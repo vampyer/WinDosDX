@@ -60,7 +60,13 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void *reserved)
     return TRUE;
 }
 
-#ifndef __REACTOS__
+#if !defined(__REACTOS__) || defined(WINDOSDX_DPI_API)
+#ifdef WINDOSDX_DPI_API
+/* user32 exports these from 0xA00 on; winuser.h does not declare them. */
+BOOL WINAPI GetProcessDpiAwarenessInternal(HANDLE process, DPI_AWARENESS *awareness);
+BOOL WINAPI SetProcessDpiAwarenessInternal(DPI_AWARENESS awareness);
+BOOL WINAPI GetDpiForMonitorInternal(HMONITOR monitor, UINT type, UINT *x, UINT *y);
+#endif
 HRESULT WINAPI GetProcessDpiAwareness(HANDLE process, PROCESS_DPI_AWARENESS *value)
 {
     if (GetProcessDpiAwarenessInternal( process, (DPI_AWARENESS *)value )) return S_OK;
@@ -78,7 +84,7 @@ HRESULT WINAPI GetDpiForMonitor(HMONITOR monitor, MONITOR_DPI_TYPE type, UINT *x
     if (GetDpiForMonitorInternal( monitor, type, x, y )) return S_OK;
     return HRESULT_FROM_WIN32( GetLastError() );
 }
-#endif /* __REACTOS__ */
+#endif /* !__REACTOS__ || WINDOSDX_DPI_API */
 
 HRESULT WINAPI GetScaleFactorForMonitor(HMONITOR monitor, DEVICE_SCALE_FACTOR *scale)
 {

@@ -30,6 +30,8 @@ BOOL ExfatRunWriteTests(void);
 extern BOOL ExfatIsTemplate;
 VOID DosRunTests(void);
 VOID SoundRunTests(void);
+BOOL CompatListPresent(void);
+VOID CompatRunTests(void);
 
 static BYTE Data[DATA_SIZE];
 static HANDLE SerialHandle = INVALID_HANDLE_VALUE;
@@ -929,8 +931,16 @@ wmain(int argc, WCHAR **argv)
 
     Emit("NTFSREG BEGIN");
 
+    /* A disk with C:\COMPAT\LIST.TXT runs only the program checks
+     * (compat-tests.c); they are reported on COMPATREG lines. */
+    if (argc == 1 && CompatListPresent())
+    {
+        CompatRunTests();
+        /* The list lives on the FAT test disk: end like the FAT runs. */
+        IsExfat = TRUE;
+    }
     /* An exFAT test disk runs the exFAT suite instead (exfat-tests.c). */
-    if (argc == 1 && ExfatFindVolume())
+    else if (argc == 1 && ExfatFindVolume())
     {
         IsExfat = TRUE;
         if (ExfatIsTemplate)

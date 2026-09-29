@@ -3,6 +3,7 @@
 @ stdcall -version=0x600+ AddClipboardFormatListener(ptr)
 @ stdcall AdjustWindowRect(ptr long long)
 @ stdcall AdjustWindowRectEx(ptr long long long)
+@ stdcall -version=0xA00+ AdjustWindowRectExForDpi(ptr long long long long)
 @ stdcall AlignRects(ptr long long long)
 @ stdcall AllowForegroundActivation()
 @ stdcall AllowSetForegroundWindow(long)
@@ -10,6 +11,7 @@
 @ stdcall AnyPopup()
 @ stdcall AppendMenuA(long long long ptr)
 @ stdcall AppendMenuW(long long long ptr)
+@ stdcall -version=0xA00+ AreDpiAwarenessContextsEqual(ptr ptr)
 @ stdcall ArrangeIconicWindows(long)
 @ stdcall AttachThreadInput(long long long) NtUserAttachThreadInput
 @ stdcall BeginDeferWindowPos(long)
@@ -204,6 +206,7 @@
 @ stdcall EditWndProc(long long long long) EditWndProcA
 @ stdcall EmptyClipboard() NtUserEmptyClipboard
 @ stdcall EnableMenuItem(long long long)
+@ stdcall -version=0xA00+ EnableNonClientDpiScaling(ptr)
 @ stdcall EnableScrollBar(long long long)
 @ stdcall EnableWindow(long long)
 @ stdcall EndDeferWindowPos(long)
@@ -253,6 +256,7 @@
 @ stdcall GetAppCompatFlags(long)
 @ stdcall GetAppCompatFlags2(long)
 @ stdcall GetAsyncKeyState(long)
+@ stdcall -version=0xA00+ GetAwarenessFromDpiAwarenessContext(ptr)
 @ stdcall GetCapture()
 @ stdcall GetCaretBlinkTime() NtUserGetCaretBlinkTime
 @ stdcall GetCaretPos(ptr) NtUserGetCaretPos
@@ -293,9 +297,11 @@
 @ stdcall GetDlgItemTextA(long long ptr long)
 @ stdcall GetDlgItemTextW(long long ptr long)
 @ stdcall GetDoubleClickTime() NtUserGetDoubleClickTime
+@ stdcall -version=0xA00+ GetDpiAwarenessContextForProcess(ptr) WdxGetDpiAwarenessContextForProcess
 @ stdcall -version=0x601+ GetDpiForMonitorInternal(ptr long ptr ptr)
 @ stdcall -version=0xA00+ GetDpiForSystem()
 @ stdcall -version=0xA00+ GetDpiForWindow(ptr)
+@ stdcall -version=0xA00+ GetDpiFromDpiAwarenessContext(ptr)
 @ stdcall GetFocus()
 @ stdcall GetForegroundWindow() NtUserGetForegroundWindow
 @ stdcall GetGUIThreadInfo(long ptr) NtUserGetGUIThreadInfo
@@ -376,12 +382,15 @@
 @ stdcall GetSubMenu(long long)
 @ stdcall GetSysColor(long)
 @ stdcall GetSysColorBrush(long)
+@ stdcall -version=0xA00+ GetSystemDpiForProcess(ptr)
 @ stdcall GetSystemMenu(long long) ; NtUserGetSystemMenu
 @ stdcall GetSystemMetrics(long)
+@ stdcall -version=0xA00+ GetSystemMetricsForDpi(long long)
 @ stdcall GetTabbedTextExtentA(long str long long ptr)
 @ stdcall GetTabbedTextExtentW(long wstr long long ptr)
 @ stdcall GetTaskmanWindow ()
 @ stdcall GetThreadDesktop(long)
+@ stdcall -version=0xA00+ GetThreadDpiAwarenessContext()
 @ stdcall GetTitleBarInfo(long ptr) NtUserGetTitleBarInfo
 @ stdcall GetTopWindow(long)
 @ stdcall -version=0x601+ GetTouchInputInfo(long long ptr long)
@@ -390,6 +399,7 @@
 @ stdcall GetUserObjectInformationA(long long ptr long ptr)
 @ stdcall GetUserObjectInformationW(long long ptr long ptr) NtUserGetObjectInformation
 @ stdcall GetUserObjectSecurity (long ptr ptr long ptr)
+@ stdcall -version=0xA00+ GetWindowDpiAwarenessContext(ptr) WdxGetWindowDpiAwarenessContext
 @ stdcall GetWinStationInfo(ptr)
 @ stdcall GetWindow(long long)
 @ stdcall GetWindowContextHelpId(long)
@@ -463,7 +473,7 @@
 @ stdcall IsSETEnabled()
 @ stdcall IsServerSideWindow(long)
 @ stdcall -version=0x601+ IsTouchWindow(long ptr)
-@ stdcall -stub -version=0xA00+ IsValidDpiAwarenessContext(long)
+@ stdcall -version=0xA00+ IsValidDpiAwarenessContext(long)
 @ stdcall IsWinEventHookInstalled(long)
 @ stdcall IsWindow(long)
 @ stdcall IsWindowEnabled(long)
@@ -503,7 +513,7 @@
 @ stdcall LockWindowUpdate(long) NtUserLockWindowUpdate
 @ stdcall LockWorkStation() NtUserLockWorkStation
 @ stdcall -version=0x600+ LogicalToPhysicalPoint(long ptr)
-@ stdcall -stub -version=0x602+ LogicalToPhysicalPointForPerMonitorDPI(long ptr)
+@ stdcall -version=0x602+ LogicalToPhysicalPointForPerMonitorDPI(long ptr)
 @ stdcall LookupIconIdFromDirectory(ptr long)
 @ stdcall LookupIconIdFromDirectoryEx(ptr long long long long)
 @ stdcall MBToWCSEx(long str long wstr long long)
@@ -554,6 +564,8 @@
 @ stdcall PaintMenuBar(long long long long long long) NtUserPaintMenuBar
 @ stdcall PeekMessageA(ptr long long long long)
 @ stdcall PeekMessageW(ptr long long long long)
+@ stdcall -version=0x600+ PhysicalToLogicalPoint(ptr ptr)
+@ stdcall -version=0x603+ PhysicalToLogicalPointForPerMonitorDPI(ptr ptr)
 @ stdcall PostMessageA(long long long long)
 @ stdcall PostMessageW(long long long long)
 @ stdcall PostQuitMessage(long)
@@ -692,6 +704,7 @@
 @ stdcall SetSystemTimer(long long long ptr) NtUserSetSystemTimer
 @ stdcall SetTaskmanWindow (long)
 @ stdcall SetThreadDesktop(long) NtUserSetThreadDesktop
+@ stdcall -version=0xA00+ SetThreadDpiAwarenessContext(ptr)
 @ stdcall SetTimer(long long long ptr) NtUserSetTimer
 @ stdcall SetUserObjectInformationA(long long ptr long) NtUserSetObjectInformation
 @ stdcall SetUserObjectInformationW(long long ptr long) NtUserSetObjectInformation
@@ -730,6 +743,7 @@
 @ stdcall SwitchDesktop(long) NtUserSwitchDesktop
 @ stdcall SwitchToThisWindow(long long)
 @ stdcall SystemParametersInfoA(long long ptr long)
+@ stdcall -version=0xA00+ SystemParametersInfoForDpi(long long ptr long long)
 @ stdcall SystemParametersInfoW(long long ptr long)
 @ stdcall TabbedTextOutA(long long long str long long ptr long)
 @ stdcall TabbedTextOutW(long long long wstr long long ptr long)

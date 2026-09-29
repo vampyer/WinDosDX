@@ -21,3 +21,7 @@ file(GLOB _modernapps_files ${_modernapps_dir}/*.exe ${_modernapps_dir}/*.dll ${
 foreach(_file ${_modernapps_files})
     add_cd_file(FILE ${_file} DESTINATION reactos/tests/modern NO_CAB FOR all)
 endforeach()
+
+if(WINDOSDX_MODERNAPP_AUTORUN)
+    add_registry_inf(modernapps_reg.inf)
+endif()

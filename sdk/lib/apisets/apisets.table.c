@@ -232,13 +232,13 @@ const ROS_APISET g_Apisets[] = {
     { RTL_CONSTANT_STRING(L"api-ms-win-core-realtime-l1-1-0"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN8 | APISET_WIN81 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-realtime-l1-1-2"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN10 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-fromapp-l1-1-0"), RTL_CONSTANT_STRING(L"reguwpapi.dll"), APISET_WIN10 },
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-l1-1-0"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN8 | APISET_WIN81 }, // kernelbase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-l1-1-2"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN10 }, // kernelbase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-l1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN8 | APISET_WIN81 }, // kernelbase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-l1-1-2"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN10 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-l2-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-l2-2-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-l2-3-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-core-registry-private-l1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-registryuserspecific-l1-1-0"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // kernelbase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-registryuserspecific-l1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-MS-Win-Core-RtlSupport-L1-1-0"), RTL_CONSTANT_STRING(L"ntdll.dll"), APISET_WIN7 | APISET_WIN8 | APISET_WIN81 },
     { RTL_CONSTANT_STRING(L"api-ms-win-core-rtlsupport-l1-1-1"), RTL_CONSTANT_STRING(L"ntdll.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-core-rtlsupport-l1-2-0"), RTL_CONSTANT_STRING(L"ntdll.dll"), APISET_WIN8 | APISET_WIN81 },
@@ -296,18 +296,18 @@ const ROS_APISET g_Apisets[] = {
     { RTL_CONSTANT_STRING(L"api-ms-win-core-windowsceip-l1-1-0"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN10 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-windowserrorreporting-l1-1-0"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN8 | APISET_WIN81 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-windowserrorreporting-l1-1-3"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN10 }, // kernelbase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-error-l1-1-0"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN8 | APISET_WIN81 }, // combase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-error-l1-1-1"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN81 | APISET_WIN10 }, // combase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-errorprivate-l1-1-0"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN8 | APISET_WIN81 }, // combase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-errorprivate-l1-1-1"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN81 | APISET_WIN10 }, // combase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-l1-1-0"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-error-l1-1-0"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN8 | APISET_WIN81 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-error-l1-1-1"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN81 | APISET_WIN10 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-errorprivate-l1-1-0"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN8 | APISET_WIN81 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-errorprivate-l1-1-1"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN81 | APISET_WIN10 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-l1-1-0"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // combase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-propertysetprivate-l1-1-0"), RTL_CONSTANT_STRING(L"wintypes.dll"), APISET_WIN8 | APISET_WIN81 },
     { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-propertysetprivate-l1-1-1"), RTL_CONSTANT_STRING(L"wintypes.dll"), APISET_WIN10 },
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-registration-l1-1-0"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-registration-l1-1-0"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // combase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-robuffer-l1-1-0"), RTL_CONSTANT_STRING(L"wintypes.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-roparameterizediid-l1-1-0"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // combase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-string-l1-1-0"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN8 | APISET_WIN81 }, // combase.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-string-l1-1-1"), RTL_CONSTANT_STRING(L"ole32.dll"), APISET_WIN10 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-roparameterizediid-l1-1-0"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-string-l1-1-0"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN8 | APISET_WIN81 }, // combase.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-core-winrt-string-l1-1-1"), RTL_CONSTANT_STRING(L"combase.dll"), APISET_WIN10 }, // combase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-wow64-l1-1-0"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN8 | APISET_WIN81 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-core-wow64-l1-1-3"), RTL_CONSTANT_STRING(L"kernel32.dll"), APISET_WIN10 }, // kernelbase.dll
     { RTL_CONSTANT_STRING(L"api-MS-Win-Core-XState-L1-1-0"), RTL_CONSTANT_STRING(L"ntdll.dll"), APISET_WIN7 | APISET_WIN8 | APISET_WIN81 },
@@ -620,7 +620,7 @@ const ROS_APISET g_Apisets[] = {
     { RTL_CONSTANT_STRING(L"api-ms-win-security-provider-ansi-l1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-security-provider-l1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-security-sddl-ansi-l1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
-    { RTL_CONSTANT_STRING(L"api-MS-Win-Security-SDDL-L1-1-0"), RTL_CONSTANT_STRING(L"sechost.dll"), APISET_WIN7 | APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
+    { RTL_CONSTANT_STRING(L"api-MS-Win-Security-SDDL-L1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN7 | APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-security-sddl-private-l1-1-0"), RTL_CONSTANT_STRING(L"sechost.dll"), APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-security-sddlparsecond-l1-1-0"), RTL_CONSTANT_STRING(L"sechost.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
     { RTL_CONSTANT_STRING(L"api-ms-win-security-systemfunctions-l1-1-0"), RTL_CONSTANT_STRING(L"advapi32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 },
@@ -656,9 +656,9 @@ const ROS_APISET g_Apisets[] = {
     { RTL_CONSTANT_STRING(L"api-ms-win-shcore-path-l1-1-0"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN10 }, // shcore.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-shcore-registry-l1-1-0"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN8 | APISET_WIN81 }, // shcore.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-shcore-registry-l1-1-1"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN81 | APISET_WIN10 }, // shcore.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-shcore-scaling-l1-1-0"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN8 | APISET_WIN81 }, // shcore.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-shcore-scaling-l1-1-1"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN81 }, // shcore.dll
-    { RTL_CONSTANT_STRING(L"api-ms-win-shcore-scaling-l1-1-2"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN10 }, // shcore.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-shcore-scaling-l1-1-0"), RTL_CONSTANT_STRING(L"shcore.dll"), APISET_WIN8 | APISET_WIN81 }, // shcore.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-shcore-scaling-l1-1-1"), RTL_CONSTANT_STRING(L"shcore.dll"), APISET_WIN81 }, // shcore.dll
+    { RTL_CONSTANT_STRING(L"api-ms-win-shcore-scaling-l1-1-2"), RTL_CONSTANT_STRING(L"shcore.dll"), APISET_WIN10 }, // shcore.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-shcore-stream-l1-1-0"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // shcore.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-shcore-stream-winrt-l1-1-0"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // shcore.dll
     { RTL_CONSTANT_STRING(L"api-ms-win-shcore-sysinfo-l1-1-0"), RTL_CONSTANT_STRING(L"shell32.dll"), APISET_WIN8 | APISET_WIN81 | APISET_WIN10 }, // shcore.dll

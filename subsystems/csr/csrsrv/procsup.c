@@ -519,8 +519,13 @@ CsrCreateProcess(IN HANDLE hProcess,
         CsrProcess->ProcessGroupSequence = CurrentProcess->ProcessGroupSequence;
     }
 
-    /* Check if this is a console process */
-    if (Flags & CsrProcessIsConsoleApp) CsrProcess->Flags |= CsrProcessIsConsoleApp;
+    /* Use the Base API server's console classification: the private low bits of
+     * the process handle carry CREATE_NEW_CONSOLE/CREATE_NO_WINDOW/DETACHED_PROCESS
+     * state *before* kernel32 clears it during BasePushProcessParameters. */
+    if (Flags & CsrProcessIsConsoleApp)
+    {
+        CsrProcess->Flags |= CsrProcessIsConsoleApp;
+    }
 
     /* Mask out non-debug flags */
     Flags &= ~(CsrProcessIsConsoleApp | CsrProcessCreateNewGroup | CsrProcessPriorityFlags);

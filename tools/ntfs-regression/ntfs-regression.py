@@ -248,6 +248,7 @@ def prepare_bootcd(bootcd: Path, work: Path) -> Path:
 
 # Extra QEMU arguments for every boot (the sound card, with --audio-wav).
 QEMU_EXTRA: list[str] = []
+GUEST_MEMORY = 1024     # MB; --memory
 
 AUDIO_CARDS = {
     "ac97": ["-device", "AC97,audiodev=snd0"],
@@ -259,7 +260,7 @@ AUDIO_CARDS = {
 class Boot:
     def __init__(self, qemu: Path, image: Path, bootcd: Path, serial: Path,
                  machine_serial: Path, stderr: Path, port: int,
-                 memory: int = 1024, allow_reboot: bool = False):
+                 memory: int | None = None, allow_reboot: bool = False):
         self.qemu = qemu
         self.image = image
         self.bootcd = bootcd
@@ -267,7 +268,7 @@ class Boot:
         self.machine_serial = machine_serial
         self.stderr = stderr
         self.port = port
-        self.memory = memory
+        self.memory = memory or GUEST_MEMORY
         self.allow_reboot = allow_reboot
         self.process: subprocess.Popen[bytes] | None = None
         self.monitor: Monitor | None = None
@@ -1097,10 +1098,14 @@ def main() -> int:
                         help="give the guest a sound card (--audio-card) and record "
                              "everything it plays to this WAV file")
     parser.add_argument("--audio-card", choices=sorted(AUDIO_CARDS), default="ac97")
+    parser.add_argument("--memory", type=int, default=1024,
+                        help="guest memory in MB (default 1024)")
     parser.add_argument("--template", type=Path,
                         help="start from this Windows-formatted disk image (.vhd or raw) "
                              "instead of the minimal harness-built volume")
     args = parser.parse_args()
+    global GUEST_MEMORY
+    GUEST_MEMORY = args.memory
     if args.audio_wav:
         QEMU_EXTRA.extend(["-audiodev", f"wav,id=snd0,path={args.audio_wav.resolve()}"])
         QEMU_EXTRA.extend(AUDIO_CARDS[args.audio_card])

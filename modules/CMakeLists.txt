@@ -55,3 +55,10 @@ option(WINDOSDX_MODERNAPP_TESTS "Put the modern-application test programs on the
 if(WINDOSDX_MODERNAPP_TESTS)
     add_subdirectory(rostests/windosdx/modernapps)
 endif()
+
+# WinDosDX: additionally auto-run the modern-app payload at guest logon
+# (disposable-guest regression testing; the payload reports over COM2).
+option(WINDOSDX_MODERNAPP_AUTORUN "Auto-run the modern-application tests at logon (disposable guests only)" OFF)
+if(WINDOSDX_MODERNAPP_AUTORUN AND NOT WINDOSDX_MODERNAPP_TESTS)
+    message(FATAL_ERROR "WINDOSDX_MODERNAPP_AUTORUN requires WINDOSDX_MODERNAPP_TESTS")
+endif()

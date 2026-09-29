@@ -212,7 +212,7 @@
 @ cdecl __unDName(ptr str long ptr ptr long)
 @ cdecl __unDNameEx(ptr str long ptr ptr ptr long)
 @ cdecl __uncaught_exception()
-@ cdecl -stub __uncaught_exceptions()
+@ cdecl __uncaught_exceptions()
 @ cdecl __wcserror(wstr)
 @ cdecl __wcserror_s(ptr long wstr)
 @ cdecl __wcsncnt(wstr long)

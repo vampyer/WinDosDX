@@ -498,6 +498,43 @@ SetSystemEnvironment(PWSTR* Environment)
 }
 
 
+/*
+ * A variable naming a shell folder (APPDATA, LOCALAPPDATA, ProgramData):
+ * the folder from the "User Shell Folders" key under Root, else Default,
+ * expanded against the block being built (so %USERPROFILE% is the user's).
+ * Windows sets these for every session and many programs read them.
+ */
+static
+VOID
+SetShellFolderVariable(PWSTR* Environment,
+                       HKEY Root,
+                       LPCWSTR ValueName,
+                       LPWSTR VariableName,
+                       LPCWSTR Default)
+{
+    WCHAR Value[MAX_PATH];
+    DWORD Size = sizeof(Value), Type;
+    HKEY Key;
+    BOOL Found = FALSE;
+
+    if (RegOpenKeyExW(Root,
+                      L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders",
+                      0, KEY_QUERY_VALUE, &Key) == ERROR_SUCCESS)
+    {
+        if (RegQueryValueExW(Key, ValueName, NULL, &Type, (LPBYTE)Value, &Size) == ERROR_SUCCESS &&
+            (Type == REG_SZ || Type == REG_EXPAND_SZ) && Size >= sizeof(WCHAR))
+        {
+            Value[ARRAYSIZE(Value) - 1] = UNICODE_NULL;
+            Found = (Value[0] != UNICODE_NULL);
+        }
+        RegCloseKey(Key);
+    }
+    if (!Found)
+        StringCchCopyW(Value, ARRAYSIZE(Value), Default);
+
+    SetUserEnvironmentVariable(Environment, VariableName, Value, TRUE);
+}
+
 BOOL
 WINAPI
 CreateEnvironmentBlock(OUT LPVOID *lpEnvironment,
@@ -576,6 +613,13 @@ CreateEnvironmentBlock(OUT LPVOID *lpEnvironment,
                                    L"ALLUSERSPROFILE",
                                    Buffer,
                                    FALSE);
+
+        /* Set 'ProgramData' variable (the shared application data folder) */
+        SetShellFolderVariable(Environment,
+                               HKEY_LOCAL_MACHINE,
+                               L"Common AppData",
+                               L"ProgramData",
+                               L"%ALLUSERSPROFILE%\\Application Data");
     }
 
     /* Set 'USERPROFILE' variable to the default users profile */
@@ -680,6 +724,18 @@ CreateEnvironmentBlock(OUT LPVOID *lpEnvironment,
     {
         DPRINT1("GetUserProfileDirectoryW failed with error %lu\n", GetLastError());
     }
+
+    /* Set 'APPDATA' and 'LOCALAPPDATA' variables */
+    SetShellFolderVariable(Environment,
+                           hKeyUser,
+                           L"AppData",
+                           L"APPDATA",
+                           L"%USERPROFILE%\\Application Data");
+    SetShellFolderVariable(Environment,
+                           hKeyUser,
+                           L"Local AppData",
+                           L"LOCALAPPDATA",
+                           L"%USERPROFILE%\\Local Settings\\Application Data");
 
     if (GetUserAndDomainName(hToken,
                              &lpUserName,

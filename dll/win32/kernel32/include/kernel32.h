@@ -317,6 +317,14 @@ BaseComputeProcessDllPath(
     IN PVOID Environment
 );
 
+/* kernel32_vista/win10.c: folders from AddDllDirectory */
+PWSTR
+WINAPI
+BasepAppendUserDllDirectories(
+    IN PWSTR SearchPath,
+    IN DWORD Flags
+);
+
 LPWSTR
 WINAPI
 BaseComputeProcessExePath(

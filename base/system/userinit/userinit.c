@@ -26,6 +26,7 @@
 
 #include "userinit.h"
 #include <userenv.h>
+#include <strsafe.h>
 
 #define CMP_MAGIC  0x01234567
 
@@ -179,6 +180,104 @@ GetShell(
 static BOOL
 StartProcess(
     _In_ PCWSTR CommandLine,
+    _In_opt_ PVOID pEnvironment);
+
+#ifdef WDX_MODERNAPP_AUTORUN
+/*
+ * Disposable-guest console regression: start the Windows 10-built console
+ * test with a fresh console, wait for it to exit, append its exit status, and
+ * show the report in Notepad. The test itself logs before writing to stdout,
+ * so the file tells apart process-startup failure from broken console I/O.
+ */
+static VOID
+WdxRunModernApps(
+    _In_opt_ PVOID pEnvironment)
+{
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    WCHAR CmdLine[MAX_PATH + 32];
+    HANDLE LogFile;
+    DWORD WaitStatus, ExitCode = 0, Written;
+    CHAR LogLine[128];
+    SIZE_T LogLength;
+
+    LogFile = CreateFileW(L"X:\\wdxt.log",
+                          GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                          NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (LogFile != INVALID_HANDLE_VALUE)
+    {
+        static const CHAR Started[] = "userinit: starting netinfo with CREATE_NEW_CONSOLE\r\n";
+        WriteFile(LogFile, Started, sizeof(Started) - 1, &Written, NULL);
+    }
+
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_SHOWNORMAL;
+
+    /* This is intentionally NOT DETACHED_PROCESS: verify WinDosDX's console. */
+    StringCchCopyW(CmdLine, ARRAYSIZE(CmdLine),
+                   L"\"X:\\reactos\\tests\\modern\\netinfo.exe\" --no-com --console-probe");
+    if (!CreateProcessW(NULL, CmdLine, NULL, NULL, FALSE,
+                        CREATE_NEW_CONSOLE | NORMAL_PRIORITY_CLASS |
+                        CREATE_UNICODE_ENVIRONMENT,
+                        pEnvironment, L"X:\\reactos\\tests\\modern",
+                        &si, &pi))
+    {
+        DWORD Error = GetLastError();
+        WARN("WdxRunModernApps: X: console launch failed %lu\n", Error);
+        StringCchCopyW(CmdLine, ARRAYSIZE(CmdLine),
+                       L"\"D:\\reactos\\tests\\modern\\netinfo.exe\" --no-com --console-probe");
+        if (!CreateProcessW(NULL, CmdLine, NULL, NULL, FALSE,
+                            CREATE_NEW_CONSOLE | NORMAL_PRIORITY_CLASS |
+                            CREATE_UNICODE_ENVIRONMENT,
+                            pEnvironment, L"D:\\reactos\\tests\\modern",
+                            &si, &pi))
+        {
+            if (LogFile != INVALID_HANDLE_VALUE)
+            {
+                StringCchPrintfA(LogLine, ARRAYSIZE(LogLine),
+                                 "userinit: CreateProcess failed, error=%lu\\r\\n", GetLastError());
+                LogLength = strlen(LogLine);
+                WriteFile(LogFile, LogLine, (DWORD)LogLength, &Written, NULL);
+            }
+            goto ShowReport;
+        }
+    }
+
+    CloseHandle(pi.hThread);
+    WaitStatus = WaitForSingleObject(pi.hProcess, 60000);
+    if (WaitStatus == WAIT_OBJECT_0)
+        GetExitCodeProcess(pi.hProcess, &ExitCode);
+    else
+    {
+        ExitCode = GetLastError();
+        TerminateProcess(pi.hProcess, ERROR_TIMEOUT);
+        WaitForSingleObject(pi.hProcess, 5000);
+    }
+
+    if (LogFile != INVALID_HANDLE_VALUE)
+    {
+        SetFilePointer(LogFile, 0, NULL, FILE_END);
+        StringCchPrintfA(LogLine, ARRAYSIZE(LogLine),
+                         "userinit: process wait=%lu exit=0x%08lx\\r\\n",
+                         WaitStatus, ExitCode);
+        LogLength = strlen(LogLine);
+        WriteFile(LogFile, LogLine, (DWORD)LogLength, &Written, NULL);
+    }
+
+    CloseHandle(pi.hProcess);
+
+ShowReport:
+    if (LogFile != INVALID_HANDLE_VALUE)
+        CloseHandle(LogFile);
+    StartProcess(L"notepad.exe X:\\wdxt.log", pEnvironment);
+}
+#endif
+
+static BOOL
+StartProcess(
+    _In_ PCWSTR CommandLine,
     _In_opt_ PVOID pEnvironment)
 {
     STARTUPINFO si;
@@ -234,6 +333,11 @@ StartShell(
      * it can reboot between remount and interrupted-write phases. */
     if (StartProcess(L"%SystemRoot%\\system32\\ntfs-regression.exe", pEnvironment))
         return TRUE;
+#endif
+#ifdef WDX_MODERNAPP_AUTORUN
+    /* Disposable-guest regression: open the host-built test in a real
+     * WinDosDX console. This is intentionally a normal console launch. */
+    WdxRunModernApps(pEnvironment);
 #endif
     DWORD Value = 0;
     LONG rc;
