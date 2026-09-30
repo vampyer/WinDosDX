@@ -86,6 +86,8 @@ static PADAPTER_OBJECT HalpEisaAdapter[8];
 static BOOLEAN HalpEisaDma;
 #ifndef _MINIHAL_
 static PADAPTER_OBJECT HalpMasterAdapter;
+/* Last byte of installed RAM, set in HalpInitDma */
+static ULONGLONG HalpHighestPhysicalAddress = ~0ULL;
 #endif
 
 static const ULONG_PTR HalpEisaPortPage[8] = {
@@ -214,6 +216,27 @@ HalpInitDma(VOID)
     KeInitializeEvent(&HalpDmaLock, NotificationEvent, TRUE);
     HalpMasterAdapter = HalpDmaAllocateMasterAdapter();
 
+    /* Remember where RAM ends: bus masters that cannot reach all of it
+     * need map registers even with hardware scatter/gather */
+    {
+        PPHYSICAL_MEMORY_RANGE Ranges = MmGetPhysicalMemoryRanges();
+
+        if (Ranges)
+        {
+            ULONG i;
+
+            HalpHighestPhysicalAddress = 0;
+            for (i = 0; Ranges[i].NumberOfBytes.QuadPart != 0; i++)
+            {
+                ULONGLONG Last = Ranges[i].BaseAddress.QuadPart +
+                                 Ranges[i].NumberOfBytes.QuadPart - 1;
+                if (Last > HalpHighestPhysicalAddress)
+                    HalpHighestPhysicalAddress = Last;
+            }
+            ExFreePoolWithTag(Ranges, 'hPmM');
+        }
+    }
+
     /*
      * Setup the HalDispatchTable callback for creating PnP DMA adapters. It's
      * used by IoGetDmaAdapter in the kernel.
@@ -296,6 +319,12 @@ HalpGrowMapBuffers(IN PADAPTER_OBJECT AdapterObject,
     LowestAcceptableAddress.HighPart = 0;
     LowestAcceptableAddress.LowPart = HighestAcceptableAddress.LowPart == 0xFFFFFFFF ? 0x1000000 : 0;
     BoundryAddressMultiple.QuadPart = 0;
+
+    /* Without EISA DMA the map register runs are split at every 64 KB
+     * boundary (see below), so a 64 KB request would never find its run.
+     * Keep a buffer that fits in 64 KB inside one 64 KB block. */
+    if (!HalpEisaDma && (MapRegisterCount << PAGE_SHIFT) <= 0x10000)
+        BoundryAddressMultiple.QuadPart = 0x10000;
 
     VirtualAddress = MmAllocateContiguousMemorySpecifyCache(MapRegisterCount << PAGE_SHIFT,
                                                             LowestAcceptableAddress,
@@ -703,7 +732,9 @@ HalGetAdapter(IN PDEVICE_DESCRIPTION DeviceDescription,
     /*
      * Calculate the number of map registers.
      *
-     * - For EISA and PCI scatter/gather no map registers are needed.
+     * - For EISA and PCI scatter/gather no map registers are needed,
+     *   unless the device cannot address all installed RAM (a 32-bit
+     *   master on a machine with memory above 4 GB).
      * - For ISA slave scatter/gather one map register is needed.
      * - For all other cases the number of map registers depends on
      *   DeviceDescription->MaximumLength.
@@ -711,7 +742,10 @@ HalGetAdapter(IN PDEVICE_DESCRIPTION DeviceDescription,
     MaximumLength = DeviceDescription->MaximumLength & MAXLONG;
     if ((DeviceDescription->ScatterGather) &&
         ((DeviceDescription->InterfaceType == Eisa) ||
-         (DeviceDescription->InterfaceType == PCIBus)))
+         (DeviceDescription->InterfaceType == PCIBus)) &&
+        ((DeviceDescription->Dma64BitAddresses) ||
+         (HalpHighestPhysicalAddress <=
+          (DeviceDescription->Dma32BitAddresses ? 0xFFFFFFFFULL : 0xFFFFFFULL))))
     {
         MapRegisters = 0;
     }
@@ -1146,13 +1180,21 @@ HalpScatterGatherAdapterControl(IN PDEVICE_OBJECT DeviceObject,
 						 IN BOOLEAN WriteToDevice)
 {
     PSCATTER_GATHER_CONTEXT AdapterControlContext = (PSCATTER_GATHER_CONTEXT)ScatterGather->Reserved;
-	ULONG i;
+	ULONG i, MapRegisterOffset = 0;
 
 	for (i = 0; i < ScatterGather->NumberOfElements; i++)
 	{
+	     /* IoMapTransfer gave each element the map registers after the
+	      * previous one's; flush each from the same place */
+	     PVOID MapRegisterBase = AdapterControlContext->MapRegisterBase;
+	     if (MapRegisterBase && !((ULONG_PTR)MapRegisterBase & MAP_BASE_SW_SG))
+	         MapRegisterBase = (PROS_MAP_REGISTER_ENTRY)MapRegisterBase + MapRegisterOffset;
+	     MapRegisterOffset += BYTES_TO_PAGES(BYTE_OFFSET(AdapterControlContext->CurrentVa) +
+	                                         ScatterGather->Elements[i].Length);
+
 	     IoFlushAdapterBuffers(AdapterObject,
 		                       AdapterControlContext->Mdl,
-							   AdapterControlContext->MapRegisterBase,
+							   MapRegisterBase,
 							   AdapterControlContext->CurrentVa,
 							   ScatterGather->Elements[i].Length,
 							   AdapterControlContext->WriteToDevice);
@@ -1188,7 +1230,7 @@ HalCalculateScatterGatherListSize(
 
     UNIMPLEMENTED_ONCE;
 
-    NumberOfMapRegisters = PAGE_ROUND_UP(Length) >> PAGE_SHIFT;
+    NumberOfMapRegisters = ADDRESS_AND_SIZE_TO_SPAN_PAGES(CurrentVa, Length);
     SgSize = sizeof(SCATTER_GATHER_CONTEXT);
 
     *ScatterGatherListSize = SgSize;
@@ -2164,7 +2206,6 @@ IoMapTransfer(IN PADAPTER_OBJECT AdapterObject,
          */
         UseMapRegisters = FALSE;
         Counter = RealMapRegisterBase->Counter;
-        RealMapRegisterBase->Counter += BYTES_TO_PAGES(ByteOffset + TransferLength);
 
         /*
          * Check if the buffer doesn't exceed the highest physical address
@@ -2175,6 +2216,25 @@ IoMapTransfer(IN PADAPTER_OBJECT AdapterObject,
         if ((PhysicalAddress.QuadPart + TransferLength) > HighestAcceptableAddress.QuadPart)
         {
             UseMapRegisters = TRUE;
+
+            /* The device sees one run of memory: stop where the map
+             * registers' buffers stop being physically contiguous */
+            if (!((ULONG_PTR)MapRegisterBase & MAP_BASE_SW_SG))
+            {
+                ULONG Pages = BYTES_TO_PAGES(ByteOffset + TransferLength);
+                ULONG Contiguous = 1;
+
+                while ((Contiguous < Pages) &&
+                       (RealMapRegisterBase[Counter + Contiguous].PhysicalAddress.QuadPart ==
+                        RealMapRegisterBase[Counter].PhysicalAddress.QuadPart +
+                        ((ULONGLONG)Contiguous << PAGE_SHIFT)))
+                {
+                    Contiguous++;
+                }
+                if (Contiguous < Pages)
+                    TransferLength = (Contiguous << PAGE_SHIFT) - ByteOffset;
+            }
+
             PhysicalAddress = RealMapRegisterBase[Counter].PhysicalAddress;
             PhysicalAddress.QuadPart += ByteOffset;
             if ((ULONG_PTR)MapRegisterBase & MAP_BASE_SW_SG)
@@ -2183,6 +2243,9 @@ IoMapTransfer(IN PADAPTER_OBJECT AdapterObject,
                 Counter = 0;
             }
         }
+
+        if (RealMapRegisterBase->Counter != MAXULONG)
+            RealMapRegisterBase->Counter = Counter + BYTES_TO_PAGES(ByteOffset + TransferLength);
     }
 
     /*
