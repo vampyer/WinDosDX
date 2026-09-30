@@ -278,6 +278,113 @@ DetectDisplayController(
     // We should use EDID data for it.
 }
 
+#define FIRST_BIOS_DISK 0x80
+
+/*
+ * Report the disks the firmware can boot from the way the PC loader reports
+ * its BIOS drives: INT13-style parameters in the System key, and a
+ * DiskController with one DiskPeripheral per drive, identified by
+ * checksum and MBR signature. Setup uses these to decide which disks
+ * the firmware sees and where the system partition can go.
+ */
+static
+VOID
+DetectFirmwareDisks(
+    _In_ PCONFIGURATION_COMPONENT_DATA SystemKey,
+    _In_ PCONFIGURATION_COMPONENT_DATA BusKey)
+{
+    PCONFIGURATION_COMPONENT_DATA ControllerKey, DiskKey;
+    PCM_PARTIAL_RESOURCE_LIST PartialResourceList;
+    PCM_INT13_DRIVE_PARAMETER Int13Drives;
+    PCM_DISK_GEOMETRY_DEVICE_DATA DiskGeometry;
+    GEOMETRY Geometry;
+    UCHAR DiskCount, i;
+    PCSTR Identifier;
+    ULONGLONG Cylinders;
+    ULONG Size;
+
+    DiskCount = UefiGetHarddiskCount();
+    if (DiskCount == 0)
+        return;
+
+    Size = FIELD_OFFSET(CM_PARTIAL_RESOURCE_LIST, PartialDescriptors);
+    PartialResourceList = FrLdrHeapAlloc(Size, TAG_HW_RESOURCE_LIST);
+    if (!PartialResourceList)
+        return;
+    RtlZeroMemory(PartialResourceList, Size);
+    FldrCreateComponentKey(BusKey,
+                           ControllerClass,
+                           DiskController,
+                           Output | Input,
+                           0x0,
+                           0xFFFFFFFF,
+                           NULL,
+                           PartialResourceList,
+                           Size,
+                           &ControllerKey);
+
+    /* INT13-style drive parameters. UEFI has no CHS geometry; use the
+     * usual translated one so the values stay plausible. */
+    Size = FIELD_OFFSET(CM_PARTIAL_RESOURCE_LIST, PartialDescriptors[1]) +
+           sizeof(CM_INT13_DRIVE_PARAMETER) * DiskCount;
+    PartialResourceList = FrLdrHeapAlloc(Size, TAG_HW_RESOURCE_LIST);
+    if (!PartialResourceList)
+        return;
+    RtlZeroMemory(PartialResourceList, Size);
+    PartialResourceList->Version = 1;
+    PartialResourceList->Revision = 1;
+    PartialResourceList->Count = 1;
+    PartialResourceList->PartialDescriptors[0].Type = CmResourceTypeDeviceSpecific;
+    PartialResourceList->PartialDescriptors[0].u.DeviceSpecificData.DataSize =
+        sizeof(CM_INT13_DRIVE_PARAMETER) * DiskCount;
+    Int13Drives = (PCM_INT13_DRIVE_PARAMETER)&PartialResourceList->PartialDescriptors[1];
+    for (i = 0; i < DiskCount; i++)
+    {
+        Int13Drives[i].DriveSelect = FIRST_BIOS_DISK + i;
+        Int13Drives[i].MaxCylinders = 1023;
+        Int13Drives[i].SectorsPerTrack = 63;
+        Int13Drives[i].MaxHeads = 254;
+        Int13Drives[i].NumberDrives = DiskCount;
+    }
+    FldrSetConfigurationData(SystemKey, PartialResourceList, Size);
+
+    for (i = 0; i < DiskCount; i++)
+    {
+        Identifier = UefiGetHarddiskIdentifier(FIRST_BIOS_DISK + i);
+
+        Size = FIELD_OFFSET(CM_PARTIAL_RESOURCE_LIST, PartialDescriptors[1]) + sizeof(*DiskGeometry);
+        PartialResourceList = FrLdrHeapAlloc(Size, TAG_HW_RESOURCE_LIST);
+        if (!PartialResourceList)
+            return;
+        RtlZeroMemory(PartialResourceList, Size);
+        PartialResourceList->Version = 1;
+        PartialResourceList->Revision = 1;
+        PartialResourceList->Count = 1;
+        PartialResourceList->PartialDescriptors[0].Type = CmResourceTypeDeviceSpecific;
+        PartialResourceList->PartialDescriptors[0].u.DeviceSpecificData.DataSize = sizeof(*DiskGeometry);
+        DiskGeometry = (PCM_DISK_GEOMETRY_DEVICE_DATA)&PartialResourceList->PartialDescriptors[1];
+        if (UefiDiskGetDriveGeometry(FIRST_BIOS_DISK + i, &Geometry))
+        {
+            Cylinders = Geometry.Sectors / (63 * 255);
+            DiskGeometry->BytesPerSector = Geometry.BytesPerSector;
+            DiskGeometry->NumberOfCylinders = (ULONG)min(Cylinders, 0xFFFFFFFF);
+            DiskGeometry->SectorsPerTrack = 63;
+            DiskGeometry->NumberOfHeads = 255;
+        }
+
+        FldrCreateComponentKey(ControllerKey,
+                               PeripheralClass,
+                               DiskPeripheral,
+                               Output | Input,
+                               i,
+                               0xFFFFFFFF,
+                               Identifier ? Identifier : "",
+                               PartialResourceList,
+                               Size,
+                               &DiskKey);
+    }
+}
+
 static
 VOID
 DetectInternal(PCONFIGURATION_COMPONENT_DATA SystemKey, ULONG *BusNumber)
@@ -318,9 +425,75 @@ DetectInternal(PCONFIGURATION_COMPONENT_DATA SystemKey, ULONG *BusNumber)
 
     /* Detect devices that do not belong to "standard" buses */
     DetectDisplayController(BusKey);
+    DetectFirmwareDisks(SystemKey, BusKey);
 
     /* FIXME: Detect more devices */
 }
+
+#if defined(_M_IX86) || defined(_M_AMD64)
+/*
+ * UEFI has no PCI BIOS to ask, so probe configuration mechanism #1
+ * directly (every x86 chipset since the PCI 2.0 era implements it).
+ * The HAL needs this "PCI" adapter entry to serve HalGetBusData(),
+ * which legacy drivers (scsiport miniports, video) use to find devices.
+ */
+static
+ULONG
+UefiPciReadConfig(
+    _In_ ULONG Bus,
+    _In_ ULONG Device,
+    _In_ ULONG Function,
+    _In_ ULONG Offset)
+{
+    WRITE_PORT_ULONG((PULONG)0xCF8,
+                     0x80000000 | (Bus << 16) | (Device << 11) | (Function << 8) | (Offset & 0xFC));
+    return READ_PORT_ULONG((PULONG)0xCFC);
+}
+
+static
+BOOLEAN
+UefiDetectPciBus(
+    _In_ PCONFIGURATION_COMPONENT_DATA SystemKey,
+    _Inout_ PULONG BusNumber,
+    _Out_ PPCI_REGISTRY_INFO BusData)
+{
+    ULONG Saved, Bus, Device, LastBus = 0;
+
+    UNREFERENCED_PARAMETER(SystemKey);
+    UNREFERENCED_PARAMETER(BusNumber);
+
+    /* The address port must hold what was written to it */
+    Saved = READ_PORT_ULONG((PULONG)0xCF8);
+    WRITE_PORT_ULONG((PULONG)0xCF8, 0x80000000);
+    if (READ_PORT_ULONG((PULONG)0xCF8) != 0x80000000)
+    {
+        WRITE_PORT_ULONG((PULONG)0xCF8, Saved);
+        WARN("No PCI configuration mechanism #1\n");
+        return FALSE;
+    }
+
+    /* The highest bus number that has a device on it */
+    for (Bus = 0; Bus < 256; ++Bus)
+    {
+        for (Device = 0; Device < 32; ++Device)
+        {
+            if ((UefiPciReadConfig(Bus, Device, 0, 0) & 0xFFFF) != 0xFFFF)
+            {
+                LastBus = Bus;
+                break;
+            }
+        }
+    }
+    WRITE_PORT_ULONG((PULONG)0xCF8, Saved);
+
+    BusData->MajorRevision = 2;
+    BusData->MinorRevision = 0x10;
+    BusData->NoBuses = (UCHAR)min(LastBus + 1, 0xFF);
+    BusData->HardwareMechanism = 1;
+    TRACE("PCI: mechanism #1, %u buses\n", BusData->NoBuses);
+    return TRUE;
+}
+#endif
 
 PCONFIGURATION_COMPONENT_DATA
 UefiHwDetect(
@@ -344,7 +517,9 @@ UefiHwDetect(
 
     /* Detect buses */
     DetectInternal(SystemKey, &BusNumber);
-    // TODO: DetectPciBus
+#if defined(_M_IX86) || defined(_M_AMD64)
+    DetectPciBus(SystemKey, &BusNumber, UefiDetectPciBus);
+#endif
     DetectAcpiBios(SystemKey, &BusNumber);
 
     TRACE("DetectHardware() Done\n");

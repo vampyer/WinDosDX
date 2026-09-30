@@ -144,20 +144,13 @@ CopyField(
         }
     }
 
-    /* Trim trailing default characters */
+    /* Trim trailing default characters. A field made only of them
+     * (a blank or unset inquiry field) trims down to nothing. */
     if (Trim)
     {
-        Index = MaxLength - 1;
-        for (;;)
-        {
-            if (Buffer[Index] != DefaultCharacter)
-            {
-                Index++;
-                break;
-            }
-
+        Index = MaxLength;
+        while (Index > 0 && Buffer[Index - 1] == DefaultCharacter)
             Index--;
-        }
     }
 
     return Index;

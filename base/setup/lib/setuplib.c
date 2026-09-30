@@ -1141,6 +1141,30 @@ InitDestinationPaths(
     return STATUS_SUCCESS;
 }
 
+/*
+ * Returns TRUE when the running system was started by UEFI firmware.
+ * The loader records this, and the kernel reports it through
+ * SystemBootEnvironmentInformation (the class GetFirmwareType uses).
+ */
+static BOOLEAN
+IsUefiFirmware(VOID)
+{
+    struct
+    {
+        GUID BootIdentifier;
+        ULONG FirmwareType;
+        ULONGLONG BootFlags;
+    } BootInfo;
+    NTSTATUS Status;
+
+    Status = NtQuerySystemInformation((SYSTEM_INFORMATION_CLASS)90 /* SystemBootEnvironmentInformation */,
+                                      &BootInfo, sizeof(BootInfo), NULL);
+    if (!NT_SUCCESS(Status))
+        return FALSE;
+
+    return (BootInfo.FirmwareType == 2 /* FirmwareTypeUefi */);
+}
+
 // NTSTATUS
 ERROR_NUMBER
 NTAPI
@@ -1219,8 +1243,11 @@ InitializeSetup(
 #if defined(SARCH_XBOX)
     pSetupData->ArchType = ARCH_Xbox;
 // #elif defined(SARCH_PC98)
-#else // TODO: Arc, UEFI
-    pSetupData->ArchType = (IsNEC_98 ? ARCH_NEC98x86 : ARCH_PcAT);
+#else // TODO: Arc
+    if (IsUefiFirmware())
+        pSetupData->ArchType = ARCH_Efi;
+    else
+        pSetupData->ArchType = (IsNEC_98 ? ARCH_NEC98x86 : ARCH_PcAT);
 #endif
 
     return ERROR_SUCCESS;

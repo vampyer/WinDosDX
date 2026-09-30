@@ -701,6 +701,28 @@ GetHarddiskInformation(
     TRACE("Identifier: %s\n", Identifier);
 }
 
+/*
+ * Firmware that boots fast only connects drivers to the boot device, so
+ * other disks (an empty NVMe drive to install onto, say) have no Block I/O
+ * handle yet. Connect every controller first, as OS loaders commonly do.
+ */
+static
+VOID
+UefiConnectAllControllers(VOID)
+{
+    EFI_BOOT_SERVICES* BootServices = GlobalSystemTable->BootServices;
+    EFI_HANDLE* Handles = NULL;
+    UINTN HandleCount = 0, i;
+
+    if (EFI_ERROR(BootServices->LocateHandleBuffer(AllHandles, NULL, NULL, &HandleCount, &Handles)))
+        return;
+
+    for (i = 0; i < HandleCount; i++)
+        BootServices->ConnectController(Handles[i], NULL, NULL, TRUE);
+
+    BootServices->FreePool(Handles);
+}
+
 static
 VOID
 UefiSetupBlockDevices(VOID)
@@ -714,6 +736,8 @@ UefiSetupBlockDevices(VOID)
 
     PcBiosDiskCount = 0;
     UefiBootRootIndex = 0;
+
+    UefiConnectAllControllers();
 
     /* Step 1: Get the size needed for handles buffer - no matter how it fails we're good */
     Status = GlobalSystemTable->BootServices->LocateHandle(
@@ -1322,6 +1346,24 @@ UefiDiskGetDriveGeometry(UCHAR DriveNumber, PGEOMETRY Geometry)
     Geometry->Sectors = BlockIo->Media->LastBlock + 1;
 
     return TRUE;
+}
+
+/* Number of root block devices, numbered like BIOS drives from 0x80 */
+UCHAR
+UefiGetHarddiskCount(VOID)
+{
+    return PcBiosDiskCount;
+}
+
+/* "checksum-signature-A" identifier, as the OS setup matches disks by it */
+PCSTR
+UefiGetHarddiskIdentifier(UCHAR DriveNumber)
+{
+    ULONG ArcDriveIndex = DriveNumber - FIRST_BIOS_DISK;
+
+    if (DriveNumber < FIRST_BIOS_DISK || ArcDriveIndex >= PcBiosDiskCount || !InternalUefiDisk)
+        return NULL;
+    return InternalUefiDisk[ArcDriveIndex].DiskIdentifier;
 }
 
 ULONG

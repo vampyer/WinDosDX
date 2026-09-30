@@ -120,4 +120,15 @@ typedef struct tagCONSOLE_CURSOR_INFO
 
 VOID ScrSetFont(_In_ PUCHAR FontBitfield);
 
+/* fbtext.c: text output on a linear framebuffer (UEFI) */
+extern BOOLEAN FbTextActive;
+extern const UCHAR FbTextFont8x16[256 * 16];
+BOOLEAN FbTextInitialize(_In_reads_(16 * 3) const UCHAR* Palette);
+VOID FbTextGetGeometry(_Out_ PUSHORT Columns, _Out_ PUSHORT Rows, _Out_ PUCHAR ScanLines);
+VOID FbTextClear(VOID);
+VOID FbTextInvalidate(VOID);
+VOID FbTextRefresh(_In_reads_(Columns * Rows * 2) PUCHAR TextBuffer,
+                   _In_ USHORT Columns, _In_ USHORT Rows, _In_opt_ PUCHAR Font8x8,
+                   _In_ USHORT CursorX, _In_ USHORT CursorY, _In_ BOOLEAN CursorVisible);
+
 #endif /* _BLUE_PCH_ */

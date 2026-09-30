@@ -93,6 +93,12 @@ UefiDiskGetDriveGeometry(UCHAR DriveNumber,
 ULONG
 UefiDiskGetCacheableBlockCount(UCHAR DriveNumber);
 
+UCHAR
+UefiGetHarddiskCount(VOID);
+
+PCSTR
+UefiGetHarddiskIdentifier(UCHAR DriveNumber);
+
 TIMEINFO*
 UefiGetTime(VOID);
 
