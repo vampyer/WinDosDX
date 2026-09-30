@@ -259,9 +259,10 @@ GetIpForwardTable2(ADDRESS_FAMILY Family, PMIB_IPFORWARD_TABLE2 *Table)
 
     if (!Table)
         return ERROR_INVALID_PARAMETER;
+    /* NULL on every failure, as Windows does */
+    *Table = NULL;
     if (Family != AF_INET && Family != AF_UNSPEC)
         return ERROR_NOT_SUPPORTED;         /* IPv6 rows are not reported yet */
-    *Table = NULL;
 
     Error = AllocateAndGetIpForwardTableFromStack(&Table1, FALSE, GetProcessHeap(), 0);
     if (Error != NO_ERROR || !Table1)
@@ -310,9 +311,10 @@ GetUnicastIpAddressTable(ADDRESS_FAMILY Family, PMIB_UNICASTIPADDRESS_TABLE *Tab
 
     if (!Table)
         return ERROR_INVALID_PARAMETER;
+    /* NULL on every failure, as Windows does */
+    *Table = NULL;
     if (Family != AF_INET && Family != AF_UNSPEC)
         return ERROR_NOT_SUPPORTED;
-    *Table = NULL;
 
     Error = GetIpAddrTable(NULL, &Size, FALSE);
     if (Error != ERROR_INSUFFICIENT_BUFFER || !Size)
@@ -419,9 +421,10 @@ GetIpInterfaceTable(ADDRESS_FAMILY Family, PMIB_IPINTERFACE_TABLE *Table)
 
     if (!Table)
         return ERROR_INVALID_PARAMETER;
+    /* NULL on every failure, as Windows does */
+    *Table = NULL;
     if (Family != AF_INET && Family != AF_UNSPEC)
         return ERROR_NOT_SUPPORTED;
-    *Table = NULL;
 
     Error = GetIfTable(NULL, &Size, FALSE);
     if (Error != ERROR_INSUFFICIENT_BUFFER || !Size)

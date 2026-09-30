@@ -237,7 +237,7 @@ WdxRunModernApps(
             if (LogFile != INVALID_HANDLE_VALUE)
             {
                 StringCchPrintfA(LogLine, ARRAYSIZE(LogLine),
-                                 "userinit: CreateProcess failed, error=%lu\\r\\n", GetLastError());
+                                 "userinit: CreateProcess failed, error=%lu\r\n", GetLastError());
                 LogLength = strlen(LogLine);
                 WriteFile(LogFile, LogLine, (DWORD)LogLength, &Written, NULL);
             }
@@ -260,7 +260,7 @@ WdxRunModernApps(
     {
         SetFilePointer(LogFile, 0, NULL, FILE_END);
         StringCchPrintfA(LogLine, ARRAYSIZE(LogLine),
-                         "userinit: process wait=%lu exit=0x%08lx\\r\\n",
+                         "userinit: process wait=%lu exit=0x%08lx\r\n",
                          WaitStatus, ExitCode);
         LogLength = strlen(LogLine);
         WriteFile(LogFile, LogLine, (DWORD)LogLength, &Written, NULL);

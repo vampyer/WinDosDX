@@ -51,7 +51,7 @@ rem from outside, but output redirected to COM2 lands in a host file.
 >>run_netinfo.cmd echo echo C-WROTE-COM2 errorlevel=^%%errorlevel^%%
 >>run_netinfo.cmd echo dir D:\reactos\tests\modern
 >>run_netinfo.cmd echo cd /d D:\reactos\tests\modern
->>run_netinfo.cmd echo D-RUNNING-NETINFO
+>>run_netinfo.cmd echo echo D-RUNNING-NETINFO
 >>run_netinfo.cmd echo set WDX_NO_COM=1
 >>run_netinfo.cmd echo netinfo.exe
 >>run_netinfo.cmd echo set WDX_NO_COM=

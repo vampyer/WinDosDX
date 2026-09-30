@@ -644,8 +644,12 @@ NtQueryInformationProcess(
                 VmCounters->QuotaNonPagedPoolUsage = Process->QuotaUsage[PsNonPagedPool];
                 VmCounters->PagefileUsage = Process->QuotaUsage[PsPageFile] << PAGE_SHIFT;
                 VmCounters->PeakPagefileUsage = Process->QuotaPeak[PsPageFile] << PAGE_SHIFT;
-                //VmCounters->PrivateUsage = Process->CommitCharge << PAGE_SHIFT;
-                //
+                /* Only VM_COUNTERS_EX has room for PrivateUsage */
+                if (ProcessInformationLength == sizeof(VM_COUNTERS_EX))
+                {
+                    ((PVM_COUNTERS_EX)VmCounters)->PrivateUsage =
+                        Process->CommitCharge << PAGE_SHIFT;
+                }
 
                 /* Set the return length */
                 Length = ProcessInformationLength;
