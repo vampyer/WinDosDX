@@ -193,8 +193,10 @@ is the long pole and starts as soon as the machine boots reliably (step 1).
 - UEFI: Setup installs onto an NVMe disk on a UEFI-only machine (EFI\BOOT\bootx64.efi
   plus freeldr.ini on the FAT system partition), and the installed system boots
   to the desktop. Tested with OVMF in QEMU at 6 GB of RAM. Setup's text screen
-  draws on the GOP framebuffer. On real UEFI hardware the desktop still needs
-  a framebuffer display driver; QEMU's runs on the bochs driver.
+  draws on the GOP framebuffer. The generic display driver (vgapnp) drives
+  the firmware framebuffer on UEFI boots, so any PCI display without its own
+  driver (the reference PC's Vega iGPU included) gets a desktop at the
+  resolution the firmware chose. Tested on QEMU's cirrus display under OVMF.
 - Branding: first visible surfaces rebranded to WinDosDX (winver About box,
   `rosbrand` resource description). The product name itself is registered by
   the setup engine from INF data — a full rename sweep is still pending.
