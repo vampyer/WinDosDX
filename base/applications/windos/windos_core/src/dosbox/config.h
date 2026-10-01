@@ -56,7 +56,13 @@
 /* Define to 1 if you want serial passthrough support (Win32 only). */
 #define C_DIRECTSERIAL 0
 
+#if defined(__GNUC__)
+/* GCC builds: the DOS structures (PSP, command tail, DPB...) are packed only
+   through this attribute; the #pragma pack lines around them are MSVC-only. */
+#define GCC_ATTRIBUTE(x) __attribute__ ((x))
+#else
 #define GCC_ATTRIBUTE(x) /* attribute not supported */
+#endif
 #define GCC_UNLIKELY(x) (x)
 #define GCC_LIKELY(x) (x)
 

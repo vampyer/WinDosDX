@@ -28,6 +28,8 @@
 #include <miniport.h>
 #include <video.h>
 
+#include "fbmode.h"
+
 #define TAG_VBE ' EBV'
 
 /*
@@ -205,6 +207,10 @@ typedef struct
    USHORT *ModeNumbers;
    PVBE_MODEINFO ModeInfo;
    USHORT CurrentMode;
+
+   /* No video BIOS (UEFI): drive the framebuffer the firmware set up */
+   BOOLEAN FirmwareFramebuffer;
+   PHYSICAL_ADDRESS FramebufferAddress;
 
    /* Current child been enumerated */
    ULONG CurrentChildIndex;

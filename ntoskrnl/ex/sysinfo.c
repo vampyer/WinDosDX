@@ -2942,6 +2942,36 @@ QSI_DEF(SystemProcessorIdleCycleTimeInformation)
     return STATUS_SUCCESS;
 }
 
+/* Class 90 - Boot Environment Information */
+/* The NDK declares this for Vista and later only; the kernel builds as NT 5.2 */
+typedef struct _EXP_BOOT_ENVIRONMENT_INFORMATION
+{
+    GUID BootIdentifier;
+    ULONG FirmwareType;
+    ULONGLONG BootFlags;
+} EXP_BOOT_ENVIRONMENT_INFORMATION, *PEXP_BOOT_ENVIRONMENT_INFORMATION;
+
+QSI_DEF(SystemBootEnvironmentInformation)
+{
+    PEXP_BOOT_ENVIRONMENT_INFORMATION BootInfo = Buffer;
+
+    /* Windows 7 callers pass the smaller structure without BootFlags */
+    *ReqSize = FIELD_OFFSET(EXP_BOOT_ENVIRONMENT_INFORMATION, BootFlags);
+    if (Size < *ReqSize)
+        return STATUS_INFO_LENGTH_MISMATCH;
+
+    RtlZeroMemory(BootInfo, *ReqSize);
+    BootInfo->FirmwareType = ExpFirmwareType;
+
+    if (Size >= sizeof(EXP_BOOT_ENVIRONMENT_INFORMATION))
+    {
+        BootInfo->BootFlags = 0;
+        *ReqSize = sizeof(EXP_BOOT_ENVIRONMENT_INFORMATION);
+    }
+
+    return STATUS_SUCCESS;
+}
+
 /* Class 105 - Processor Brand String */
 QSI_DEF(SystemProcessorBrandString)
 {
@@ -3073,6 +3103,7 @@ CallQS[] =
 
     // Vista and later
     SI_QX(SystemModuleInformationEx),
+    SI_QX(SystemBootEnvironmentInformation),
     SI_QX(SystemProcessorIdleCycleTimeInformation),
     SI_QX(SystemProcessorBrandString),
 };

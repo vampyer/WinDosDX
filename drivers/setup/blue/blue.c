@@ -364,7 +364,7 @@ ScrSetCursor(
 {
     ULONG Offset;
 
-    if (!DeviceExtension->VideoMemory)
+    if (!DeviceExtension->VideoMemory || FbTextActive)
         return;
 
     Offset = (DeviceExtension->CursorY * DeviceExtension->Columns) + DeviceExtension->CursorX;
@@ -385,7 +385,7 @@ ScrSetCursorShape(
     ULONG size, height;
     UCHAR data, value;
 
-    if (!DeviceExtension->VideoMemory)
+    if (!DeviceExtension->VideoMemory || FbTextActive)
         return;
 
     height = DeviceExtension->ScanLines;
@@ -414,6 +414,18 @@ ScrAcquireOwnership(
     UCHAR data, value;
     ULONG offset;
     ULONG Index;
+
+    if (FbTextActive)
+    {
+        /* No VGA hardware to program: text is drawn into the framebuffer */
+        FbTextGetGeometry(&DeviceExtension->Columns,
+                          &DeviceExtension->Rows,
+                          &DeviceExtension->ScanLines);
+        DeviceExtension->CursorX = min(DeviceExtension->CursorX, DeviceExtension->Columns - 1);
+        DeviceExtension->CursorY = min(DeviceExtension->CursorY, DeviceExtension->Rows - 1);
+        FbTextClear();
+        return;
+    }
 
     _disable();
 
@@ -493,6 +505,33 @@ ScrAcquireOwnership(
            DeviceExtension->ScanLines);
 }
 
+static VOID
+ScrUnmapVideoMemory(
+    _In_ PDEVICE_EXTENSION DeviceExtension)
+{
+    if (FbTextActive)
+        ExFreePoolWithTag(DeviceExtension->VideoMemory, TAG_BLUE);
+    else
+        MmUnmapIoSpace(DeviceExtension->VideoMemory, DeviceExtension->VideoMemorySize);
+}
+
+/* In framebuffer mode, draw what changed in the text buffer */
+static VOID
+ScrRefresh(
+    _In_ PDEVICE_EXTENSION DeviceExtension)
+{
+    if (!FbTextActive || !DeviceExtension->Enabled || !DeviceExtension->VideoMemory)
+        return;
+
+    FbTextRefresh(DeviceExtension->VideoMemory,
+                  DeviceExtension->Columns,
+                  DeviceExtension->Rows,
+                  DeviceExtension->FontBitfield,
+                  DeviceExtension->CursorX,
+                  DeviceExtension->CursorY,
+                  !!DeviceExtension->CursorVisible);
+}
+
 static BOOLEAN
 ScrResetScreen(
     _In_ PDEVICE_EXTENSION DeviceExtension,
@@ -538,7 +577,7 @@ ScrResetScreen(
             if (DeviceExtension->VideoMemory)
             {
                 ASSERT(DeviceExtension->VideoMemorySize != 0);
-                MmUnmapIoSpace(DeviceExtension->VideoMemory, DeviceExtension->VideoMemorySize);
+                ScrUnmapVideoMemory(DeviceExtension);
             }
             DeviceExtension->VideoMemory = NULL;
             DeviceExtension->VideoMemorySize = 0;
@@ -557,10 +596,19 @@ ScrResetScreen(
             if (DeviceExtension->VideoMemorySize == 0)
                 return FALSE; // STATUS_INVALID_VIEW_SIZE; STATUS_MAPPED_FILE_SIZE_ZERO;
 
-            /* Map the video memory */
-            BaseAddress.QuadPart = VIDMEM_BASE;
-            DeviceExtension->VideoMemory =
-                (PUCHAR)MmMapIoSpace(BaseAddress, DeviceExtension->VideoMemorySize, MmNonCached);
+            /* Map the video memory. In framebuffer mode it is a plain buffer
+             * that FbTextRefresh() draws from. */
+            if (FbTextActive)
+            {
+                DeviceExtension->VideoMemory =
+                    ExAllocatePoolZero(NonPagedPool, DeviceExtension->VideoMemorySize, TAG_BLUE);
+            }
+            else
+            {
+                BaseAddress.QuadPart = VIDMEM_BASE;
+                DeviceExtension->VideoMemory =
+                    (PUCHAR)MmMapIoSpace(BaseAddress, DeviceExtension->VideoMemorySize, MmNonCached);
+            }
             if (!DeviceExtension->VideoMemory)
             {
                 DeviceExtension->VideoMemorySize = 0;
@@ -599,11 +647,16 @@ ScrResetScreen(
                               DeviceExtension->VideoMemorySize);
             }
 
+            /* The framebuffer was drawn over while disabled */
+            if (FbTextActive)
+                FbTextInvalidate();
+
             /* Restore the cursor state */
             ScrSetCursor(DeviceExtension);
             ScrSetCursorShape(DeviceExtension);
         }
         DeviceExtension->Enabled = TRUE;
+        ScrRefresh(DeviceExtension);
     }
     else
     {
@@ -621,7 +674,7 @@ ScrResetScreen(
             if (DeviceExtension->VideoMemory)
             {
                 ASSERT(DeviceExtension->VideoMemorySize != 0);
-                MmUnmapIoSpace(DeviceExtension->VideoMemory, DeviceExtension->VideoMemorySize);
+                ScrUnmapVideoMemory(DeviceExtension);
             }
             DeviceExtension->VideoMemory = NULL;
             DeviceExtension->VideoMemorySize = 0;
@@ -835,6 +888,8 @@ ScrWrite(
     ScrSetCursor(DeviceExtension);
 
     Status = STATUS_SUCCESS;
+
+    ScrRefresh(DeviceExtension);
 
     Irp->IoStatus.Status = Status;
     IoCompleteRequest(Irp, IO_VIDEO_INCREMENT);
@@ -1522,7 +1577,9 @@ ScrIoControl(
             RtlCopyMemory(DeviceExtension->FontBitfield, Irp->AssociatedIrp.SystemBuffer, 256 * 8);
 
             /* Set the font if needed */
-            if (DeviceExtension->Enabled && DeviceExtension->VideoMemory)
+            if (FbTextActive)
+                FbTextInvalidate();
+            else if (DeviceExtension->Enabled && DeviceExtension->VideoMemory)
                 ScrSetFont(DeviceExtension->FontBitfield);
 
             Irp->IoStatus.Information = 0;
@@ -1533,6 +1590,8 @@ ScrIoControl(
         default:
             Status = STATUS_NOT_IMPLEMENTED;
     }
+
+    ScrRefresh(DeviceExtension);
 
     Irp->IoStatus.Status = Status;
     IoCompleteRequest(Irp, IO_VIDEO_INCREMENT);
@@ -1574,6 +1633,9 @@ DriverEntry(
     UNICODE_STRING SymlinkName = RTL_CONSTANT_STRING(L"\\??\\BlueScreen");
 
     DPRINT("Screen Driver 0.0.6\n");
+
+    /* Without VGA text mode (UEFI), draw the text into the boot framebuffer */
+    FbTextInitialize(DefaultPalette);
 
     DriverObject->MajorFunction[IRP_MJ_CREATE] = ScrCreateClose;
     DriverObject->MajorFunction[IRP_MJ_CLOSE]  = ScrCreateClose;

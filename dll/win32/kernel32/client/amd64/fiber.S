@@ -17,7 +17,7 @@ EXTERN BaseThreadStartup:PROC
  * == 0x500 and FbFlsData == 0x508 with no FbWx86Tib/FbTebFlags emitted)
  * is: ..., GuaranteedStackBytes, FlsData, ActivationContextStackPointer --
  * i.e. right after the 8-byte FlsData pointer, needing no padding. */
-FbActivationContextStackPointer equ FbFlsData + 8
+#define FbActivationContextStackPointer (FbFlsData + 8)
 
 .code64
 
@@ -42,8 +42,8 @@ FUNC BaseFiberStartup
      * own and faults on the very first switch. Reserving 0x20 keeps Rsp
      * 16-byte aligned, so the call below enters BaseThreadStartup with
      * the ABI's "as if reached by call" Rsp = 8 (mod 16). */
-    sub rsp, 20h
-    .allocstack 20h
+    sub rsp, HEX(20)
+    .allocstack HEX(20)
     .ENDPROLOG
 
     mov rax, gs:[TeSelf]

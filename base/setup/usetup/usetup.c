@@ -3660,6 +3660,15 @@ BootLoaderHardDiskPage(PINPUT_RECORD Ir)
         /* Error when writing the MBR */
         MUIDisplayError(ERROR_INSTALL_BOOTCODE, Ir, POPUP_WAIT_ENTER, L"MBR");
     }
+    else if (Status == STATUS_NOT_SUPPORTED && USetupData.ArchType == ARCH_Efi)
+    {
+        PopupError("This computer starts through UEFI, which can only\n"
+                   "read a FAT system partition. Format the system\n"
+                   "partition as FAT to install the bootloader.\n"
+                   "Press ENTER to continue anyway.",
+                   MUIGetString(STRING_CONTINUE),
+                   Ir, POPUP_WAIT_ENTER);
+    }
     else if (Status == STATUS_NOT_SUPPORTED)
     {
         PopupError("Setup does not currently support installing\n"

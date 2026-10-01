@@ -1450,6 +1450,89 @@ InstallVBRToPartition(
 }
 
 
+/*
+ * UEFI firmware starts the loader from \EFI\BOOT\BOOTX64.EFI (the removable
+ * media path, which needs no firmware boot entry) on a FAT system partition.
+ * The loader then reads freeldr.ini from the root of that same partition.
+ */
+static
+NTSTATUS
+InstallEfiBootManager(
+    _In_ PCUNICODE_STRING SystemRootPath,
+    _In_ PCUNICODE_STRING SourceRootPath,
+    _In_ PCUNICODE_STRING DestinationArcPath,
+    _In_ PCWSTR FileSystemName)
+{
+#if defined(_M_AMD64)
+    static const PCWSTR EfiLoaderName = L"bootx64.efi";
+#elif defined(_M_IX86)
+    static const PCWSTR EfiLoaderName = L"bootia32.efi";
+#elif defined(_M_ARM64)
+    static const PCWSTR EfiLoaderName = L"bootaa64.efi";
+#else
+    static const PCWSTR EfiLoaderName = L"bootarm.efi";
+#endif
+    NTSTATUS Status;
+    WCHAR SrcPath[MAX_PATH];
+    WCHAR DstPath[MAX_PATH];
+    PCWSTR ArcPath, InstallDir;
+
+    /* The firmware can only read FAT volumes */
+    if (_wcsicmp(FileSystemName, L"FAT") != 0 &&
+        _wcsicmp(FileSystemName, L"FAT32") != 0)
+    {
+        DPRINT1("UEFI needs a FAT system partition, found '%S'\n", FileSystemName);
+        return STATUS_NOT_SUPPORTED;
+    }
+
+    CombinePaths(DstPath, ARRAYSIZE(DstPath), 2, SystemRootPath->Buffer, L"EFI\\BOOT");
+    Status = SetupCreateDirectory(DstPath);
+    if (!NT_SUCCESS(Status) && Status != STATUS_OBJECT_NAME_COLLISION)
+    {
+        DPRINT1("SetupCreateDirectory(%S) failed (Status 0x%08lx)\n", DstPath, Status);
+        return Status;
+    }
+
+    CombinePaths(SrcPath, ARRAYSIZE(SrcPath), 3, SourceRootPath->Buffer, L"\\efi\\boot", EfiLoaderName);
+    CombinePaths(DstPath, ARRAYSIZE(DstPath), 3, SystemRootPath->Buffer, L"EFI\\BOOT", EfiLoaderName);
+    DPRINT1("Copy: %S ==> %S\n", SrcPath, DstPath);
+    Status = SetupCopyFile(SrcPath, DstPath, FALSE);
+    if (!NT_SUCCESS(Status))
+    {
+        DPRINT1("SetupCopyFile() failed (Status 0x%08lx)\n", Status);
+        return Status;
+    }
+
+    /*
+     * UEFI numbers disks in the order the firmware lists its block devices,
+     * which changes once the installation media is removed. When the system
+     * is installed on the system partition itself, give the loader a path
+     * relative to the partition it started from instead of a fixed rdisk().
+     */
+    ArcPath = DestinationArcPath->Buffer;
+    InstallDir = wcsrchr(ArcPath, L')');
+    if (InstallDir)
+    {
+        ++InstallDir;
+        CombinePaths(SrcPath, ARRAYSIZE(SrcPath), 3,
+                     SystemRootPath->Buffer, InstallDir, L"system32\\ntoskrnl.exe");
+        if (DoesFileExist(NULL, SrcPath))
+            ArcPath = InstallDir;
+    }
+    DPRINT1("Boot entry path: '%S'\n", ArcPath);
+
+    /* Create or update 'freeldr.ini' next to the loader's partition root */
+    if (DoesFileExist_2(SystemRootPath->Buffer, L"freeldr.ini"))
+        Status = UpdateFreeLoaderIni(SystemRootPath->Buffer, ArcPath);
+    else
+        Status = CreateFreeLoaderIniForReactOS(SystemRootPath->Buffer, ArcPath);
+    if (!NT_SUCCESS(Status))
+        DPRINT1("Writing 'freeldr.ini' failed (Status 0x%08lx)\n", Status);
+
+    return Status;
+}
+
+
 /* GENERIC FUNCTIONS *********************************************************/
 
 /**
@@ -1496,7 +1579,21 @@ InstallBootManagerAndBootEntriesWorker(
     BOOLEAN IsBIOS = ((ArchType == ARCH_PcAT) || (ArchType == ARCH_NEC98x86));
     UCHAR InstallType = (Options & 0x03);
 
-    // FIXME: We currently only support BIOS-based PCs
+    if (ArchType == ARCH_Efi)
+    {
+        /* Removable media (InstallType 2) is not supported on UEFI yet */
+        if (InstallType > 1)
+            return STATUS_NOT_SUPPORTED;
+
+        Status = InstallEfiBootManager(SystemRootPath,
+                                       SourceRootPath,
+                                       DestinationArcPath,
+                                       FileSystem);
+        if (!NT_SUCCESS(Status) && Status != STATUS_NOT_SUPPORTED)
+            return ERROR_WRITE_BOOT;
+        return Status;
+    }
+
     // TODO: Support other platforms
     if (!IsBIOS)
         return STATUS_NOT_SUPPORTED;

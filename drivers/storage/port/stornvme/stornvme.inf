@@ -6,8 +6,8 @@
 
 [version]
 signature="$Windows NT$"
-Class=hdc
-ClassGuid={4D36E96A-E325-11CE-BFC1-08002BE10318}
+Class=SCSIAdapter
+ClassGuid={4D36E97B-E325-11CE-BFC1-08002BE10318}
 Provider=%WinDosDX%
 
 [DestinationDirs]
@@ -36,16 +36,13 @@ ExcludeFromSelect = *
 [stornvme_Inst]
 CopyFiles = stornvme_CopyFiles
 
-[stornvme_Inst.HW]
-HKR, "StorPort", "EnableIdlePowerManagement", %REG_DWORD%, 0x00
-
 [stornvme_Inst.Services]
 AddService = stornvme, %SPSVCINST_ASSOCSERVICE%, stornvme_Service_Inst, Miniport_EventLog_Inst
 
 [stornvme_Service_Inst]
 DisplayName    = %DeviceDesc%
 ServiceType    = %SERVICE_KERNEL_DRIVER%
-StartType      = %SERVICE_SYSTEM_START%
+StartType      = %SERVICE_BOOT_START%
 ErrorControl   = %SERVICE_ERROR_NORMAL%
 ServiceBinary  = %12%\stornvme.sys
 LoadOrderGroup = SCSI Miniport
@@ -55,8 +52,7 @@ AddReg         = stornvme_addreg
 stornvme.sys
 
 [stornvme_addreg]
-HKR, "Parameters\PnpInterface", "5", %REG_DWORD%, 0x00000001
-HKR, "Parameters", "BusType", %REG_DWORD%, 0x0000000B
+HKR, "Parameters", "BusType", %REG_DWORD%, 0x00000011
 
 [Miniport_EventLog_Inst]
 AddReg = Miniport_EventLog_AddReg
@@ -68,10 +64,10 @@ HKR,,TypesSupported,%REG_DWORD%,7
 [Strings]
 WinDosDX            = "WinDosDX"
 DeviceDesc          = "WinDosDX NVMe Miniport"
-NVMeDisk.DeviceDesc = "WinDosDX NVMe SCSI Miniport"
+NVMeDisk.DeviceDesc = "Standard NVM Express Controller"
 SPSVCINST_ASSOCSERVICE = 0x00000002
 SERVICE_KERNEL_DRIVER  = 1
-SERVICE_SYSTEM_START   = 2
+SERVICE_BOOT_START     = 0
 SERVICE_ERROR_NORMAL   = 1
 REG_EXPAND_SZ          = 0x00020000
 REG_DWORD              = 0x00010001

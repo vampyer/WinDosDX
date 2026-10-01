@@ -14,6 +14,42 @@
 
 // Note: The wine implementation is broken and cannot be used.
 
+/* WinDosDX: volumes the mount manager does not track (the live RAM disk,
+ * X:) still have a DOS drive letter; find it by the letter's target. */
+static
+NTSTATUS
+QueryDosDriveLetterForNtDeviceName(
+    _In_ PCUNICODE_STRING DeviceName,
+    _Inout_ PUNICODE_STRING DosVolumeName)
+{
+    WCHAR Drive[3] = L"A:";
+    WCHAR Target[MAX_PATH];
+    UNICODE_STRING TargetName;
+
+    for (; Drive[0] <= L'Z'; Drive[0]++)
+    {
+        if (!QueryDosDeviceW(Drive, Target, ARRAYSIZE(Target)))
+            continue;
+
+        RtlInitUnicodeString(&TargetName, Target);
+        if (!RtlEqualUnicodeString(&TargetName, DeviceName, TRUE))
+            continue;
+
+        DosVolumeName->Length = 0;
+        if (!NT_SUCCESS(RtlAppendUnicodeToString(DosVolumeName, L"\\\\?\\")) ||
+            !NT_SUCCESS(RtlAppendUnicodeToString(DosVolumeName, Drive)) ||
+            !NT_SUCCESS(RtlAppendUnicodeToString(DosVolumeName, L"\\")))
+        {
+            return STATUS_BUFFER_TOO_SMALL;
+        }
+
+        SetLastError(ERROR_SUCCESS);
+        return STATUS_SUCCESS;
+    }
+
+    return STATUS_OBJECT_NAME_NOT_FOUND;
+}
+
 static
 NTSTATUS
 QueryDosVolumeNameForNtDeviceName(
@@ -238,6 +274,8 @@ GetFinalPathNameByHandleW(
     /* Query the DOS volume name */
     RtlInitEmptyUnicodeString(&VolumeName, VolumeBuffer, sizeof(VolumeBuffer));
     Status = QueryDosVolumeNameForNtDeviceName(&DeviceName, &VolumeName);
+    if (!NT_SUCCESS(Status))
+        Status = QueryDosDriveLetterForNtDeviceName(&DeviceName, &VolumeName);
     if (!NT_SUCCESS(Status))
     {
         DPRINT1("QueryDosVolumeNameForNtDeviceName failed: %lx\n", Status);

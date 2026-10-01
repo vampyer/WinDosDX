@@ -82,7 +82,13 @@ VBEFindAdapter(
    IN OUT PVIDEO_PORT_CONFIG_INFO ConfigInfo,
    OUT PUCHAR Again)
 {
-   if (VideoPortIsNoVesa())
+   PVBE_DEVICE_EXTENSION VBEDeviceExtension =
+     (PVBE_DEVICE_EXTENSION)HwDeviceExtension;
+
+   /* Without a video BIOS, use the framebuffer the firmware left behind */
+   VBEDeviceExtension->FirmwareFramebuffer = VBEIsUefiBoot();
+
+   if (!VBEDeviceExtension->FirmwareFramebuffer && VideoPortIsNoVesa())
        return ERROR_DEV_NOT_EXIST;
 
    if (ConfigInfo->Length < sizeof(VIDEO_PORT_CONFIG_INFO))
@@ -167,6 +173,88 @@ VBESortModes(PVBE_DEVICE_EXTENSION DeviceExtension)
 }
 
 /*
+ * VBEMaskToField
+ *
+ * Converts a pixel channel mask to a VBE mask size and field position.
+ */
+
+static VOID
+VBEMaskToField(ULONG Mask, PUCHAR Size, PUCHAR Position)
+{
+   UCHAR Shift = 0, Bits = 0;
+
+   if (Mask)
+   {
+      while (!(Mask & (1UL << Shift)))
+         Shift++;
+      while ((Shift + Bits < 32) && (Mask & (1UL << (Shift + Bits))))
+         Bits++;
+   }
+   *Size = Bits;
+   *Position = Shift;
+}
+
+/*
+ * VBEInitFirmwareFramebuffer
+ *
+ * Builds a single-mode list describing the framebuffer that the firmware
+ * (UEFI GOP) set up, for machines where there is no VBE BIOS to call.
+ */
+
+static BOOLEAN
+VBEInitFirmwareFramebuffer(PVBE_DEVICE_EXTENSION VBEDeviceExtension)
+{
+   VBE_FB_INFO Fb;
+   PVBE_MODEINFO Mode;
+
+   if (!VBEFindFirmwareFramebuffer(&Fb) || Fb.Pitch > 0xFFFF ||
+       Fb.Width > 0xFFFF || Fb.Height > 0xFFFF)
+   {
+      VideoPortDebugPrint(Error, "VBEMP: No usable firmware framebuffer\n");
+      return FALSE;
+   }
+
+   VBEDeviceExtension->ModeInfo =
+      VideoPortAllocatePool(VBEDeviceExtension, VpPagedPool, sizeof(VBE_MODEINFO), TAG_VBE);
+   VBEDeviceExtension->ModeNumbers =
+      VideoPortAllocatePool(VBEDeviceExtension, VpPagedPool, sizeof(USHORT), TAG_VBE);
+   if (!VBEDeviceExtension->ModeInfo || !VBEDeviceExtension->ModeNumbers)
+      return FALSE;
+
+   Mode = VBEDeviceExtension->ModeInfo;
+   VideoPortZeroMemory(Mode, sizeof(VBE_MODEINFO));
+   Mode->ModeAttributes = VBE_MODEATTR_LINEAR;
+   Mode->XResolution = (USHORT)Fb.Width;
+   Mode->YResolution = (USHORT)Fb.Height;
+   Mode->NumberOfPlanes = 1;
+   Mode->BitsPerPixel = (UCHAR)Fb.BitsPerPixel;
+   Mode->MemoryModel = VBE_MEMORYMODEL_DIRECTCOLOR;
+   Mode->BytesPerScanLine = (USHORT)Fb.Pitch;
+   Mode->LinBytesPerScanLine = (USHORT)Fb.Pitch;
+   Mode->PhysBasePtr = (ULONG)Fb.Address;
+   VBEMaskToField(Fb.RedMask, &Mode->LinRedMaskSize, &Mode->LinRedFieldPosition);
+   VBEMaskToField(Fb.GreenMask, &Mode->LinGreenMaskSize, &Mode->LinGreenFieldPosition);
+   VBEMaskToField(Fb.BlueMask, &Mode->LinBlueMaskSize, &Mode->LinBlueFieldPosition);
+   Mode->RedMaskSize = Mode->LinRedMaskSize;
+   Mode->RedFieldPosition = Mode->LinRedFieldPosition;
+   Mode->GreenMaskSize = Mode->LinGreenMaskSize;
+   Mode->GreenFieldPosition = Mode->LinGreenFieldPosition;
+   Mode->BlueMaskSize = Mode->LinBlueMaskSize;
+   Mode->BlueFieldPosition = Mode->LinBlueFieldPosition;
+
+   /* Report VBE 3.0 so the linear fields above are the ones used */
+   VBEDeviceExtension->VbeInfo.Version = 0x300;
+   VBEDeviceExtension->ModeNumbers[0] = 0;
+   VBEDeviceExtension->ModeCount = 1;
+   VBEDeviceExtension->CurrentMode = 0;
+   VBEDeviceExtension->FramebufferAddress.QuadPart = Fb.Address;
+
+   VideoPortDebugPrint(Info, "VBEMP: Using the firmware framebuffer, %dx%dx%d\n",
+                       Fb.Width, Fb.Height, Fb.BitsPerPixel);
+   return TRUE;
+}
+
+/*
  * VBEInitialize
  *
  * Performs the first initialization of the adapter, after the HAL has given
@@ -191,6 +279,9 @@ VBEInitialize(PVOID HwDeviceExtension)
    USHORT ModeTemp;
    ULONG CurrentMode;
    PVBE_MODEINFO VbeModeInfo;
+
+   if (VBEDeviceExtension->FirmwareFramebuffer)
+      return VBEInitFirmwareFramebuffer(VBEDeviceExtension);
 
    if (VideoPortIsNoVesa())
    {
@@ -592,6 +683,10 @@ VBEGetPowerState(
        VideoPowerControl->Length < sizeof(VIDEO_POWER_MANAGEMENT))
       return ERROR_INVALID_FUNCTION;
 
+   /* No BIOS to ask: the firmware framebuffer is simply always on */
+   if (VBEDeviceExtension->FirmwareFramebuffer)
+      return ERROR_DEV_NOT_EXIST;
+
    /*
     * Get general power support information.
     */
@@ -667,6 +762,9 @@ VBESetPowerState(
    if (VideoPowerControl->PowerState == VideoPowerHibernate)
       return NO_ERROR;
 
+   if (VBEDeviceExtension->FirmwareFramebuffer)
+      return ERROR_DEV_NOT_EXIST;
+
    /*
     * Set current power state.
     */
@@ -714,6 +812,13 @@ VBESetCurrentMode(
       return ERROR_INVALID_PARAMETER;
    }
 
+   /* The firmware framebuffer has the one mode it is already in */
+   if (DeviceExtension->FirmwareFramebuffer)
+   {
+      DeviceExtension->CurrentMode = RequestedMode->RequestedMode;
+      return TRUE;
+   }
+
    VideoPortZeroMemory(&BiosRegisters, sizeof(BiosRegisters));
    BiosRegisters.Eax = VBE_SET_VBE_MODE;
    BiosRegisters.Ebx = DeviceExtension->ModeNumbers[RequestedMode->RequestedMode];
@@ -747,6 +852,10 @@ VBEResetDevice(
    PSTATUS_BLOCK StatusBlock)
 {
    INT10_BIOS_ARGUMENTS BiosRegisters;
+
+   /* There is no text mode to go back to */
+   if (DeviceExtension->FirmwareFramebuffer)
+      return TRUE;
 
    VideoPortZeroMemory(&BiosRegisters, sizeof(BiosRegisters));
    BiosRegisters.Eax = VBE_SET_VBE_MODE;
@@ -782,6 +891,9 @@ VBEMapVideoMemory(
    {
       FrameBuffer.QuadPart =
          DeviceExtension->ModeInfo[DeviceExtension->CurrentMode].PhysBasePtr;
+      /* The firmware framebuffer may lie above 4 GB */
+      if (DeviceExtension->FirmwareFramebuffer)
+         FrameBuffer = DeviceExtension->FramebufferAddress;
       MapInformation->VideoRamBase = RequestedAddress->RequestedVirtualAddress;
       if (DeviceExtension->VbeInfo.Version < 0x300)
       {
@@ -1005,6 +1117,10 @@ VBESetColorRegisters(
    ULONG OutputBuffer[256];
 
    if (ColorLookUpTable->NumEntries + ColorLookUpTable->FirstEntry > 256)
+      return FALSE;
+
+   /* Direct color only: there is no palette to program */
+   if (DeviceExtension->FirmwareFramebuffer)
       return FALSE;
 
    /*
