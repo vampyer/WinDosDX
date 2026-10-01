@@ -631,6 +631,9 @@ ScsiPortGetUncachedExtension(IN PVOID HwDeviceExtension,
         DeviceDescription.ScatterGather = ConfigInfo->ScatterGather;
         DeviceDescription.DemandMode = ConfigInfo->DemandMode;
         DeviceDescription.Dma32BitAddresses = ConfigInfo->Dma32BitAddresses;
+        /* A miniport that handles 64-bit addresses needs no bounce buffers */
+        DeviceDescription.Dma64BitAddresses =
+            !!(ConfigInfo->Dma64BitAddresses & SCSI_DMA64_MINIPORT_SUPPORTED);
         DeviceDescription.BusNumber = ConfigInfo->SystemIoBusNumber;
         DeviceDescription.DmaChannel = ConfigInfo->DmaChannel;
         DeviceDescription.InterfaceType = ConfigInfo->AdapterInterfaceType;

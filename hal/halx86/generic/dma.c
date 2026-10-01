@@ -2035,20 +2035,43 @@ IoFlushAdapterBuffers(IN PADAPTER_OBJECT AdapterObject,
         }
         else
         {
+            PUCHAR Va = CurrentVa;
+            ULONG Remaining = Length;
+            ULONG Index = 0;
+            ULONG Chunk;
+
             MdlPagesPtr = MmGetMdlPfnArray(Mdl);
             MdlPagesPtr += ((ULONG_PTR)CurrentVa - (ULONG_PTR)Mdl->StartVa) >> PAGE_SHIFT;
-
-            PhysicalAddress.QuadPart = *MdlPagesPtr << PAGE_SHIFT;
-            PhysicalAddress.QuadPart += BYTE_OFFSET(CurrentVa);
-
             HighestAcceptableAddress = HalpGetAdapterMaximumPhysicalAddress(AdapterObject);
-            if ((PhysicalAddress.QuadPart + Length) > HighestAcceptableAddress.QuadPart)
+
+            /*
+             * The transfer may have been mapped in several pieces, only some
+             * of which went through map registers (IoMapTransfer bounces a
+             * piece only when its pages are out of the device's reach, and
+             * the piece's Nth page uses the transfer's Nth map register).
+             * Copy back just the pages that were bounced: copying the whole
+             * transfer would overwrite the pages the device wrote directly
+             * with stale map register contents.
+             */
+            while (Remaining > 0)
             {
-                HalpCopyBufferMap(Mdl,
-                                  RealMapRegisterBase,
-                                  CurrentVa,
-                                  Length,
-                                  FALSE);
+                Chunk = PAGE_SIZE - BYTE_OFFSET(Va);
+                if (Chunk > Remaining) Chunk = Remaining;
+
+                PhysicalAddress.QuadPart = MdlPagesPtr[Index] << PAGE_SHIFT;
+                PhysicalAddress.QuadPart += BYTE_OFFSET(Va);
+                if ((PhysicalAddress.QuadPart + Chunk) > HighestAcceptableAddress.QuadPart)
+                {
+                    HalpCopyBufferMap(Mdl,
+                                      RealMapRegisterBase + Index,
+                                      Va,
+                                      Chunk,
+                                      FALSE);
+                }
+
+                Va += Chunk;
+                Remaining -= Chunk;
+                Index++;
             }
         }
     }
@@ -2177,6 +2200,9 @@ IoMapTransfer(IN PADAPTER_OBJECT AdapterObject,
         MdlPage2 = *(MdlPagesPtr + 1);
         if (MdlPage1 + 1 != MdlPage2) break;
         if (!HalpEisaDma && ((MdlPage1 ^ MdlPage2) & ~0xF)) break;
+        /* Keep each piece on one side of 4 GB, so IoFlushAdapterBuffers
+         * can tell page by page which ones were bounced */
+        if ((MdlPage1 ^ MdlPage2) & ~0xFFFFF) break;
         TransferLength += PAGE_SIZE;
         MdlPagesPtr++;
     }
