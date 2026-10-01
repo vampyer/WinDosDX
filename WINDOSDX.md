@@ -190,6 +190,11 @@ is the long pole and starts as soon as the machine boots reliably (step 1).
 - `drivers/storage/port/stornvme/` — NVMe miniport (on scsiport), **working in
   QEMU**: an NVMe disk mounts and reads and writes correctly. Not yet tried on
   the reference PC's `1987:5013` drive.
+- UEFI: Setup installs onto an NVMe disk on a UEFI-only machine (EFI\BOOT\bootx64.efi
+  plus freeldr.ini on the FAT system partition), and the installed system boots
+  to the desktop. Tested with OVMF in QEMU at 6 GB of RAM. Setup's text screen
+  draws on the GOP framebuffer. On real UEFI hardware the desktop still needs
+  a framebuffer display driver; QEMU's runs on the bochs driver.
 - Branding: first visible surfaces rebranded to WinDosDX (winver About box,
   `rosbrand` resource description). The product name itself is registered by
   the setup engine from INF data — a full rename sweep is still pending.
