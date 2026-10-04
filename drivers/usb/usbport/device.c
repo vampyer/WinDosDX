@@ -977,6 +977,16 @@ USBPORT_GetTt(IN PDEVICE_OBJECT FdoDevice,
     return TtExtension;
 }
 
+/* SuperSpeed devices give bMaxPacketSize0 as a power of two (9 for 512
+ * bytes). The stack only knows the USB 2 sizes, and the xHCI controller
+ * keeps using 512 for EP0 whatever it is told, so call it 64. */
+static VOID
+USBPORT_FixSuperSpeedMaxPacket0(IN PUSB_DEVICE_DESCRIPTOR DeviceDescriptor)
+{
+    if (DeviceDescriptor->bcdUSB >= 0x300 && DeviceDescriptor->bMaxPacketSize0 == 9)
+        DeviceDescriptor->bMaxPacketSize0 = 64;
+}
+
 NTSTATUS
 NTAPI
 USBPORT_CreateDevice(IN OUT PUSB_DEVICE_HANDLE *pUsbdDeviceHandle,
@@ -1154,6 +1164,8 @@ USBPORT_CreateDevice(IN OUT PUSB_DEVICE_HANDLE *pUsbdDeviceHandle,
     RtlCopyMemory(&DeviceHandle->DeviceDescriptor,
                   DeviceDescriptor,
                   sizeof(USB_DEVICE_DESCRIPTOR));
+
+    USBPORT_FixSuperSpeedMaxPacket0(&DeviceHandle->DeviceDescriptor);
 
     ExFreePoolWithTag(DeviceDescriptor, USB_PORT_TAG);
 
@@ -1397,6 +1409,8 @@ USBPORT_InitializeDevice(IN PUSBPORT_DEVICE_HANDLE DeviceHandle,
             DPRINT1("USBPORT_InitializeDevice: Short device descriptor len %lu\n",
                     TransferedLen);
         }
+
+        USBPORT_FixSuperSpeedMaxPacket0(&DeviceHandle->DeviceDescriptor);
 
         /* Use the known bMaxPacketSize0 (was obtained prior to SetAddress) */
         MaxPacketSize = DeviceHandle->DeviceDescriptor.bMaxPacketSize0;
