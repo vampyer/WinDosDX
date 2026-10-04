@@ -127,20 +127,27 @@ not require kernel changes.
 
 ## 5. Drivers (build order)
 
-1. **NVMe (`stornvme`)** — **done.** A storport miniport that maps the
-   controller BAR0, resets/initializes the controller, creates the admin + one
-   I/O queue pair, identifies namespace 1, and translates SCSI SRBs (INQUIRY,
-   READ CAPACITY, TEST UNIT READY, READ/WRITE, FLUSH) into NVMe
-   Read/Write/Flush commands with PRP lists, completing synchronously
-   (polled). Exposes namespace 1 as a single LUN so the boot disk appears.
-   Packaged with a PnP INF and CD staging so it installs and loads.
-   *Follow-ups:* admin-queue identify of all namespaces, multiple LUNs,
-   interrupt/DPC completion (replace polling), MSI-X, SMART/Log Page.
+1. **NVMe (`stornvme`)** — **done, tested in QEMU.** A scsiport miniport
+   (ReactOS's storport cannot carry disk I/O yet, see below) that maps BAR0,
+   resets and enables the controller, creates the admin queue and one I/O
+   queue pair, identifies the controller and namespace 1, and emulates the
+   SCSI commands the disk class driver sends (INQUIRY, READ CAPACITY 10/16,
+   READ/WRITE 6/10/12/16 with PRP lists, SYNCHRONIZE CACHE, MODE SENSE...).
+   Requests complete from the INTx interrupt, with a 5 ms timer as a fallback.
+   It finds controllers by PCI class 01/08/02, so any vendor's drive works,
+   and setup loads it (`txtsetup.sif`) so Windows can install onto NVMe.
+   Checked with QEMU's NVMe device at 6 GB of RAM (its BAR sits above 4 GB):
+   the volume mounts and a 13 MB copy reads back byte-identical.
+   *Follow-ups:* more namespaces, several requests in flight, MSI/MSI-X,
+   SMART/log pages.
 2. **WiFi MT7921 (`14c3:0608`)** — a WLAN miniport (NDIS 6) on top of the
    MediaTek MT76 family. Large; deferred.
 3. **AMD iGPU (Vega, `1002:1638`)** — a display-only framebuffer driver first
    (basic modes), 3D/Accel later. Large; deferred.
-4. Existing AHCI (`storahci`), xHCI (`xhci`), HDA already cover the rest.
+4. Existing xHCI (`xhci`) and HDA cover the rest. AHCI runs through
+   `pciide`/`atapi`: `storahci` is a storport miniport, and ReactOS's storport
+   does not yet pass requests to its miniports (its SCSI dispatch completes
+   them without running them), so storport drivers cannot serve a disk.
 
 ---
 
@@ -180,10 +187,16 @@ is the long pole and starts as soon as the machine boots reliably (step 1).
 
 ## 8. Current status
 
-- `drivers/storage/port/stornvme/` — new NVMe storport miniport, **complete**:
-  compiles clean at `/W3 /WX`, links to `stornvme.sys`, ships with a storport
-  PnP `stornvme.inf` (UTF-16LE) and CD packaging (`add_cd_file` +
-  `add_driver_inf`). Exposes NVMe namespace 1 as a single LUN.
+- `drivers/storage/port/stornvme/` — NVMe miniport (on scsiport), **working in
+  QEMU**: an NVMe disk mounts and reads and writes correctly. Not yet tried on
+  the reference PC's `1987:5013` drive.
+- UEFI: Setup installs onto an NVMe disk on a UEFI-only machine (EFI\BOOT\bootx64.efi
+  plus freeldr.ini on the FAT system partition), and the installed system boots
+  to the desktop. Tested with OVMF in QEMU at 6 GB of RAM. Setup's text screen
+  draws on the GOP framebuffer. The generic display driver (vgapnp) drives
+  the firmware framebuffer on UEFI boots, so any PCI display without its own
+  driver (the reference PC's Vega iGPU included) gets a desktop at the
+  resolution the firmware chose. Tested on QEMU's cirrus display under OVMF.
 - Branding: first visible surfaces rebranded to WinDosDX (winver About box,
   `rosbrand` resource description). The product name itself is registered by
   the setup engine from INF data — a full rename sweep is still pending.

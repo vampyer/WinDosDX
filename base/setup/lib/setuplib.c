@@ -798,6 +798,9 @@ LoadSetupInf(
     return ERROR_SUCCESS;
 }
 
+static BOOLEAN
+IsUefiFirmware(VOID);
+
 /**
  * @brief   Find or set the active system partition.
  **/
@@ -819,7 +822,16 @@ InitSystemPartition(
      * partition on the system. Otherwise if we install on a removable disk
      * use the install partition as the system partition.
      */
-    if (InstallPartition->DiskEntry->MediaType == FixedMedia)
+    if (IsUefiFirmware())
+    {
+        /* UEFI firmware starts EFI\BOOT\BOOTX64.EFI from whichever disk it
+         * is told to, so keep the loader on the install partition. The BIOS
+         * search below picks the first disk the firmware reported, which is
+         * often the USB stick Setup was started from. */
+        SystemPartition = InstallPartition;
+        OldActivePart = NULL;
+    }
+    else if (InstallPartition->DiskEntry->MediaType == FixedMedia)
     {
         SystemPartition = FindSupportedSystemPartition(PartitionList,
                                                        FALSE,
@@ -1141,6 +1153,30 @@ InitDestinationPaths(
     return STATUS_SUCCESS;
 }
 
+/*
+ * Returns TRUE when the running system was started by UEFI firmware.
+ * The loader records this, and the kernel reports it through
+ * SystemBootEnvironmentInformation (the class GetFirmwareType uses).
+ */
+static BOOLEAN
+IsUefiFirmware(VOID)
+{
+    struct
+    {
+        GUID BootIdentifier;
+        ULONG FirmwareType;
+        ULONGLONG BootFlags;
+    } BootInfo;
+    NTSTATUS Status;
+
+    Status = NtQuerySystemInformation((SYSTEM_INFORMATION_CLASS)90 /* SystemBootEnvironmentInformation */,
+                                      &BootInfo, sizeof(BootInfo), NULL);
+    if (!NT_SUCCESS(Status))
+        return FALSE;
+
+    return (BootInfo.FirmwareType == 2 /* FirmwareTypeUefi */);
+}
+
 // NTSTATUS
 ERROR_NUMBER
 NTAPI
@@ -1219,8 +1255,11 @@ InitializeSetup(
 #if defined(SARCH_XBOX)
     pSetupData->ArchType = ARCH_Xbox;
 // #elif defined(SARCH_PC98)
-#else // TODO: Arc, UEFI
-    pSetupData->ArchType = (IsNEC_98 ? ARCH_NEC98x86 : ARCH_PcAT);
+#else // TODO: Arc
+    if (IsUefiFirmware())
+        pSetupData->ArchType = ARCH_Efi;
+    else
+        pSetupData->ArchType = (IsNEC_98 ? ARCH_NEC98x86 : ARCH_PcAT);
 #endif
 
     return ERROR_SUCCESS;

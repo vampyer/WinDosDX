@@ -252,6 +252,10 @@ VBEGetVideoChildDescriptor(
         *VideoChildType = Monitor;
         *UId = 1;
 
+        /* Without a video BIOS there is no way to read the EDID */
+        if (((PVBE_DEVICE_EXTENSION)HwDeviceExtension)->FirmwareFramebuffer)
+            return VIDEO_ENUM_MORE_DEVICES;
+
         /* Try to read EDID information using 2 different methods. */
         if (VBEReadEdid(HwDeviceExtension, 0, pChildDescriptor))
         {

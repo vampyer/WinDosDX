@@ -744,6 +744,12 @@ SpiProcessCompletedRequest(
                            SrbInfo->NumberOfMapRegisters);
     }
 
+    /* SrbInfo is reused by the next request on this LUN, which may carry
+     * no data: don't let it see this request's map registers or S/G list */
+    SrbInfo->BaseOfMapRegister = NULL;
+    SrbInfo->NumberOfMapRegisters = 0;
+    SrbInfo->ScatterGather = NULL;
+
     /* Acquire spinlock (we're freeing SrbExtension) */
     KeAcquireSpinLockAtDpcLevel(&DeviceExtension->SpinLock);
 

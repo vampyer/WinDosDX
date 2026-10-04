@@ -293,7 +293,7 @@ TestRootListing(void)
     };
     WIN32_FIND_DATAW Data;
     WCHAR Path[MAX_PATH];
-    BOOL Seen[ARRAYSIZE(Expected)] = { 0 };
+    BOOL Seen[sizeof(Expected) / sizeof(Expected[0])] = { 0 };
     DWORD Count = 0;
     DWORD i;
     HANDLE Find;

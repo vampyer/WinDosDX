@@ -3,6 +3,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/drivers)
 
 list(APPEND SOURCE
     blue.c
+    fbfont.c
+    fbtext.c
     font.c
     blue.h)
 

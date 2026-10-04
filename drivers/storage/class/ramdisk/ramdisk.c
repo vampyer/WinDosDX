@@ -1315,8 +1315,16 @@ RamdiskDeviceControl(IN PDEVICE_OBJECT DeviceObject,
                 break;
             }
 
-            case IOCTL_DISK_GET_DRIVE_LAYOUT:
             case IOCTL_DISK_IS_WRITABLE:
+            {
+                /* A writable RAM disk (e.g. the WinDosDX live image) must say
+                 * so, or FAT mounts it read-only */
+                Status = DriveExtension->DiskOptions.Readonly ?
+                         STATUS_MEDIA_WRITE_PROTECTED : STATUS_SUCCESS;
+                break;
+            }
+
+            case IOCTL_DISK_GET_DRIVE_LAYOUT:
             case IOCTL_SCSI_MINIPORT:
             case IOCTL_STORAGE_QUERY_PROPERTY:
             case IOCTL_MOUNTDEV_QUERY_UNIQUE_ID:

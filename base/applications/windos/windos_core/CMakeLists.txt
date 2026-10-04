@@ -62,49 +62,60 @@ add_library(windos_core STATIC ${WINDOS_CORE_SOURCE})
 # stlport configuration needs them enabled.
 set_target_cpp_properties(windos_core WITH_EXCEPTIONS WITH_RTTI)
 
-# ReactOS stlport resolves the native C and C++ headers through the
-# NATIVE_C_INCLUDE and NATIVE_CPP_INCLUDE macros as flat directories.  ReactOS
-# has no such directories, so src/dosbox/cxxcompat supplies both; the generated
-# headers there forward through the WINDOS_SDK_* path macros below.  That
-# directory is deliberately kept off the include path so a forwarder can never
-# resolve back to itself.
-set(WINDOS_DOSBOX_CXXCOMPAT ${WINDOS_DOSBOX_ROOT}/cxxcompat)
-#
-# NATIVE_CPP_INCLUDE is deliberately not set here: linking cppstl makes
-# stlport's INTERFACE definitions supply it, and a second definition on this
-# target would come later on the command line and win.  The generated headers
-# in cxxcompat are reached through NATIVE_C_INCLUDE and the WINDOS_SDK_*
-# macros instead, and the few C++ headers stlport still resolves from
-# NATIVE_CPP_INCLUDE are provided by sdk/include/c++ itself.
-#
-target_compile_definitions(windos_core PRIVATE
-    WIN32=1 NOMINMAX=1 _USE_MATH_DEFINES=1
-    NATIVE_C_INCLUDE=${WINDOS_DOSBOX_CXXCOMPAT}
-    WINDOS_SDK_CRT=${CMAKE_SOURCE_DIR}/sdk/include/crt
-    WINDOS_SDK_UCRT=${CMAKE_SOURCE_DIR}/sdk/include/ucrt
-    WINDOS_SDK_VCRUNTIME=${CMAKE_SOURCE_DIR}/sdk/include/vcruntime
-    WINDOS_SDK_CXX=${CMAKE_SOURCE_DIR}/sdk/include/c++
-    _STLP_USE_EXCEPTIONS=1
-    __USE_CRTIMP=1)
+if(MSVC)
+    # ReactOS stlport resolves the native C and C++ headers through the
+    # NATIVE_C_INCLUDE and NATIVE_CPP_INCLUDE macros as flat directories.  ReactOS
+    # has no such directories, so src/dosbox/cxxcompat supplies both; the generated
+    # headers there forward through the WINDOS_SDK_* path macros below.  That
+    # directory is deliberately kept off the include path so a forwarder can never
+    # resolve back to itself.
+    set(WINDOS_DOSBOX_CXXCOMPAT ${WINDOS_DOSBOX_ROOT}/cxxcompat)
+    #
+    # NATIVE_CPP_INCLUDE is deliberately not set here: linking cppstl makes
+    # stlport's INTERFACE definitions supply it, and a second definition on this
+    # target would come later on the command line and win.  The generated headers
+    # in cxxcompat are reached through NATIVE_C_INCLUDE and the WINDOS_SDK_*
+    # macros instead, and the few C++ headers stlport still resolves from
+    # NATIVE_CPP_INCLUDE are provided by sdk/include/c++ itself.
+    #
+    target_compile_definitions(windos_core PRIVATE
+        WIN32=1 NOMINMAX=1 _USE_MATH_DEFINES=1
+        NATIVE_C_INCLUDE=${WINDOS_DOSBOX_CXXCOMPAT}
+        WINDOS_SDK_CRT=${CMAKE_SOURCE_DIR}/sdk/include/crt
+        WINDOS_SDK_UCRT=${CMAKE_SOURCE_DIR}/sdk/include/ucrt
+        WINDOS_SDK_VCRUNTIME=${CMAKE_SOURCE_DIR}/sdk/include/vcruntime
+        WINDOS_SDK_CXX=${CMAKE_SOURCE_DIR}/sdk/include/c++
+        _STLP_USE_EXCEPTIONS=1
+        __USE_CRTIMP=1)
 
-# The DOSBox sources are third-party and predate several MSVC /WX warnings.
-# 4146 and 5208 are new in recent MSVC releases and fire inside stlport and in
-# the core's own C-style code, not in the ReactOS build.
-target_compile_options(windos_core PRIVATE
-    /wd4244 /wd4267 /wd4305 /wd4310 /wd4996 /wd4146 /wd5208)
-# The 64-bit build also warns about unused locals and size_t passed for a
-# printf '*' width, both harmless in the vendored sources.
-target_compile_options(windos_core PRIVATE /wd4189 /wd4477)
+    # The DOSBox sources are third-party and predate several MSVC /WX warnings.
+    # 4146 and 5208 are new in recent MSVC releases and fire inside stlport and in
+    # the core's own C-style code, not in the ReactOS build.
+    target_compile_options(windos_core PRIVATE
+        /wd4244 /wd4267 /wd4305 /wd4310 /wd4996 /wd4146 /wd5208)
+    # The 64-bit build also warns about unused locals and size_t passed for a
+    # printf '*' width, both harmless in the vendored sources.
+    target_compile_options(windos_core PRIVATE /wd4189 /wd4477)
 
-# Force-include the compatibility prelude into the DOSBox translation units
-# only, so the vendored sources stay as close to upstream as possible.  The
-# /FI path is relative to the compiler's working directory, which is the build
-# root, so an absolute path is used via a generator expression.
-set_source_files_properties(${DOSBOX_SOURCE} PROPERTIES
-    COMPILE_OPTIONS "/FI${WINDOS_DOSBOX_ROOT}/windos_msvc_prelude.h")
+    # Force-include the compatibility prelude into the DOSBox translation units
+    # only, so the vendored sources stay as close to upstream as possible.  The
+    # /FI path is relative to the compiler's working directory, which is the build
+    # root, so an absolute path is used via a generator expression.
+    set_source_files_properties(${DOSBOX_SOURCE} PROPERTIES
+        COMPILE_OPTIONS "/FI${WINDOS_DOSBOX_ROOT}/windos_msvc_prelude.h")
 
-target_include_directories(windos_core PRIVATE
-    ${CMAKE_SOURCE_DIR}/sdk/include/c++/stlport)
+    target_include_directories(windos_core PRIVATE
+        ${CMAKE_SOURCE_DIR}/sdk/include/c++/stlport)
+else()
+    # GCC builds use the toolchain's libstdc++ (cppstl) directly, so the
+    # stlport shims above are not needed; only the prelude is force-included.
+    target_compile_definitions(windos_core PRIVATE
+        WIN32=1 NOMINMAX=1 _USE_MATH_DEFINES=1)
+    target_compile_options(windos_core PRIVATE
+        -Wno-error -Wno-narrowing -fpermissive)
+    set_source_files_properties(${DOSBOX_SOURCE} PROPERTIES
+        COMPILE_OPTIONS "-include;${WINDOS_DOSBOX_ROOT}/windos_msvc_prelude.h")
+endif()
 
 # BEFORE: the DOSBox include directory must win over the SDK's, because the
 # core has its own <debug.h> and the SDK ships a reactos/debug.h that errors

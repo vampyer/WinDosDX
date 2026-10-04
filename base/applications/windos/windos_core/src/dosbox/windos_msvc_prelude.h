@@ -41,12 +41,45 @@
 #ifndef WINDOS_MSVC_PRELUDE_H
 #define WINDOS_MSVC_PRELUDE_H
 
+/* The core picks its Win32 code paths on WIN32, which the ReactOS GCC
+ * toolchain undefines on the command line (-UWIN32). */
+#ifndef WIN32
+#define WIN32 1
+#endif
+
 /* (1) Claim the C++ math overloads before crt/math.h sees them. */
+#if defined(__GNUC__) && !defined(_MSC_VER)
+/* GCC builds use libstdc++, whose <cmath> pulls in the toolchain's own
+ * math.h.  Take that one first and keep ReactOS's crt/math.h out, since
+ * both define the same inline helpers.  The toolchain math.h expects
+ * _locale_t from crtdefs.h, which ReactOS declares in corecrt.h. */
+#include <corecrt.h>
+#include <cmath>
+/* ReactOS's excpt.h (reached through windows.h) redefines libstdc++'s
+ * __try/__catch helpers as SEH keywords, which breaks any libstdc++
+ * template parsed after it.  Parse the headers the core uses up front. */
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <limits>
+#include <list>
+#include <map>
+#include <sstream>
+#include <string>
+#include <typeinfo>
+#include <vector>
+#ifndef _INC_MATH
+#define _INC_MATH
+#endif
+#else
 #ifndef _CMATH_
 #define _CMATH_
 #endif
 
 #include <math.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -70,6 +103,12 @@ namespace std {
  */
 #undef stricmp
 #define stricmp     _stricmp
+#if !defined(_MSC_VER)
+#undef strcasecmp
+#define strcasecmp  _stricmp
+#undef strncasecmp
+#define strncasecmp _strnicmp
+#endif
 #undef getcwd
 #define getcwd      _getcwd
 #undef chdir

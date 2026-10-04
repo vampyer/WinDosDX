@@ -4,9 +4,9 @@ list(APPEND SOURCE
     vbemp.c
     vbemp.h)
 
-add_library(vgapnp MODULE ${SOURCE} vbemp.rc)
+add_library(vgapnp MODULE ${SOURCE} fbmode.c vbemp.rc)
 set_module_type(vgapnp kernelmodedriver)
-add_importlibs(vgapnp videoprt)
+add_importlibs(vgapnp videoprt ntoskrnl hal)
 add_pch(vgapnp vbemp.h SOURCE)
 target_link_libraries(vgapnp libcntpr)
 

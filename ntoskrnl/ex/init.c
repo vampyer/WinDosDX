@@ -67,6 +67,7 @@ CHAR NtBuildLab[] = KERNEL_VERSION_BUILD_STR "."
 /* Init flags and settings */
 ULONG ExpInitializationPhase;
 BOOLEAN ExpInTextModeSetup;
+ULONG ExpFirmwareType = 1; /* FirmwareTypeBios */
 BOOLEAN IoRemoteBootClient;
 ULONG InitSafeBootMode;
 BOOLEAN InitIsWinPEMode, InitWinPEModeType;
@@ -1121,6 +1122,10 @@ ExpInitializeExecutive(IN ULONG Cpu,
     {
         /* Setup headless terminal settings */
         HeadlessInit(LoaderBlock);
+
+        /* Remember whether the loader was started by UEFI firmware */
+        if (LoaderBlock->Extension->BootViaEFI)
+            ExpFirmwareType = 2; /* FirmwareTypeUefi */
     }
 
     /* Set system ranges */
